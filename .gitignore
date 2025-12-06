@@ -1,5 +1,7 @@
 build/
-build-*/
+build-asan/
+build-dev/
+build-rel/
 
 *.o
 *.a
@@ -21,6 +23,7 @@ compile_commands.json
 .DS_Store
 .AppleDouble
 .LSOverride
+.vscode/
 
 *.swp
 *.swo
