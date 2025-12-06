@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug truk (dev)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build-dev/cmds/truk/truk",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "build (dev)"
+        },
+        {
+            "name": "Debug truk (asan)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build-asan/cmds/truk/truk",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "build (asan)"
+        }
+    ]
+}
+
