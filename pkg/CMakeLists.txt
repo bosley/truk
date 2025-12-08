@@ -1,3 +1,5 @@
 add_subdirectory(testlib)
 add_subdirectory(example)
 add_subdirectory(sxs)
+add_subdirectory(map)
+add_subdirectory(buffer)
