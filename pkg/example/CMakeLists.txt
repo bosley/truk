@@ -19,3 +19,8 @@ target_include_directories(example PUBLIC
 )
 
 add_subdirectory(tests)
+
+add_custom_command(TARGET example POST_BUILD
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target run_example_buildtime_test
+    COMMENT "Running example buildtime test..."
+)

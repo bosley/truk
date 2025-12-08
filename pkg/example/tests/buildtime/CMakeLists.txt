@@ -12,3 +12,8 @@ target_include_directories(test_example_buildtime PRIVATE
 )
 
 add_test(NAME example_buildtime_test COMMAND test_example_buildtime)
+
+add_custom_command(TARGET test_example_buildtime POST_BUILD
+    COMMAND $<TARGET_FILE:test_example_buildtime>
+    COMMENT "Running example buildtime test..."
+)

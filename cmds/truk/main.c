@@ -1,4 +1,4 @@
-#include "example/example.h"
+#include "sxs/sxs.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -33,7 +33,7 @@ int main(void) {
   x[10] = 42;
   */
 
-  const char *message = example_hello();
+  const char *message = sxs_hello();
   printf("%s\n", message);
   return 0;
 }
