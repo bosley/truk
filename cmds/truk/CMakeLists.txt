@@ -1,6 +1,14 @@
-add_executable(truk main.cpp)
+add_executable(truk main.c)
 
-target_link_libraries(truk PRIVATE matter)
+if(CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
+    add_dependencies(truk example)
+    target_link_libraries(truk PRIVATE $<TARGET_FILE:example>)
+else()
+    target_link_libraries(truk PRIVATE example)
+endif()
 
-target_compile_features(truk PRIVATE cxx_std_20)
+target_include_directories(truk PRIVATE
+    ${CMAKE_SOURCE_DIR}/pkg
+)
 
+add_subdirectory(tests)
