@@ -97,3 +97,28 @@ void ctx_remove(ctx_t *ctx, const char *key) {
 
   map_remove(&ctx->data, key);
 }
+
+int ctx_hoist(ctx_t *ctx, const char *key) {
+  if (!ctx || !key) {
+    return -1;
+  }
+
+  if (!ctx->parent) {
+    return -1;
+  }
+
+  void **value = map_get(&ctx->data, key);
+  if (!value) {
+    return -1;
+  }
+
+  void *obj = *value;
+
+  if (ctx_set(ctx->parent, key, obj) != 0) {
+    return -1;
+  }
+
+  map_remove(&ctx->data, key);
+
+  return 0;
+}

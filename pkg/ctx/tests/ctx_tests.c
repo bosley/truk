@@ -6,6 +6,7 @@
 
 typedef struct {
   int type;
+  int *freed_flag;
   union {
     int integer;
     double real;
@@ -18,6 +19,9 @@ void test_data_free(void *data) {
   if (!data)
     return;
   test_data_t *td = (test_data_t *)data;
+  if (td->freed_flag) {
+    *td->freed_flag = 1;
+  }
   if (td->type == 2 && td->value.string) {
     free(td->value.string);
   }
@@ -27,6 +31,15 @@ void test_data_free(void *data) {
 test_data_t *test_data_create_int(int val) {
   test_data_t *td = malloc(sizeof(test_data_t));
   td->type = 0;
+  td->freed_flag = NULL;
+  td->value.integer = val;
+  return td;
+}
+
+test_data_t *test_data_create_int_with_flag(int val, int *freed_flag) {
+  test_data_t *td = malloc(sizeof(test_data_t));
+  td->type = 0;
+  td->freed_flag = freed_flag;
   td->value.integer = val;
   return td;
 }
@@ -34,6 +47,7 @@ test_data_t *test_data_create_int(int val) {
 test_data_t *test_data_create_real(double val) {
   test_data_t *td = malloc(sizeof(test_data_t));
   td->type = 1;
+  td->freed_flag = NULL;
   td->value.real = val;
   return td;
 }
@@ -41,6 +55,7 @@ test_data_t *test_data_create_real(double val) {
 test_data_t *test_data_create_string(const char *str) {
   test_data_t *td = malloc(sizeof(test_data_t));
   td->type = 2;
+  td->freed_flag = NULL;
   td->value.string = strdup(str);
   return td;
 }
@@ -403,6 +418,186 @@ void test_ctx_empty_key(void) {
   ctx_free(ctx);
 }
 
+void test_ctx_hoist_basic(void) {
+  ctx_t *parent = ctx_create(NULL, test_data_free);
+  ASSERT_NOT_NULL(parent);
+
+  ctx_t *child = ctx_create(parent, test_data_free);
+  ASSERT_NOT_NULL(child);
+
+  test_data_t *data = test_data_create_int(42);
+  ctx_set(child, "example", data);
+
+  ASSERT_NOT_NULL(ctx_get(child, "example"));
+  ASSERT_NULL(ctx_get(parent, "example"));
+
+  int result = ctx_hoist(child, "example");
+  ASSERT_EQ(result, 0);
+
+  ASSERT_NULL(ctx_get(child, "example"));
+  ASSERT_NOT_NULL(ctx_get(parent, "example"));
+
+  test_data_t *retrieved = (test_data_t *)ctx_get(parent, "example");
+  ASSERT_EQ(retrieved->value.integer, 42);
+
+  ctx_free(child);
+  ctx_free(parent);
+}
+
+void test_ctx_hoist_then_free_child(void) {
+  ctx_t *parent = ctx_create(NULL, test_data_free);
+  ASSERT_NOT_NULL(parent);
+
+  ctx_t *child = ctx_create(parent, test_data_free);
+  ASSERT_NOT_NULL(child);
+
+  test_data_t *data = test_data_create_int(123);
+  ctx_set(child, "hoisted_key", data);
+
+  int result = ctx_hoist(child, "hoisted_key");
+  ASSERT_EQ(result, 0);
+
+  ctx_free(child);
+
+  test_data_t *retrieved = (test_data_t *)ctx_get(parent, "hoisted_key");
+  ASSERT_NOT_NULL(retrieved);
+  ASSERT_EQ(retrieved->value.integer, 123);
+
+  ctx_free(parent);
+}
+
+void test_ctx_hoist_with_parent_collision(void) {
+  ctx_t *parent = ctx_create(NULL, test_data_free);
+  ASSERT_NOT_NULL(parent);
+
+  ctx_t *child = ctx_create(parent, test_data_free);
+  ASSERT_NOT_NULL(child);
+
+  int parent_freed = 0;
+  test_data_t *parent_data = test_data_create_int_with_flag(100, &parent_freed);
+  ctx_set(parent, "key", parent_data);
+
+  test_data_t *child_data = test_data_create_int(200);
+  ctx_set(child, "key", child_data);
+
+  ASSERT_EQ(parent_freed, 0);
+
+  int result = ctx_hoist(child, "key");
+  ASSERT_EQ(result, 0);
+
+  ASSERT_EQ(parent_freed, 1);
+
+  test_data_t *retrieved = (test_data_t *)ctx_get(parent, "key");
+  ASSERT_NOT_NULL(retrieved);
+  ASSERT_EQ(retrieved->value.integer, 200);
+
+  ctx_free(child);
+  ctx_free(parent);
+}
+
+void test_ctx_hoist_null_context(void) {
+  int result = ctx_hoist(NULL, "key");
+  ASSERT_EQ(result, -1);
+}
+
+void test_ctx_hoist_null_key(void) {
+  ctx_t *parent = ctx_create(NULL, test_data_free);
+  ctx_t *child = ctx_create(parent, test_data_free);
+
+  int result = ctx_hoist(child, NULL);
+  ASSERT_EQ(result, -1);
+
+  ctx_free(child);
+  ctx_free(parent);
+}
+
+void test_ctx_hoist_no_parent(void) {
+  ctx_t *ctx = ctx_create(NULL, test_data_free);
+  ASSERT_NOT_NULL(ctx);
+
+  test_data_t *data = test_data_create_int(42);
+  ctx_set(ctx, "key", data);
+
+  int result = ctx_hoist(ctx, "key");
+  ASSERT_EQ(result, -1);
+
+  ctx_free(ctx);
+}
+
+void test_ctx_hoist_nonexistent_key(void) {
+  ctx_t *parent = ctx_create(NULL, test_data_free);
+  ctx_t *child = ctx_create(parent, test_data_free);
+
+  int result = ctx_hoist(child, "nonexistent");
+  ASSERT_EQ(result, -1);
+
+  ctx_free(child);
+  ctx_free(parent);
+}
+
+void test_ctx_hoist_multilevel(void) {
+  ctx_t *root = ctx_create(NULL, test_data_free);
+  ctx_t *level1 = ctx_create(root, test_data_free);
+  ctx_t *level2 = ctx_create(level1, test_data_free);
+
+  test_data_t *data = test_data_create_int(999);
+  ctx_set(level2, "deep_key", data);
+
+  int result = ctx_hoist(level2, "deep_key");
+  ASSERT_EQ(result, 0);
+
+  ASSERT_NULL(ctx_get(level2, "deep_key"));
+  ASSERT_NOT_NULL(ctx_get(level1, "deep_key"));
+  ASSERT_NULL(ctx_get(root, "deep_key"));
+
+  result = ctx_hoist(level1, "deep_key");
+  ASSERT_EQ(result, 0);
+
+  ASSERT_NULL(ctx_get(level1, "deep_key"));
+  ASSERT_NOT_NULL(ctx_get(root, "deep_key"));
+
+  test_data_t *retrieved = (test_data_t *)ctx_get(root, "deep_key");
+  ASSERT_EQ(retrieved->value.integer, 999);
+
+  ctx_free(level2);
+  ctx_free(level1);
+  ctx_free(root);
+}
+
+void test_ctx_hoist_multiple_keys(void) {
+  ctx_t *parent = ctx_create(NULL, test_data_free);
+  ctx_t *child = ctx_create(parent, test_data_free);
+
+  test_data_t *data1 = test_data_create_int(1);
+  test_data_t *data2 = test_data_create_int(2);
+  test_data_t *data3 = test_data_create_int(3);
+
+  ctx_set(child, "key1", data1);
+  ctx_set(child, "key2", data2);
+  ctx_set(child, "key3", data3);
+
+  ctx_hoist(child, "key1");
+  ctx_hoist(child, "key3");
+
+  ASSERT_NULL(ctx_get(child, "key1"));
+  ASSERT_NOT_NULL(ctx_get(child, "key2"));
+  ASSERT_NULL(ctx_get(child, "key3"));
+
+  ASSERT_NOT_NULL(ctx_get(parent, "key1"));
+  ASSERT_NULL(ctx_get(parent, "key2"));
+  ASSERT_NOT_NULL(ctx_get(parent, "key3"));
+
+  ctx_free(child);
+
+  ASSERT_NOT_NULL(ctx_get(parent, "key1"));
+  ASSERT_NOT_NULL(ctx_get(parent, "key3"));
+
+  ASSERT_EQ(((test_data_t *)ctx_get(parent, "key1"))->value.integer, 1);
+  ASSERT_EQ(((test_data_t *)ctx_get(parent, "key3"))->value.integer, 3);
+
+  ctx_free(parent);
+}
+
 int main(void) {
 
   printf("Running ctx tests...\n");
@@ -437,6 +632,15 @@ int main(void) {
   TEST(test_ctx_null_key_handling);
   TEST(test_ctx_null_object_handling);
   TEST(test_ctx_empty_key);
+  TEST(test_ctx_hoist_basic);
+  TEST(test_ctx_hoist_then_free_child);
+  TEST(test_ctx_hoist_with_parent_collision);
+  TEST(test_ctx_hoist_null_context);
+  TEST(test_ctx_hoist_null_key);
+  TEST(test_ctx_hoist_no_parent);
+  TEST(test_ctx_hoist_nonexistent_key);
+  TEST(test_ctx_hoist_multilevel);
+  TEST(test_ctx_hoist_multiple_keys);
 
   clock_t end = clock();
   double elapsed_ms = (double)(end - start) * 1000.0 / CLOCKS_PER_SEC;
