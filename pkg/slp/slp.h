@@ -12,14 +12,12 @@ typedef enum slp_type_e {
   SLP_TYPE_INTEGER,
   SLP_TYPE_REAL,
   SLP_TYPE_SYMBOL,
-  SLP_TYPE_LIST_P,  // ()
-  SLP_TYPE_LIST_C,  // {}
-  SLP_TYPE_LIST_B,  // []
-  SLP_TYPE_LIST_S,  // ""
-  SLP_TYPE_QUOTED,  // ' prefixed
-  SLP_TYPE_BUILTIN, // A C function
-  SLP_TYPE_LAMBDA,  // A lambda function
-  SLP_TYPE_ERROR,   // An error object (can be handled by the runtime)
+  SLP_TYPE_LIST_P, // ()
+  SLP_TYPE_LIST_C, // {}
+  SLP_TYPE_LIST_B, // []
+  SLP_TYPE_LIST_S, // ""
+  SLP_TYPE_QUOTED, // ' prefixed
+  SLP_TYPE_ERROR,  // An error object (can be handled by the runtime)
 } slp_type_e;
 
 typedef enum slp_error_type_e {
@@ -68,21 +66,6 @@ typedef struct slp_callbacks_s {
                    size_t position, slp_buffer_t *buffer, void *context);
   void *context;
 } slp_callbacks_t;
-
-/*
-these functions allow the operator of the library to define the functions to use
-for handling "builtin" symbls and "lambda" symbols. this is for "any complex" slp object
-that isn't directly parsed from text.
-*/
-typedef void (*slp_fn_data_free_fn)(void *fn_data);
-typedef void *(*slp_fn_data_copy_fn)(void *fn_data);
-typedef bool (*slp_fn_data_equal_fn)(void *fn_data_a, void *fn_data_b);
-
-void slp_register_builtin_handlers(slp_fn_data_free_fn free_fn,
-                                   slp_fn_data_copy_fn copy_fn);
-void slp_register_lambda_handlers(slp_fn_data_free_fn free_fn,
-                                  slp_fn_data_copy_fn copy_fn,
-                                  slp_fn_data_equal_fn equal_fn);
 
 void slp_object_free(slp_object_t *object);
 slp_object_t *slp_object_copy(slp_object_t *object);

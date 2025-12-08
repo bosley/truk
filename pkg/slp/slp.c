@@ -1,26 +1,6 @@
 #include "slp.h"
 #include <stdlib.h>
 
-static slp_fn_data_free_fn g_builtin_free_fn = NULL;
-static slp_fn_data_copy_fn g_builtin_copy_fn = NULL;
-static slp_fn_data_free_fn g_lambda_free_fn = NULL;
-static slp_fn_data_copy_fn g_lambda_copy_fn = NULL;
-static slp_fn_data_equal_fn g_lambda_equal_fn = NULL;
-
-void slp_register_builtin_handlers(slp_fn_data_free_fn free_fn,
-                                   slp_fn_data_copy_fn copy_fn) {
-  g_builtin_free_fn = free_fn;
-  g_builtin_copy_fn = copy_fn;
-}
-
-void slp_register_lambda_handlers(slp_fn_data_free_fn free_fn,
-                                  slp_fn_data_copy_fn copy_fn,
-                                  slp_fn_data_equal_fn equal_fn) {
-  g_lambda_free_fn = free_fn;
-  g_lambda_copy_fn = copy_fn;
-  g_lambda_equal_fn = equal_fn;
-}
-
 void slp_object_free(slp_object_t *object) {
   if (!object) {
     return;
@@ -39,14 +19,6 @@ void slp_object_free(slp_object_t *object) {
         slp_object_free(object->value.list.items[i]);
       }
       free(object->value.list.items);
-    }
-  } else if (object->type == SLP_TYPE_BUILTIN) {
-    if (object->value.fn_data && g_builtin_free_fn) {
-      g_builtin_free_fn(object->value.fn_data);
-    }
-  } else if (object->type == SLP_TYPE_LAMBDA) {
-    if (object->value.fn_data && g_lambda_free_fn) {
-      g_lambda_free_fn(object->value.fn_data);
     }
   } else if (object->type == SLP_TYPE_ERROR) {
     if (object->value.fn_data) {
@@ -94,29 +66,6 @@ slp_object_t *slp_object_copy(slp_object_t *object) {
       }
     } else {
       clone->value.buffer = NULL;
-    }
-    break;
-
-  case SLP_TYPE_BUILTIN:
-    if (object->value.fn_data && g_builtin_copy_fn) {
-      clone->value.fn_data = g_builtin_copy_fn(object->value.fn_data);
-      if (!clone->value.fn_data) {
-        free(clone);
-        return NULL;
-      }
-    } else {
-      clone->value.fn_data = object->value.fn_data;
-    }
-    break;
-  case SLP_TYPE_LAMBDA:
-    if (object->value.fn_data && g_lambda_copy_fn) {
-      clone->value.fn_data = g_lambda_copy_fn(object->value.fn_data);
-      if (!clone->value.fn_data) {
-        free(clone);
-        return NULL;
-      }
-    } else {
-      clone->value.fn_data = NULL;
     }
     break;
   case SLP_TYPE_ERROR:
@@ -246,21 +195,6 @@ bool slp_objects_equal(slp_object_t *a, slp_object_t *b) {
       }
     }
     return true;
-
-  case SLP_TYPE_BUILTIN:
-    return a->value.fn_data == b->value.fn_data;
-
-  case SLP_TYPE_LAMBDA:
-    if (!a->value.fn_data && !b->value.fn_data) {
-      return true;
-    }
-    if (!a->value.fn_data || !b->value.fn_data) {
-      return false;
-    }
-    if (g_lambda_equal_fn) {
-      return g_lambda_equal_fn(a->value.fn_data, b->value.fn_data);
-    }
-    return a->value.fn_data == b->value.fn_data;
 
   case SLP_TYPE_ERROR:
     return a->value.fn_data == b->value.fn_data;
