@@ -11,9 +11,6 @@ target_include_directories(test_sxs_buildtime PRIVATE
     ${CMAKE_SOURCE_DIR}/pkg
 )
 
-add_test(NAME sxs_buildtime_test COMMAND test_sxs_buildtime)
+target_link_libraries(test_sxs_buildtime PRIVATE testlib)
 
-add_custom_command(TARGET test_sxs_buildtime POST_BUILD
-    COMMAND $<TARGET_FILE:test_sxs_buildtime>
-    COMMENT "Running sxs buildtime test..."
-)
+add_test(NAME sxs_buildtime_test COMMAND test_sxs_buildtime)
