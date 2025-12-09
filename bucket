@@ -1,2 +1,3 @@
 compiler = clang
-mode = asan       ; [ dev rel asan ]
+mode = dev       ; [ dev rel asan ]
+target = docker    ; [ local docker ]
