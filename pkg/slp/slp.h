@@ -1,6 +1,8 @@
 #ifndef SXS_SLP_SLP_H
 #define SXS_SLP_SLP_H
 
+// Note: im thinking of trashing this - its kinda trash ngl
+
 #include "buffer/buffer.h"
 #include "scanner/scanner.h"
 #include <stdint.h>
@@ -56,6 +58,12 @@ typedef struct slp_object_s {
 
 typedef void (*slp_object_consumer_fn)(slp_object_t *object, void *context);
 
+/*
+NOTE:
+    The SLP parser creates SLP objects off the buffer and hands them
+    to the on_object, meaning that the receiver OWNS it and is responsible
+    for freeing it.
+*/
 typedef struct slp_callbacks_s {
   void (*on_object)(slp_object_t *object, void *context);
   void (*on_list_start)(slp_type_e list_type, void *context);
