@@ -18,7 +18,7 @@ static void test_on_object(slp_object_t *object, void *context) {
         realloc(ctx->objects, sizeof(slp_object_t *) * ctx->capacity);
   }
 
-  ctx->objects[ctx->count++] = slp_object_copy(object);
+  ctx->objects[ctx->count++] = object;
 }
 
 static void test_on_list_start(slp_type_e list_type, void *context) {}
