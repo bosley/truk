@@ -171,6 +171,25 @@ docker_stop_container() {
     echo "Container $DOCKER_CONTAINER_NAME stopped and removed."
 }
 
+docker_reset() {
+    echo "Resetting Docker environment (removing container and image)..."
+    
+    if docker_container_exists; then
+        echo "Stopping and removing container: $DOCKER_CONTAINER_NAME..."
+        docker stop "$DOCKER_CONTAINER_NAME" 2>/dev/null || true
+        docker rm "$DOCKER_CONTAINER_NAME" 2>/dev/null || true
+        echo "Container removed."
+    fi
+    
+    if docker_image_exists; then
+        echo "Removing image: $DOCKER_IMAGE_NAME..."
+        docker rmi "$DOCKER_IMAGE_NAME" 2>/dev/null || true
+        echo "Image removed."
+    fi
+    
+    echo "Docker environment reset complete. Run --docker-start to rebuild."
+}
+
 docker_status() {
     echo "Docker Status:"
     echo "  Image exists: $(docker_image_exists && echo "yes" || echo "no")"
@@ -470,6 +489,7 @@ Build Options:
 Docker Options:
   --docker-start           Build Docker image and start persistent container
   --docker-stop            Stop and remove Docker container
+  --docker-reset           Remove container and image (force rebuild on next start)
   --docker-status          Show Docker container status
   --docker-shell           Open interactive shell in Docker container
 
@@ -514,6 +534,10 @@ main() {
                 ;;
             --docker-stop)
                 docker_stop_container
+                shift
+                ;;
+            --docker-reset)
+                docker_reset
                 shift
                 ;;
             --docker-status)

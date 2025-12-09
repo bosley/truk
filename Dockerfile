@@ -12,7 +12,9 @@ RUN apk update && apk add --no-cache \
     bash \
     valgrind \
     build-base \
-    compiler-rt
+    compiler-rt \
+    sdl2-dev \
+    pkgconf
 
 WORKDIR /workspace
 

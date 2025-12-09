@@ -1,4 +1,6 @@
+#include "screen/screen.h"
 #include "sxs/sxs.h"
+#include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -35,5 +37,31 @@ int main(void) {
 
   const char *message = sxs_hello();
   printf("%s\n", message);
+
+  printf("\nCreating 800x600 blue screen...\n");
+  truk_screen *screen = truk_screen_create(800, 600);
+  if (!screen) {
+    fprintf(stderr, "Failed to create screen\n");
+    return 1;
+  }
+
+  truk_screen_render(screen);
+
+  printf("Screen created. Close the window or press Ctrl+C to exit.\n");
+
+  SDL_Event event;
+  int running = 1;
+  while (running) {
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_QUIT) {
+        running = 0;
+      }
+    }
+    SDL_Delay(16);
+  }
+
+  truk_screen_destroy(screen);
+  printf("Screen destroyed. Goodbye!\n");
+
   return 0;
 }
