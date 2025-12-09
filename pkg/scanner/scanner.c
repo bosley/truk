@@ -110,11 +110,8 @@ slp_scanner_read_static_base_type(slp_scanner_t *scanner,
   } parse_state_t;
 
   parse_state_t state = STATE_START;
-  bool has_sign = false;
-  bool has_period = false;
 
   if (first_char == '+' || first_char == '-') {
-    has_sign = true;
     pos++;
 
     if (pos >= buf->count) {
@@ -150,7 +147,6 @@ slp_scanner_read_static_base_type(slp_scanner_t *scanner,
       if (is_digit(c)) {
         pos++;
       } else if (c == '.') {
-        has_period = true;
         state = STATE_REAL;
         pos++;
       } else {

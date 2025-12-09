@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 
-static void test_find_group_simple_parens() {
+static void test_find_group_simple_parens(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(hello)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -22,7 +22,7 @@ static void test_find_group_simple_parens() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_simple_brackets() {
+static void test_find_group_simple_brackets(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "[data]";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -40,7 +40,7 @@ static void test_find_group_simple_brackets() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_simple_braces() {
+static void test_find_group_simple_braces(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "{content}";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -58,7 +58,7 @@ static void test_find_group_simple_braces() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_custom_delimiters() {
+static void test_find_group_custom_delimiters(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "!a b +1 2$";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -76,7 +76,7 @@ static void test_find_group_custom_delimiters() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_sequential_groups() {
+static void test_find_group_sequential_groups(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(first)(second)(third)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -110,7 +110,7 @@ static void test_find_group_sequential_groups() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_mixed_delimiters() {
+static void test_find_group_mixed_delimiters(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(a)[b]{c}";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -141,7 +141,7 @@ static void test_find_group_mixed_delimiters() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_different_custom_delimiters() {
+static void test_find_group_different_custom_delimiters(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "!foo$<bar>@baz#";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -172,7 +172,7 @@ static void test_find_group_different_custom_delimiters() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_escaped_quotes() {
+static void test_find_group_escaped_quotes(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "\"hello \\\"world\\\"!\"";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -191,7 +191,7 @@ static void test_find_group_escaped_quotes() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_multiple_escaped_end_symbols() {
+static void test_find_group_multiple_escaped_end_symbols(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(a\\)b\\)c)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -210,7 +210,7 @@ static void test_find_group_multiple_escaped_end_symbols() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_escape_at_end_of_buffer() {
+static void test_find_group_escape_at_end_of_buffer(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(hello\\";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -227,7 +227,7 @@ static void test_find_group_escape_at_end_of_buffer() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_escape_followed_by_non_end_symbol() {
+static void test_find_group_escape_followed_by_non_end_symbol(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(hello\\world)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -246,7 +246,7 @@ static void test_find_group_escape_followed_by_non_end_symbol() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_wrong_start_symbol() {
+static void test_find_group_wrong_start_symbol(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "[hello)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -262,14 +262,14 @@ static void test_find_group_wrong_start_symbol() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_null_scanner() {
+static void test_find_group_null_scanner(void) {
   slp_scanner_find_group_result_t result =
       slp_scanner_find_group(NULL, '(', ')', NULL, false);
 
   ASSERT(!result.success);
 }
 
-static void test_find_group_empty_buffer() {
+static void test_find_group_empty_buffer(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   slp_scanner_t *scanner = slp_scanner_new(buffer, 0);
   slp_scanner_find_group_result_t result =
@@ -282,7 +282,7 @@ static void test_find_group_empty_buffer() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_position_at_end() {
+static void test_find_group_position_at_end(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(hello)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -298,7 +298,7 @@ static void test_find_group_position_at_end() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_position_not_at_start_symbol() {
+static void test_find_group_position_not_at_start_symbol(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "x(hello)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -314,7 +314,7 @@ static void test_find_group_position_not_at_start_symbol() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_missing_end_symbol() {
+static void test_find_group_missing_end_symbol(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(hello world";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -330,7 +330,7 @@ static void test_find_group_missing_end_symbol() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_only_start_symbol() {
+static void test_find_group_only_start_symbol(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -346,7 +346,7 @@ static void test_find_group_only_start_symbol() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_all_escaped_no_real_end() {
+static void test_find_group_all_escaped_no_real_end(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(hello\\)world\\)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -363,7 +363,7 @@ static void test_find_group_all_escaped_no_real_end() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_same_start_end_symbols() {
+static void test_find_group_same_start_end_symbols(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "|content|";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -381,7 +381,7 @@ static void test_find_group_same_start_end_symbols() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_empty_group() {
+static void test_find_group_empty_group(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "()";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -399,7 +399,7 @@ static void test_find_group_empty_group() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_nested_groups() {
+static void test_find_group_nested_groups(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(outer(inner))";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -417,7 +417,7 @@ static void test_find_group_nested_groups() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_no_escape_byte() {
+static void test_find_group_no_escape_byte(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(hello)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -435,7 +435,7 @@ static void test_find_group_no_escape_byte() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_complex_content() {
+static void test_find_group_complex_content(void) {
   slp_buffer_t *buffer = slp_buffer_new(128);
   uint8_t data[] = "(add 1 2 (mul 3 4) 5)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -453,7 +453,7 @@ static void test_find_group_complex_content() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_with_whitespace() {
+static void test_find_group_with_whitespace(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "( hello world )";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -471,7 +471,7 @@ static void test_find_group_with_whitespace() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_deeply_nested() {
+static void test_find_group_deeply_nested(void) {
   slp_buffer_t *buffer = slp_buffer_new(128);
   uint8_t data[] = "(a(b(c(d(e)f)g)h)i)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -489,7 +489,7 @@ static void test_find_group_deeply_nested() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_multiple_groups_in_buffer() {
+static void test_find_group_multiple_groups_in_buffer(void) {
   slp_buffer_t *buffer = slp_buffer_new(256);
   uint8_t data[] =
       "(first) some text (second (nested)) more [different] {another}";
@@ -528,7 +528,7 @@ static void test_find_group_multiple_groups_in_buffer() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_escaped_quotes_complex() {
+static void test_find_group_escaped_quotes_complex(void) {
   slp_buffer_t *buffer = slp_buffer_new(128);
   uint8_t data[] = "\"start \\\"nested \\\"double\\\" escape\\\" end\"";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -547,7 +547,7 @@ static void test_find_group_escaped_quotes_complex() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_mixed_nested_with_escapes() {
+static void test_find_group_mixed_nested_with_escapes(void) {
   slp_buffer_t *buffer = slp_buffer_new(128);
   uint8_t data[] = "(outer \"with \\\"quotes\\\" inside\" (inner))";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -572,7 +572,7 @@ static void test_find_group_mixed_nested_with_escapes() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_asymmetric_nesting() {
+static void test_find_group_asymmetric_nesting(void) {
   slp_buffer_t *buffer = slp_buffer_new(128);
   uint8_t data[] = "((()))";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -603,7 +603,7 @@ static void test_find_group_asymmetric_nesting() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_unbalanced_inside_quotes() {
+static void test_find_group_unbalanced_inside_quotes(void) {
   slp_buffer_t *buffer = slp_buffer_new(128);
   uint8_t data[] = "(text \"with ) inside\" more)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -620,7 +620,7 @@ static void test_find_group_unbalanced_inside_quotes() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_large_buffer_with_many_groups() {
+static void test_find_group_large_buffer_with_many_groups(void) {
   slp_buffer_t *buffer = slp_buffer_new(512);
   uint8_t data[] = "(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)(k)(l)(m)(n)(o)(p)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -640,7 +640,7 @@ static void test_find_group_large_buffer_with_many_groups() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_escape_escape_character() {
+static void test_find_group_escape_escape_character(void) {
   slp_buffer_t *buffer = slp_buffer_new(128);
   uint8_t data[] = "(text with \\\\ backslash)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -658,7 +658,7 @@ static void test_find_group_escape_escape_character() {
   slp_buffer_free(buffer);
 }
 
-static void test_find_group_max_depth_stress() {
+static void test_find_group_max_depth_stress(void) {
   slp_buffer_t *buffer = slp_buffer_new(512);
 
   size_t depth = 50;
@@ -682,7 +682,7 @@ static void test_find_group_max_depth_stress() {
   slp_buffer_free(buffer);
 }
 
-static void test_consume_leading_ws_with_spaces() {
+static void test_consume_leading_ws_with_spaces(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "   (hello)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -700,7 +700,7 @@ static void test_consume_leading_ws_with_spaces() {
   slp_buffer_free(buffer);
 }
 
-static void test_consume_leading_ws_with_tabs() {
+static void test_consume_leading_ws_with_tabs(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "\t\t[data]";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -718,7 +718,7 @@ static void test_consume_leading_ws_with_tabs() {
   slp_buffer_free(buffer);
 }
 
-static void test_consume_leading_ws_with_newlines() {
+static void test_consume_leading_ws_with_newlines(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "\n\n\r{content}";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -736,7 +736,7 @@ static void test_consume_leading_ws_with_newlines() {
   slp_buffer_free(buffer);
 }
 
-static void test_consume_leading_ws_mixed_whitespace() {
+static void test_consume_leading_ws_mixed_whitespace(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = " \t\n\r  (test)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -754,7 +754,7 @@ static void test_consume_leading_ws_mixed_whitespace() {
   slp_buffer_free(buffer);
 }
 
-static void test_consume_leading_ws_false_fails_on_whitespace() {
+static void test_consume_leading_ws_false_fails_on_whitespace(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "   (hello)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -770,7 +770,7 @@ static void test_consume_leading_ws_false_fails_on_whitespace() {
   slp_buffer_free(buffer);
 }
 
-static void test_consume_leading_ws_all_whitespace_buffer() {
+static void test_consume_leading_ws_all_whitespace_buffer(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "   \t\n\r  ";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -786,7 +786,7 @@ static void test_consume_leading_ws_all_whitespace_buffer() {
   slp_buffer_free(buffer);
 }
 
-static void test_consume_leading_ws_no_whitespace() {
+static void test_consume_leading_ws_no_whitespace(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(immediate)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -804,7 +804,7 @@ static void test_consume_leading_ws_no_whitespace() {
   slp_buffer_free(buffer);
 }
 
-static void test_consume_leading_ws_nested_groups() {
+static void test_consume_leading_ws_nested_groups(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "  (outer(inner))";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));

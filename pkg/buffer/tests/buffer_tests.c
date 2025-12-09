@@ -4,11 +4,14 @@
 #include <time.h>
 
 static int increment_byte(uint8_t *byte, size_t idx, void *callback_data) {
+  (void)idx;
+  (void)callback_data;
   (*byte)++;
   return 1;
 }
 
 static int stop_at_5(uint8_t *byte, size_t idx, void *callback_data) {
+  (void)callback_data;
   if (idx >= 5) {
     return 0;
   }
@@ -17,12 +20,17 @@ static int stop_at_5(uint8_t *byte, size_t idx, void *callback_data) {
 }
 
 static int skip_every_other(uint8_t *byte, size_t idx, void *callback_data) {
+  (void)idx;
+  (void)callback_data;
   (*byte) += 10;
   return 2;
 }
 
 static int count_callback_calls = 0;
 static int counting_callback(uint8_t *byte, size_t idx, void *callback_data) {
+  (void)byte;
+  (void)idx;
+  (void)callback_data;
   count_callback_calls++;
   return 1;
 }

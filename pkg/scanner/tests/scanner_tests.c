@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 
-static void test_scanner_new_valid_position() {
+static void test_scanner_new_valid_position(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   ASSERT(buffer != NULL);
 
@@ -20,7 +20,7 @@ static void test_scanner_new_valid_position() {
   slp_buffer_free(buffer);
 }
 
-static void test_scanner_new_mid_position() {
+static void test_scanner_new_mid_position(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   ASSERT(buffer != NULL);
 
@@ -36,7 +36,7 @@ static void test_scanner_new_mid_position() {
   slp_buffer_free(buffer);
 }
 
-static void test_scanner_new_end_position() {
+static void test_scanner_new_end_position(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   ASSERT(buffer != NULL);
 
@@ -53,7 +53,7 @@ static void test_scanner_new_end_position() {
   slp_buffer_free(buffer);
 }
 
-static void test_scanner_new_invalid_position() {
+static void test_scanner_new_invalid_position(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   ASSERT(buffer != NULL);
 
@@ -67,12 +67,12 @@ static void test_scanner_new_invalid_position() {
   slp_buffer_free(buffer);
 }
 
-static void test_scanner_new_null_buffer() {
+static void test_scanner_new_null_buffer(void) {
   slp_scanner_t *scanner = slp_scanner_new(NULL, 0);
   ASSERT(scanner == NULL);
 }
 
-static void test_scanner_new_empty_buffer() {
+static void test_scanner_new_empty_buffer(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   ASSERT(buffer != NULL);
 
@@ -85,9 +85,9 @@ static void test_scanner_new_empty_buffer() {
   slp_buffer_free(buffer);
 }
 
-static void test_scanner_free_null() { slp_scanner_free(NULL); }
+static void test_scanner_free_null(void) { slp_scanner_free(NULL); }
 
-static void test_scanner_does_not_own_buffer() {
+static void test_scanner_does_not_own_buffer(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   ASSERT(buffer != NULL);
 
@@ -105,7 +105,7 @@ static void test_scanner_does_not_own_buffer() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_simple_symbol() {
+static void test_parse_simple_symbol(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "hello";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -124,7 +124,7 @@ static void test_parse_simple_symbol() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_simple_integer() {
+static void test_parse_simple_integer(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "42";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -143,7 +143,7 @@ static void test_parse_simple_integer() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_simple_real() {
+static void test_parse_simple_real(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "3.14";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -162,7 +162,7 @@ static void test_parse_simple_real() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_multiple_tokens() {
+static void test_parse_multiple_tokens(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "a +1 3.13";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -194,7 +194,7 @@ static void test_parse_multiple_tokens() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_positive_integer() {
+static void test_parse_positive_integer(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "+123";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -212,7 +212,7 @@ static void test_parse_positive_integer() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_negative_integer() {
+static void test_parse_negative_integer(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "-42";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -230,7 +230,7 @@ static void test_parse_negative_integer() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_negative_real() {
+static void test_parse_negative_real(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "-2.5";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -248,7 +248,7 @@ static void test_parse_negative_real() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_sign_as_symbol() {
+static void test_parse_sign_as_symbol(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "+a";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -266,7 +266,7 @@ static void test_parse_sign_as_symbol() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_leading_whitespace() {
+static void test_parse_leading_whitespace(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "  \t\n42";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -285,7 +285,7 @@ static void test_parse_leading_whitespace() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_whitespace_terminator() {
+static void test_parse_whitespace_terminator(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "abc def";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -304,7 +304,7 @@ static void test_parse_whitespace_terminator() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_double_period_error() {
+static void test_parse_double_period_error(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "1.11.1";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -320,7 +320,7 @@ static void test_parse_double_period_error() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_invalid_integer() {
+static void test_parse_invalid_integer(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "123x";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -336,7 +336,7 @@ static void test_parse_invalid_integer() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_invalid_real() {
+static void test_parse_invalid_real(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "3.14x";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -352,7 +352,7 @@ static void test_parse_invalid_real() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_all_whitespace() {
+static void test_parse_all_whitespace(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "   \t\n";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -367,7 +367,7 @@ static void test_parse_all_whitespace() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_at_end_of_buffer() {
+static void test_parse_at_end_of_buffer(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "test";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -382,14 +382,14 @@ static void test_parse_at_end_of_buffer() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_null_scanner() {
+static void test_parse_null_scanner(void) {
   slp_scanner_static_type_result_t result =
       slp_scanner_read_static_base_type(NULL, NULL);
 
   ASSERT(!result.success);
 }
 
-static void test_parse_symbol_with_digits() {
+static void test_parse_symbol_with_digits(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "var123";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -407,7 +407,7 @@ static void test_parse_symbol_with_digits() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_lone_plus() {
+static void test_parse_lone_plus(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "+ ";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -425,7 +425,7 @@ static void test_parse_lone_plus() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_lone_minus() {
+static void test_parse_lone_minus(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "-\t";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -443,7 +443,7 @@ static void test_parse_lone_minus() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_real_with_trailing_digits() {
+static void test_parse_real_with_trailing_digits(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "0.123456789";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -461,7 +461,7 @@ static void test_parse_real_with_trailing_digits() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_zero() {
+static void test_parse_zero(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "0";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -479,7 +479,7 @@ static void test_parse_zero() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_special_chars_in_symbol() {
+static void test_parse_special_chars_in_symbol(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "foo-bar_baz!";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -497,7 +497,7 @@ static void test_parse_special_chars_in_symbol() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_with_paren_stop_symbol() {
+static void test_parse_with_paren_stop_symbol(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "hello)world";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -520,7 +520,7 @@ static void test_parse_with_paren_stop_symbol() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_integer_with_paren_stop() {
+static void test_parse_integer_with_paren_stop(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "42)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -543,7 +543,7 @@ static void test_parse_integer_with_paren_stop() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_real_with_paren_stop() {
+static void test_parse_real_with_paren_stop(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "3.14)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -566,7 +566,7 @@ static void test_parse_real_with_paren_stop() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_multiple_tokens_with_stop_symbols() {
+static void test_parse_multiple_tokens_with_stop_symbols(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "(add 42 3.14)";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -605,7 +605,7 @@ static void test_parse_multiple_tokens_with_stop_symbols() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_stop_symbol_at_start() {
+static void test_parse_stop_symbol_at_start(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = ")hello";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));
@@ -624,7 +624,7 @@ static void test_parse_stop_symbol_at_start() {
   slp_buffer_free(buffer);
 }
 
-static void test_parse_null_stop_symbols_same_as_before() {
+static void test_parse_null_stop_symbols_same_as_before(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   uint8_t data[] = "test)data";
   slp_buffer_copy_to(buffer, data, strlen((char *)data));

@@ -5,7 +5,7 @@
 #include <string.h>
 #include <time.h>
 
-static void test_large_valid_buffer_mixed_types() {
+static void test_large_valid_buffer_mixed_types(void) {
   slp_buffer_t *buffer = slp_buffer_new(2048);
   ASSERT(buffer != NULL);
 
@@ -75,7 +75,7 @@ static void test_large_valid_buffer_mixed_types() {
   slp_buffer_free(buffer);
 }
 
-static void test_large_buffer_with_whitespace_variations() {
+static void test_large_buffer_with_whitespace_variations(void) {
   slp_buffer_t *buffer = slp_buffer_new(2048);
   ASSERT(buffer != NULL);
 
@@ -130,7 +130,7 @@ static void test_large_buffer_with_whitespace_variations() {
   slp_buffer_free(buffer);
 }
 
-static void test_large_buffer_error_at_start() {
+static void test_large_buffer_error_at_start(void) {
   slp_buffer_t *buffer = slp_buffer_new(2048);
   ASSERT(buffer != NULL);
 
@@ -152,7 +152,7 @@ static void test_large_buffer_error_at_start() {
   slp_buffer_free(buffer);
 }
 
-static void test_double_period_in_real() {
+static void test_double_period_in_real(void) {
   slp_buffer_t *buffer = slp_buffer_new(64);
   ASSERT(buffer != NULL);
 
@@ -174,7 +174,7 @@ static void test_double_period_in_real() {
   slp_buffer_free(buffer);
 }
 
-static void test_large_buffer_error_in_middle() {
+static void test_large_buffer_error_in_middle(void) {
   slp_buffer_t *buffer = slp_buffer_new(2048);
   ASSERT(buffer != NULL);
 
@@ -205,7 +205,7 @@ static void test_large_buffer_error_in_middle() {
   slp_buffer_free(buffer);
 }
 
-static void test_large_buffer_error_at_end() {
+static void test_large_buffer_error_at_end(void) {
   slp_buffer_t *buffer = slp_buffer_new(2048);
   ASSERT(buffer != NULL);
 
@@ -236,7 +236,7 @@ static void test_large_buffer_error_at_end() {
   slp_buffer_free(buffer);
 }
 
-static void test_large_buffer_invalid_integer_in_sequence() {
+static void test_large_buffer_invalid_integer_in_sequence(void) {
   slp_buffer_t *buffer = slp_buffer_new(2048);
   ASSERT(buffer != NULL);
 
@@ -271,7 +271,7 @@ static void test_large_buffer_invalid_integer_in_sequence() {
   slp_buffer_free(buffer);
 }
 
-static void test_large_buffer_invalid_real_in_sequence() {
+static void test_large_buffer_invalid_real_in_sequence(void) {
   slp_buffer_t *buffer = slp_buffer_new(2048);
   ASSERT(buffer != NULL);
 
@@ -302,7 +302,7 @@ static void test_large_buffer_invalid_real_in_sequence() {
   slp_buffer_free(buffer);
 }
 
-static void test_large_buffer_complex_symbols() {
+static void test_large_buffer_complex_symbols(void) {
   slp_buffer_t *buffer = slp_buffer_new(2048);
   ASSERT(buffer != NULL);
 
@@ -337,7 +337,7 @@ static void test_large_buffer_complex_symbols() {
   slp_buffer_free(buffer);
 }
 
-static void test_large_buffer_all_integers() {
+static void test_large_buffer_all_integers(void) {
   slp_buffer_t *buffer = slp_buffer_new(2048);
   ASSERT(buffer != NULL);
 
@@ -362,7 +362,7 @@ static void test_large_buffer_all_integers() {
   slp_buffer_free(buffer);
 }
 
-static void test_large_buffer_all_reals() {
+static void test_large_buffer_all_reals(void) {
   slp_buffer_t *buffer = slp_buffer_new(2048);
   ASSERT(buffer != NULL);
 
