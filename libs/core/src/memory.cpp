@@ -2,7 +2,9 @@
 
 namespace truk::core {
 
-memory_c::memory_c() : _current(&_root) { _root.parent = nullptr; }
+memory_c::memory_c() : _current(&_root), _ctx_count(1) {
+  _root.parent = nullptr;
+}
 
 memory_c::~memory_c() {
   while (_current != &_root) {
@@ -11,9 +13,14 @@ memory_c::~memory_c() {
 }
 
 void memory_c::push_ctx() {
-  auto *new_ctx = new context_s();
+  if (_ctx_count >= PRE_ALLOCATED_CONTEXT_COUNT) {
+    throw context_overflow_error();
+  }
+  void *storage_ptr = &_ctx_storage[_ctx_count - 1];
+  auto *new_ctx = new (storage_ptr) context_s();
   new_ctx->parent = _current;
   _current = new_ctx;
+  ++_ctx_count;
 }
 
 void memory_c::pop_ctx() {
@@ -32,7 +39,8 @@ void memory_c::pop_ctx() {
 
   auto *old_ctx = _current;
   _current = _current->parent;
-  delete old_ctx;
+  old_ctx->~context_s();
+  --_ctx_count;
 }
 
 void memory_c::set(const std::string &key, stored_item_ptr item) {

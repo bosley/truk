@@ -1,14 +1,28 @@
 #pragma once
 
+#include <array>
+#include <exception>
 #include <memory>
 #include <queue>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 
 namespace truk::core {
 
+class context_overflow_error : public std::exception {
+public:
+  const char *what() const noexcept override {
+    return "Maximum context depth exceeded";
+  }
+};
+
 class memory_c {
 public:
+
+  // TODO: Make dynamic (later)
+  static constexpr std::size_t PRE_ALLOCATED_CONTEXT_COUNT = 256;
+
   class storeable_if {
   public:
     virtual ~storeable_if() = default;
@@ -37,6 +51,10 @@ private:
 
   context_s _root;
   context_s *_current;
+  std::array<std::aligned_storage_t<sizeof(context_s), alignof(context_s)>,
+             PRE_ALLOCATED_CONTEXT_COUNT>
+      _ctx_storage;
+  std::size_t _ctx_count;
 };
 
 using memory_ptr = std::unique_ptr<memory_c>;

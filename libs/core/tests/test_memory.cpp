@@ -260,6 +260,20 @@ TEST(MemoryTests, DestructorCleansUpNestedContexts) {
   delete temp_mem;
 }
 
+TEST(MemoryTests, PushContextThrowsOnOverflow) {
+  bool exception_thrown = false;
+  try {
+    for (std::size_t i = 0;
+         i < truk::core::memory_c::PRE_ALLOCATED_CONTEXT_COUNT + 10; ++i) {
+      mem->push_ctx();
+    }
+  } catch (const truk::core::context_overflow_error &e) {
+    exception_thrown = true;
+    CHECK_TRUE(e.what() != nullptr);
+  }
+  CHECK_TRUE(exception_thrown);
+}
+
 int main(int argc, char **argv) {
   return CommandLineTestRunner::RunAllTests(argc, argv);
 }
