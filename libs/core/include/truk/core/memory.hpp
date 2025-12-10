@@ -22,7 +22,7 @@ public:
 template <std::size_t ContextCount = DEFAULT_CONTEXT_COUNT> class memory_c {
 public:
   static std::unique_ptr<memory_c<ContextCount>> make_new() {
-    return std::make_unique < memory_c<ContextCount>();
+    return std::make_unique<memory_c<ContextCount>>();
   }
 
   class storeable_if {
