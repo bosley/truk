@@ -5,3 +5,11 @@ truk_add_test(
     DEPENDENCIES
         truk_core
 )
+
+truk_add_test(
+    NAME test_memory
+    SOURCES
+        test_memory.cpp
+    DEPENDENCIES
+        truk_core
+)

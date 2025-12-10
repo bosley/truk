@@ -61,3 +61,12 @@ endif()
 if(BUILD_EXPERIMENTS)
     add_subdirectory(experiments)
 endif()
+
+if(BUILD_TESTS)
+    add_custom_target(run_tests ALL
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Running tests..."
+        DEPENDS test_core test_memory
+    )
+endif()

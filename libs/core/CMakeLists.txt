@@ -2,8 +2,10 @@ truk_add_library(
     NAME truk_core
     SOURCES
         src/core.cpp
+        src/memory.cpp
     HEADERS
         include/truk/core/core.hpp
+        include/truk/core/memory.hpp
     DEPENDENCIES
         fmt::fmt
 )
