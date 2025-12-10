@@ -19,9 +19,11 @@ public:
   }
 };
 
-template<std::size_t ContextCount = DEFAULT_CONTEXT_COUNT>
-class memory_c {
+template <std::size_t ContextCount = DEFAULT_CONTEXT_COUNT> class memory_c {
 public:
+  static std::unique_ptr<memory_c<ContextCount>> make_new() {
+    return std::make_unique < memory_c<ContextCount>();
+  }
 
   class storeable_if {
   public:
@@ -30,9 +32,7 @@ public:
   };
   using stored_item_ptr = std::unique_ptr<storeable_if>;
 
-  memory_c() : _current(&_root), _ctx_count(1) {
-    _root.parent = nullptr;
-  }
+  memory_c() : _current(&_root), _ctx_count(1) { _root.parent = nullptr; }
 
   ~memory_c() {
     while (_current != &_root) {
@@ -94,9 +94,7 @@ public:
     return nullptr;
   }
 
-  void drop(const std::string &key) { 
-    _current->_scope.erase(key); 
-  }
+  void drop(const std::string &key) { _current->_scope.erase(key); }
 
   void defer_hoist(const std::string &key) {
     _current->_pending_hoist.push(key);
