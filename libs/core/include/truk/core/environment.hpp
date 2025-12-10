@@ -85,8 +85,8 @@ public:
   environment_c(const environment_c &) = delete;
   environment_c &operator=(const environment_c &) = delete;
 
-  environment_c(environment_c &&) noexcept;
-  environment_c &operator=(environment_c &&) noexcept;
+  environment_c(environment_c &&) = delete;
+  environment_c &operator=(environment_c &&) = delete;
 
   ~environment_c();
 
