@@ -2,7 +2,7 @@
 #include <CppUTest/CommandLineTestRunner.h>
 #include <CppUTest/TestHarness.h>
 
-class test_item : public truk::core::memory_c::storeable_if {
+class test_item : public truk::core::memory_c<>::storeable_if {
   int value;
 
 public:
@@ -12,14 +12,14 @@ public:
 };
 
 TEST_GROUP(MemoryTests) {
-  truk::core::memory_c *mem;
+  truk::core::memory_c<> *mem;
 
-  void setup() override { mem = new truk::core::memory_c(); }
+  void setup() override { mem = new truk::core::memory_c<>(); }
 
   void teardown() override { delete mem; }
 };
 
-TEST(MemoryTests, CanConstruct) { truk::core::memory_c memory; }
+TEST(MemoryTests, CanConstruct) { truk::core::memory_c<> memory; }
 
 TEST(MemoryTests, SetAndGetItem) {
   auto item = std::make_unique<test_item>(42);
@@ -247,7 +247,7 @@ TEST(MemoryTests, IsSetOnlyChecksCurrentContext) {
 }
 
 TEST(MemoryTests, DestructorCleansUpNestedContexts) {
-  auto *temp_mem = new truk::core::memory_c();
+  auto *temp_mem = new truk::core::memory_c<>();
 
   temp_mem->push_ctx();
   auto item1 = std::make_unique<test_item>(1);
@@ -263,8 +263,7 @@ TEST(MemoryTests, DestructorCleansUpNestedContexts) {
 TEST(MemoryTests, PushContextThrowsOnOverflow) {
   bool exception_thrown = false;
   try {
-    for (std::size_t i = 0;
-         i < truk::core::memory_c::PRE_ALLOCATED_CONTEXT_COUNT + 10; ++i) {
+    for (std::size_t i = 0; i < truk::core::DEFAULT_CONTEXT_COUNT + 10; ++i) {
       mem->push_ctx();
     }
   } catch (const truk::core::context_overflow_error &e) {
