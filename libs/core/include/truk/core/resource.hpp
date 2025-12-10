@@ -11,7 +11,8 @@ public:
       std::numeric_limits<std::size_t>::max();
   resource_if() = delete;
   resource_if(std::size_t id) : _id(id) {}
-  bool has_valid_id() const { return _id != DEFAULT_RESOURCE_ID; }
+  virtual const char *get_resource_description() = 0;
+  bool has_valid_resource_id() const { return _id != DEFAULT_RESOURCE_ID; }
   virtual ~resource_if() = default;
 
 private:
