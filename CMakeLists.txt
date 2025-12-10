@@ -1,26 +1,63 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.20)
+project(truk VERSION 0.1.0 LANGUAGES CXX)
 
-project(truk VERSION 0.1.0 LANGUAGES C)
-
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-include(CheckGit)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-set(CMAKE_C_FLAGS_DEBUG "-g -O0 -Wall -Wextra -pedantic")
-set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall -Wextra -pedantic -DNDEBUG")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "-g -O2 -Wall -Wextra -pedantic")
+option(BUILD_TESTS "Build tests" ON)
+option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
+option(ENABLE_UBSAN "Enable Undefined Behavior Sanitizer" OFF)
+option(ENABLE_TSAN "Enable Thread Sanitizer" OFF)
+option(BUILD_APPS "Build applications" ON)
+option(BUILD_EXPERIMENTS "Build experiments" OFF)
 
-if(CMAKE_BUILD_TYPE MATCHES "Asan")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+include(GetGitHash)
+
+if(BUILD_TESTS)
+    enable_testing()
 endif()
 
-include_directories(${CMAKE_SOURCE_DIR}/pkg)
+include(FetchContent)
 
-enable_testing()
+find_package(fmt QUIET)
+if(NOT fmt_FOUND)
+    message(STATUS "fmt not found locally, fetching from GitHub")
+    FetchContent_Declare(
+        fmt
+        GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+        GIT_TAG 10.2.1
+        GIT_SHALLOW TRUE
+    )
+    FetchContent_MakeAvailable(fmt)
+endif()
 
-add_subdirectory(pkg)
-add_subdirectory(cmds)
+if(BUILD_TESTS)
+    find_package(CppUTest QUIET)
+    if(NOT CppUTest_FOUND)
+        message(STATUS "CppUTest not found locally, fetching from GitHub")
+        FetchContent_Declare(
+            CppUTest
+            GIT_REPOSITORY https://github.com/cpputest/cpputest.git
+            GIT_TAG v4.0
+            GIT_SHALLOW TRUE
+        )
+        set(TESTS OFF CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(CppUTest)
+    endif()
+endif()
+
+include(TrukHelpers)
+
+add_subdirectory(libs)
+
+if(BUILD_APPS)
+    add_subdirectory(apps)
+endif()
+
+if(BUILD_EXPERIMENTS)
+    add_subdirectory(experiments)
+endif()

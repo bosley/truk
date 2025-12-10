@@ -1,0 +1,5 @@
+#pragma once
+
+namespace truk {
+    constexpr const char* BUILD_HASH = "@TRUK_BUILD_HASH@";
+}
