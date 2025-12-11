@@ -233,8 +233,6 @@ TEST(BuiltinTests, AllocArrayWithArrayType) {
   CHECK_TRUE(errors.empty());
 }
 
-
-
 TEST(BuiltinTests, MultipleBuiltinCalls) {
   std::string code = R"(
     fn test() : void {

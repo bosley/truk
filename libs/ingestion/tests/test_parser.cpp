@@ -419,13 +419,16 @@ TEST(ParserStructDeclarations, StructWithMultipleFields) {
   CHECK_EQUAL(3, struct_decl->fields().size());
 
   STRCMP_EQUAL("x", struct_decl->fields()[0].name.name.c_str());
-  STRCMP_EQUAL("i32", get_type_name(struct_decl->fields()[0].type.get()).c_str());
+  STRCMP_EQUAL("i32",
+               get_type_name(struct_decl->fields()[0].type.get()).c_str());
 
   STRCMP_EQUAL("y", struct_decl->fields()[1].name.name.c_str());
-  STRCMP_EQUAL("i32", get_type_name(struct_decl->fields()[1].type.get()).c_str());
+  STRCMP_EQUAL("i32",
+               get_type_name(struct_decl->fields()[1].type.get()).c_str());
 
   STRCMP_EQUAL("z", struct_decl->fields()[2].name.name.c_str());
-  STRCMP_EQUAL("f64", get_type_name(struct_decl->fields()[2].type.get()).c_str());
+  STRCMP_EQUAL("f64",
+               get_type_name(struct_decl->fields()[2].type.get()).c_str());
 }
 
 TEST(ParserStructDeclarations, StructWithPointerField) {
@@ -482,10 +485,12 @@ TEST(ParserStructDeclarations, StructWithCustomTypeField) {
   CHECK_EQUAL(2, struct_decl->fields().size());
 
   STRCMP_EQUAL("topLeft", struct_decl->fields()[0].name.name.c_str());
-  STRCMP_EQUAL("Point", get_type_name(struct_decl->fields()[0].type.get()).c_str());
+  STRCMP_EQUAL("Point",
+               get_type_name(struct_decl->fields()[0].type.get()).c_str());
 
   STRCMP_EQUAL("bottomRight", struct_decl->fields()[1].name.name.c_str());
-  STRCMP_EQUAL("Point", get_type_name(struct_decl->fields()[1].type.get()).c_str());
+  STRCMP_EQUAL("Point",
+               get_type_name(struct_decl->fields()[1].type.get()).c_str());
 }
 
 TEST(ParserStructDeclarations, StructWithMixedFieldTypes) {
@@ -503,20 +508,24 @@ TEST(ParserStructDeclarations, StructWithMixedFieldTypes) {
   CHECK_EQUAL(4, struct_decl->fields().size());
 
   STRCMP_EQUAL("id", struct_decl->fields()[0].name.name.c_str());
-  STRCMP_EQUAL("i32", get_type_name(struct_decl->fields()[0].type.get()).c_str());
+  STRCMP_EQUAL("i32",
+               get_type_name(struct_decl->fields()[0].type.get()).c_str());
   CHECK_EQUAL(0, get_pointer_depth(struct_decl->fields()[0].type.get()));
 
   STRCMP_EQUAL("name", struct_decl->fields()[1].name.name.c_str());
-  STRCMP_EQUAL("u8", get_type_name(struct_decl->fields()[1].type.get()).c_str());
+  STRCMP_EQUAL("u8",
+               get_type_name(struct_decl->fields()[1].type.get()).c_str());
   CHECK_EQUAL(1, get_pointer_depth(struct_decl->fields()[1].type.get()));
 
   STRCMP_EQUAL("values", struct_decl->fields()[2].name.name.c_str());
-  STRCMP_EQUAL("f32", get_type_name(struct_decl->fields()[2].type.get()).c_str());
+  STRCMP_EQUAL("f32",
+               get_type_name(struct_decl->fields()[2].type.get()).c_str());
   CHECK_TRUE(get_array_size(struct_decl->fields()[2].type.get()).has_value());
   CHECK_EQUAL(10, get_array_size(struct_decl->fields()[2].type.get()).value());
 
   STRCMP_EQUAL("next", struct_decl->fields()[3].name.name.c_str());
-  STRCMP_EQUAL("Mixed", get_type_name(struct_decl->fields()[3].type.get()).c_str());
+  STRCMP_EQUAL("Mixed",
+               get_type_name(struct_decl->fields()[3].type.get()).c_str());
   CHECK_EQUAL(1, get_pointer_depth(struct_decl->fields()[3].type.get()));
 }
 
@@ -792,7 +801,8 @@ TEST(ParserTypeSystem, PrimitiveTypes) {
     STRCMP_EQUAL(expected_types[i], get_type_name(fn->return_type()).c_str());
     if (i < 11) {
       CHECK_EQUAL(1, fn->params().size());
-      STRCMP_EQUAL(expected_types[i], get_type_name(fn->params()[0].type.get()).c_str());
+      STRCMP_EQUAL(expected_types[i],
+                   get_type_name(fn->params()[0].type.get()).c_str());
     }
   }
 }
@@ -874,7 +884,8 @@ TEST(ParserTypeSystem, ArrayOfPointers) {
 
   CHECK_TRUE(is_array_type(fn->params()[0].type.get()));
   CHECK_EQUAL(10, get_array_size(fn->params()[0].type.get()).value());
-  auto *arr_type = dynamic_cast<const nodes::array_type_c *>(fn->params()[0].type.get());
+  auto *arr_type =
+      dynamic_cast<const nodes::array_type_c *>(fn->params()[0].type.get());
   CHECK_TRUE(is_pointer_type(arr_type->element_type()));
   STRCMP_EQUAL("i32", get_type_name(arr_type->element_type()).c_str());
 }
@@ -890,12 +901,14 @@ TEST(ParserTypeSystem, PointerToArray) {
 
   CHECK_TRUE(is_pointer_type(fn->params()[0].type.get()));
   CHECK_EQUAL(1, get_pointer_depth(fn->params()[0].type.get()));
-  
-  auto *ptr_type = dynamic_cast<const nodes::pointer_type_c *>(fn->params()[0].type.get());
+
+  auto *ptr_type =
+      dynamic_cast<const nodes::pointer_type_c *>(fn->params()[0].type.get());
   CHECK_TRUE(ptr_type != nullptr);
   CHECK_TRUE(is_array_type(ptr_type->pointee_type()));
-  
-  auto *arr_type = dynamic_cast<const nodes::array_type_c *>(ptr_type->pointee_type());
+
+  auto *arr_type =
+      dynamic_cast<const nodes::array_type_c *>(ptr_type->pointee_type());
   CHECK_TRUE(arr_type != nullptr);
   CHECK_EQUAL(10, arr_type->size().value());
   STRCMP_EQUAL("i32", get_type_name(arr_type->element_type()).c_str());
@@ -916,7 +929,8 @@ TEST(ParserTypeSystem, PointerToArrayVsArrayOfPointers) {
   CHECK_FALSE(is_array_type(ptr_to_arr_type));
   auto *ptr_node = dynamic_cast<const nodes::pointer_type_c *>(ptr_to_arr_type);
   CHECK_TRUE(is_array_type(ptr_node->pointee_type()));
-  auto *inner_arr = dynamic_cast<const nodes::array_type_c *>(ptr_node->pointee_type());
+  auto *inner_arr =
+      dynamic_cast<const nodes::array_type_c *>(ptr_node->pointee_type());
   CHECK_EQUAL(5, inner_arr->size().value());
   STRCMP_EQUAL("i32", get_type_name(inner_arr->element_type()).c_str());
 
@@ -926,7 +940,8 @@ TEST(ParserTypeSystem, PointerToArrayVsArrayOfPointers) {
   auto *arr_node = dynamic_cast<const nodes::array_type_c *>(arr_of_ptr_type);
   CHECK_EQUAL(5, arr_node->size().value());
   CHECK_TRUE(is_pointer_type(arr_node->element_type()));
-  auto *inner_ptr = dynamic_cast<const nodes::pointer_type_c *>(arr_node->element_type());
+  auto *inner_ptr =
+      dynamic_cast<const nodes::pointer_type_c *>(arr_node->element_type());
   STRCMP_EQUAL("i32", get_type_name(inner_ptr->pointee_type()).c_str());
 }
 

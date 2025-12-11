@@ -106,8 +106,8 @@ type_checker_c::resolve_type(const type_c *type_node) {
       return nullptr;
     }
 
-    auto resolved = std::make_unique<type_entry_s>(type_kind_e::POINTER,
-                                                    pointee->name);
+    auto resolved =
+        std::make_unique<type_entry_s>(type_kind_e::POINTER, pointee->name);
     resolved->pointer_depth = pointee->pointer_depth + 1;
     resolved->pointee_type = std::move(pointee);
     return resolved;
@@ -150,8 +150,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
   return nullptr;
 }
 
-std::string
-type_checker_c::get_type_name_for_error(const type_c *type_node) {
+std::string type_checker_c::get_type_name_for_error(const type_c *type_node) {
   if (!type_node) {
     return "<unknown>";
   }
@@ -169,9 +168,8 @@ type_checker_c::get_type_name_for_error(const type_c *type_node) {
   }
 
   if (auto *array = dynamic_cast<const array_type_c *>(type_node)) {
-    std::string size_str = array->size().has_value()
-                               ? std::to_string(array->size().value())
-                               : "";
+    std::string size_str =
+        array->size().has_value() ? std::to_string(array->size().value()) : "";
     return "[" + size_str + "]" +
            get_type_name_for_error(array->element_type());
   }
@@ -311,8 +309,7 @@ void type_checker_c::validate_builtin_call(const call_c &node,
 
   if (builtin->takes_type_param) {
     if (node.arguments().empty()) {
-      report_error("Builtin '" + builtin->name +
-                       "' requires a type parameter",
+      report_error("Builtin '" + builtin->name + "' requires a type parameter",
                    node.source_index());
       return;
     }
@@ -351,8 +348,8 @@ void type_checker_c::validate_builtin_call(const call_c &node,
 
   if (actual_arg_count != expected_param_count) {
     report_error("Builtin '" + builtin->name + "' expects " +
-                     std::to_string(expected_param_count) + " argument(s) but got " +
-                     std::to_string(actual_arg_count),
+                     std::to_string(expected_param_count) +
+                     " argument(s) but got " + std::to_string(actual_arg_count),
                  node.source_index());
     return;
   }
@@ -371,15 +368,16 @@ void type_checker_c::validate_builtin_call(const call_c &node,
     if (_current_expression_type) {
       if (types_equal(_current_expression_type.get(), expected_type.get())) {
         type_matches = true;
-      } else if (expected_type->kind == type_kind_e::POINTER && 
+      } else if (expected_type->kind == type_kind_e::POINTER &&
                  expected_type->name == "void" &&
                  _current_expression_type->kind == type_kind_e::POINTER) {
         type_matches = true;
-      } else if (expected_type->kind == type_kind_e::ARRAY && 
+      } else if (expected_type->kind == type_kind_e::ARRAY &&
                  expected_type->element_type &&
                  expected_type->element_type->name == "void" &&
                  _current_expression_type->kind == type_kind_e::ARRAY &&
-                 expected_type->array_size == _current_expression_type->array_size) {
+                 expected_type->array_size ==
+                     _current_expression_type->array_size) {
         type_matches = true;
       }
     }

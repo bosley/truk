@@ -318,23 +318,23 @@ language::nodes::type_ptr parser_c::parse_array_type() {
   std::optional<std::size_t> size = std::nullopt;
   if (!check(token_type_e::RIGHT_BRACKET)) {
     auto size_expr = parse_expression();
-    
+
     auto *literal = dynamic_cast<language::nodes::literal_c *>(size_expr.get());
     if (!literal) {
       throw parse_error("Array size must be an integer literal",
                         size_expr->source_index(), bracket_token.column);
     }
-    
+
     if (literal->type() != language::nodes::literal_type_e::INTEGER) {
       throw parse_error("Array size must be an integer literal",
                         literal->source_index(), bracket_token.column);
     }
-    
+
     try {
       const std::string &value = literal->value();
       int base = 0;
       size_t start_pos = 0;
-      
+
       if (value.size() >= 2 && value[0] == '0') {
         if (value[1] == 'b' || value[1] == 'B') {
           base = 2;
@@ -344,11 +344,11 @@ language::nodes::type_ptr parser_c::parse_array_type() {
           start_pos = 2;
         }
       }
-      
+
       size = std::stoull(value.substr(start_pos), nullptr, base);
     } catch (const std::invalid_argument &) {
-      throw parse_error("Invalid array size literal",
-                        literal->source_index(), bracket_token.column);
+      throw parse_error("Invalid array size literal", literal->source_index(),
+                        bracket_token.column);
     } catch (const std::out_of_range &) {
       throw parse_error("Array size literal out of range",
                         literal->source_index(), bracket_token.column);
