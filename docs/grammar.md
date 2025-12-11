@@ -69,7 +69,9 @@ continue_stmt   ::= "continue" ";"
 
 expression      ::= assignment
 
-assignment      ::= logical_or (("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment)?
+assignment      ::= cast (("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment)?
+
+cast            ::= logical_or ("as" type)*
 
 logical_or      ::= logical_and ("||" logical_and)*
 

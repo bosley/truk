@@ -1,4 +1,4 @@
-fn main() : u64 {
+fn main() : i32 {
   var size: u64 = sizeof(@i32);
-  return size;
+  return size as i32;
 }

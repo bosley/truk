@@ -57,6 +57,7 @@ public:
   void visit(const truk::language::nodes::continue_c &node) override;
   void visit(const truk::language::nodes::binary_op_c &node) override;
   void visit(const truk::language::nodes::unary_op_c &node) override;
+  void visit(const truk::language::nodes::cast_c &node) override;
   void visit(const truk::language::nodes::call_c &node) override;
   void visit(const truk::language::nodes::index_c &node) override;
   void visit(const truk::language::nodes::member_access_c &node) override;
@@ -87,6 +88,8 @@ private:
   std::unordered_set<std::string> _slice_types_emitted;
   std::unordered_map<std::string, bool> _variable_is_slice;
   bool _in_expression{false};
+  std::string _current_function_name;
+  const truk::language::nodes::type_c *_current_function_return_type{nullptr};
 };
 
 } // namespace truk::emitc

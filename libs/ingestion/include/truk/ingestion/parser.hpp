@@ -84,6 +84,7 @@ private:
 
   language::nodes::base_ptr parse_expression();
   language::nodes::base_ptr parse_assignment();
+  language::nodes::base_ptr parse_cast();
   language::nodes::base_ptr parse_logical_or();
   language::nodes::base_ptr parse_logical_and();
   language::nodes::base_ptr parse_equality();

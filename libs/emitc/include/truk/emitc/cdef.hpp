@@ -37,6 +37,14 @@ typedef double f64;
   } \
 } while(0)
 
+static inline void truk_bounds_check(u64 idx, u64 len) {
+  if (idx >= len) {
+    fprintf(stderr, "panic: index out of bounds: %llu >= %llu\n", 
+            (unsigned long long)idx, (unsigned long long)len);
+    exit(1);
+  }
+}
+
 )";
 }
 

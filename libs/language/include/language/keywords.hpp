@@ -19,6 +19,7 @@ enum class keywords_e {
   RETURN,
   BREAK,
   CONTINUE,
+  AS,
   TRUE,
   FALSE,
   NIL,

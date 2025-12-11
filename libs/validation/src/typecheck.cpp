@@ -857,6 +857,23 @@ void type_checker_c::visit(const unary_op_c &node) {
   }
 }
 
+void type_checker_c::visit(const cast_c &node) {
+  node.expression()->accept(*this);
+  
+  if (!_current_expression_type) {
+    report_error("Cast expression has invalid type", node.source_index());
+    return;
+  }
+
+  auto target_type = resolve_type(node.target_type());
+  if (!target_type) {
+    report_error("Cast to unknown type", node.source_index());
+    return;
+  }
+
+  _current_expression_type = std::move(target_type);
+}
+
 void type_checker_c::visit(const call_c &node) {
   node.callee()->accept(*this);
 

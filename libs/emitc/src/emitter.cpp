@@ -455,6 +455,12 @@ void emitter_c::visit(const unary_op_c &node) {
   _current_expr << ")";
 }
 
+void emitter_c::visit(const cast_c &node) {
+  _current_expr << "((" << emit_type(node.target_type()) << ")";
+  node.expression()->accept(*this);
+  _current_expr << ")";
+}
+
 void emitter_c::visit(const call_c &node) {
   if (auto ident = dynamic_cast<const identifier_c *>(node.callee())) {
     const std::string &func_name = ident->id().name;
@@ -621,8 +627,8 @@ void emitter_c::visit(const index_c &node) {
   }
 
   if (is_slice) {
-    _current_expr << "(TRUK_BOUNDS_CHECK(" << idx_expr << ", (" << obj_expr
-                  << ").len), (" << obj_expr << ").data[" << idx_expr << "])";
+    _current_expr << "({ truk_bounds_check(" << idx_expr << ", (" << obj_expr
+                  << ").len); (" << obj_expr << ").data[" << idx_expr << "]; })";
   } else {
     _current_expr << obj_expr << "[" << idx_expr << "]";
   }
@@ -657,6 +663,44 @@ void emitter_c::visit(const identifier_c &node) {
 
 void emitter_c::visit(const assignment_c &node) {
   bool was_in_expr = _in_expression;
+
+  if (auto idx = dynamic_cast<const index_c *>(node.target())) {
+    bool is_slice = false;
+    if (auto ident = dynamic_cast<const identifier_c *>(idx->object())) {
+      is_slice = is_variable_slice(ident->id().name);
+    } else {
+      is_slice = true;
+    }
+
+    if (is_slice && !was_in_expr) {
+      std::stringstream obj_stream;
+      std::swap(obj_stream, _current_expr);
+      _in_expression = true;
+      idx->object()->accept(*this);
+      std::string obj_expr = _current_expr.str();
+      std::swap(obj_stream, _current_expr);
+
+      std::stringstream idx_stream;
+      std::swap(idx_stream, _current_expr);
+      idx->index()->accept(*this);
+      std::string idx_expr = _current_expr.str();
+      std::swap(idx_stream, _current_expr);
+
+      node.value()->accept(*this);
+      std::string value = _current_expr.str();
+      _current_expr.str("");
+      _current_expr.clear();
+      _in_expression = was_in_expr;
+
+      _functions << cdef::indent(_indent_level);
+      _functions << "truk_bounds_check(" << idx_expr << ", (" << obj_expr
+                 << ").len);\n";
+      _functions << cdef::indent(_indent_level);
+      _functions << "(" << obj_expr << ").data[" << idx_expr << "] = "
+                 << value << ";\n";
+      return;
+    }
+  }
 
   if (!was_in_expr) {
     _functions << cdef::indent(_indent_level);

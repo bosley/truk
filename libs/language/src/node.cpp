@@ -41,6 +41,8 @@ void binary_op_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void unary_op_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
+void cast_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
+
 void call_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void index_c::accept(visitor_if &visitor) const { visitor.visit(*this); }

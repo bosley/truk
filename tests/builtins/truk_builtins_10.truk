@@ -1,7 +1,7 @@
-fn main() : u64 {
+fn main() : i32 {
   var count: u64 = 10;
   var arr: []i32 = alloc_array(@i32, count);
   var size: u64 = len(arr);
   free_array(arr);
-  return size;
+  return size as i32;
 }
