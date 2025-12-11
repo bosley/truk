@@ -397,6 +397,12 @@ std::optional<token_s> tokenizer_c::next_token() {
 
   case '.':
     advance();
+    if (current_char() == '.' && peek_char() == '.') {
+      advance();
+      advance();
+      return make_token(token_type_e::DOT_DOT_DOT, start_pos, start_line,
+                        start_column);
+    }
     return make_token(token_type_e::DOT, start_pos, start_line, start_column);
 
   case '@':

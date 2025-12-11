@@ -34,6 +34,7 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
 
   std::vector<std::unique_ptr<type_entry_s>> function_param_types;
   std::unique_ptr<type_entry_s> function_return_type;
+  bool is_variadic{false};
 
   std::unique_ptr<type_entry_s> pointee_type;
   std::unique_ptr<type_entry_s> element_type;
@@ -47,7 +48,8 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
       : kind(other.kind), name(other.name), pointer_depth(other.pointer_depth),
         array_size(other.array_size),
         struct_field_names(other.struct_field_names),
-        is_builtin(other.is_builtin), builtin_kind(other.builtin_kind) {
+        is_variadic(other.is_variadic), is_builtin(other.is_builtin),
+        builtin_kind(other.builtin_kind) {
 
     for (const auto &[field_name, field_type] : other.struct_fields) {
       struct_fields[field_name] = std::make_unique<type_entry_s>(*field_type);

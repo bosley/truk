@@ -56,6 +56,7 @@ void type_checker_c::register_builtin_functions() {
 
     func_type->is_builtin = true;
     func_type->builtin_kind = builtin.kind;
+    func_type->is_variadic = builtin.is_variadic;
 
     register_symbol(builtin.name, std::move(func_type), false, 0);
   }
@@ -388,12 +389,24 @@ void type_checker_c::validate_builtin_call(const call_c &node,
   std::size_t expected_param_count = func_sig->param_types().size();
   std::size_t actual_arg_count = node.arguments().size() - expected_arg_start;
 
-  if (actual_arg_count != expected_param_count) {
-    report_error("Builtin '" + builtin->name + "' expects " +
-                     std::to_string(expected_param_count) +
-                     " argument(s) but got " + std::to_string(actual_arg_count),
-                 node.source_index());
-    return;
+  if (builtin->is_variadic) {
+    if (actual_arg_count < expected_param_count) {
+      report_error("Builtin '" + builtin->name + "' expects at least " +
+                       std::to_string(expected_param_count) +
+                       " argument(s) but got " +
+                       std::to_string(actual_arg_count),
+                   node.source_index());
+      return;
+    }
+  } else {
+    if (actual_arg_count != expected_param_count) {
+      report_error("Builtin '" + builtin->name + "' expects " +
+                       std::to_string(expected_param_count) +
+                       " argument(s) but got " +
+                       std::to_string(actual_arg_count),
+                   node.source_index());
+      return;
+    }
   }
 
   for (std::size_t i = 0; i < expected_param_count; ++i) {
@@ -427,6 +440,12 @@ void type_checker_c::validate_builtin_call(const call_c &node,
     if (_current_expression_type && !type_matches) {
       report_error("Argument type mismatch in builtin '" + builtin->name + "'",
                    node.source_index());
+    }
+  }
+
+  if (builtin->is_variadic) {
+    for (std::size_t i = expected_param_count; i < actual_arg_count; ++i) {
+      node.arguments()[expected_arg_start + i]->accept(*this);
     }
   }
 
@@ -553,15 +572,21 @@ void type_checker_c::visit(const fn_c &node) {
   func_type->function_return_type =
       std::make_unique<type_entry_s>(*return_type);
 
+  bool has_variadic = false;
   for (const auto &param : node.params()) {
-    auto param_type = resolve_type(param.type.get());
-    if (!param_type) {
-      report_error("Unknown parameter type: " +
-                       get_type_name_for_error(param.type.get()),
-                   param.name.source_index);
-      continue;
+    if (param.is_variadic) {
+      has_variadic = true;
+      func_type->is_variadic = true;
+    } else {
+      auto param_type = resolve_type(param.type.get());
+      if (!param_type) {
+        report_error("Unknown parameter type: " +
+                         get_type_name_for_error(param.type.get()),
+                     param.name.source_index);
+        continue;
+      }
+      func_type->function_param_types.push_back(std::move(param_type));
     }
-    func_type->function_param_types.push_back(std::move(param_type));
   }
 
   register_symbol(node.name().name, std::move(func_type), false,
@@ -951,18 +976,30 @@ void type_checker_c::visit(const call_c &node) {
     return;
   }
 
-  if (node.arguments().size() != func_type->function_param_types.size()) {
-    report_error("Argument count mismatch", node.source_index());
-    return;
+  std::size_t min_args = func_type->function_param_types.size();
+
+  if (func_type->is_variadic) {
+    if (node.arguments().size() < min_args) {
+      report_error("Too few arguments for variadic function",
+                   node.source_index());
+      return;
+    }
+  } else {
+    if (node.arguments().size() != min_args) {
+      report_error("Argument count mismatch", node.source_index());
+      return;
+    }
   }
 
   for (std::size_t i = 0; i < node.arguments().size(); ++i) {
     node.arguments()[i]->accept(*this);
 
-    if (_current_expression_type &&
-        !types_equal(_current_expression_type.get(),
-                     func_type->function_param_types[i].get())) {
-      report_error("Argument type mismatch", node.source_index());
+    if (i < min_args) {
+      if (_current_expression_type &&
+          !types_equal(_current_expression_type.get(),
+                       func_type->function_param_types[i].get())) {
+        report_error("Argument type mismatch", node.source_index());
+      }
     }
   }
 

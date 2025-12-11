@@ -1027,7 +1027,18 @@ std::vector<language::nodes::parameter_s> parser_c::parse_param_list() {
   std::vector<language::nodes::parameter_s> params;
   params.push_back(parse_param());
 
+  if (params[0].is_variadic) {
+    const auto &token = peek();
+    throw parse_error("Variadic parameter cannot be the only parameter",
+                      token.line, token.column);
+  }
+
   while (match(token_type_e::COMMA)) {
+    if (params.back().is_variadic) {
+      const auto &token = peek();
+      throw parse_error("Variadic parameter must be the last parameter",
+                        token.line, token.column);
+    }
     params.push_back(parse_param());
   }
 
@@ -1035,13 +1046,27 @@ std::vector<language::nodes::parameter_s> parser_c::parse_param_list() {
 }
 
 language::nodes::parameter_s parser_c::parse_param() {
+  bool is_variadic = false;
+  if (match(token_type_e::DOT_DOT_DOT)) {
+    is_variadic = true;
+  }
+
   const auto &name_token = consume_identifier("Expected parameter name");
   language::nodes::identifier_s name(name_token.lexeme,
                                      name_token.source_index);
 
-  auto type = parse_type_annotation();
+  language::nodes::type_ptr type;
+  if (is_variadic) {
+    auto void_type = std::make_unique<language::nodes::primitive_type_c>(
+        language::keywords_e::VOID, name_token.source_index);
+    type = std::make_unique<language::nodes::array_type_c>(
+        name_token.source_index, std::move(void_type), std::nullopt);
+  } else {
+    type = parse_type_annotation();
+  }
 
-  return language::nodes::parameter_s(std::move(name), std::move(type));
+  return language::nodes::parameter_s(std::move(name), std::move(type),
+                                      is_variadic);
 }
 
 std::vector<language::nodes::struct_field_s> parser_c::parse_field_list() {

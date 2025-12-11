@@ -1,0 +1,13 @@
+fn print_all(count: i32, ...nums) : i32 {
+  var i: i32 = 0;
+  while i < count {
+    var val: i32 = __TRUK_VA_ARG_I32();
+    printf("Value[%d] = %d\n", i, val);
+    i = i + 1;
+  }
+  return count;
+}
+
+fn main() : i32 {
+  return print_all(5, 10, 20, 30, 40, 50);
+}

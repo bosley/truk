@@ -8,7 +8,11 @@ namespace truk::emitc {
 using namespace truk::language;
 using namespace truk::language::nodes;
 
-emitter_c::emitter_c() { _header << cdef::emit_program_header(); }
+emitter_c::emitter_c() {
+  _header << cdef::emit_program_header();
+  _header
+      << "typedef struct {\n  void* data;\n  u64 len;\n} truk_slice_void;\n\n";
+}
 
 void emitter_c::emit(const base_c *root) {
   if (root) {
@@ -180,31 +184,67 @@ void emitter_c::visit(const fn_c &node) {
   std::string return_type = emit_type(node.return_type());
   _functions << return_type << " " << node.name().name << "(";
 
+  bool has_variadic = false;
+  std::string variadic_name;
+  size_t non_variadic_count = 0;
+
   for (size_t i = 0; i < node.params().size(); ++i) {
-    if (i > 0)
-      _functions << ", ";
     const auto &param = node.params()[i];
-    register_variable_type(param.name.name, param.type.get());
 
-    std::string param_type = emit_type(param.type.get());
-    _functions << param_type << " " << param.name.name;
+    if (param.is_variadic) {
+      has_variadic = true;
+      variadic_name = param.name.name;
+      register_variable_type(param.name.name, param.type.get());
+      if (i > 0)
+        _functions << ", ";
+      _functions << "...";
+    } else {
+      if (i > 0)
+        _functions << ", ";
+      register_variable_type(param.name.name, param.type.get());
 
-    const type_c *current_type = param.type.get();
-    while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
-      if (arr->size().has_value()) {
-        _functions << "[" << arr->size().value() << "]";
-        current_type = arr->element_type();
-      } else {
-        ensure_slice_typedef(arr->element_type());
-        break;
+      std::string param_type = emit_type(param.type.get());
+      _functions << param_type << " " << param.name.name;
+
+      const type_c *current_type = param.type.get();
+      while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+        if (arr->size().has_value()) {
+          _functions << "[" << arr->size().value() << "]";
+          current_type = arr->element_type();
+        } else {
+          ensure_slice_typedef(arr->element_type());
+          break;
+        }
       }
+      non_variadic_count++;
     }
   }
 
   _functions << ") ";
 
   if (node.body()) {
-    node.body()->accept(*this);
+    if (has_variadic) {
+      _functions << "{\n";
+      _indent_level++;
+
+      _functions << cdef::indent(_indent_level) << "va_list __truk_va_args;\n";
+      _functions << cdef::indent(_indent_level) << "va_start(__truk_va_args, ";
+      _functions << node.params()[non_variadic_count - 1].name.name;
+      _functions << ");\n";
+
+      auto *body_block = dynamic_cast<const block_c *>(node.body());
+      if (body_block) {
+        for (const auto &stmt : body_block->statements()) {
+          stmt->accept(*this);
+        }
+      }
+
+      _functions << cdef::indent(_indent_level) << "va_end(__truk_va_args);\n";
+      _indent_level--;
+      _functions << "}\n";
+    } else {
+      node.body()->accept(*this);
+    }
   }
 
   _functions << "\n\n";
@@ -649,6 +689,52 @@ void emitter_c::visit(const call_c &node) {
         }
         break;
       }
+      case builtins::builtin_kind_e::PRINTF: {
+        if (node.arguments().empty()) {
+          break;
+        }
+
+        _current_expr << "printf(";
+
+        for (size_t i = 0; i < node.arguments().size(); ++i) {
+          if (i > 0)
+            _current_expr << ", ";
+
+          std::stringstream arg_stream;
+          std::swap(arg_stream, _current_expr);
+          node.arguments()[i]->accept(*this);
+          std::string arg = _current_expr.str();
+          std::swap(arg_stream, _current_expr);
+
+          _current_expr << arg;
+        }
+
+        _current_expr << ")";
+
+        if (!_in_expression) {
+          _functions << cdef::indent(_indent_level) << _current_expr.str()
+                     << ";\n";
+          _current_expr.str("");
+          _current_expr.clear();
+        }
+        return;
+      }
+      case builtins::builtin_kind_e::VA_ARG_I32: {
+        _current_expr << "va_arg(__truk_va_args, i32)";
+        return;
+      }
+      case builtins::builtin_kind_e::VA_ARG_I64: {
+        _current_expr << "va_arg(__truk_va_args, i64)";
+        return;
+      }
+      case builtins::builtin_kind_e::VA_ARG_F64: {
+        _current_expr << "va_arg(__truk_va_args, f64)";
+        return;
+      }
+      case builtins::builtin_kind_e::VA_ARG_PTR: {
+        _current_expr << "va_arg(__truk_va_args, void*)";
+        return;
+      }
       }
     }
   }
@@ -723,7 +809,7 @@ void emitter_c::visit(const literal_c &node) {
     _current_expr << node.value();
     break;
   case literal_type_e::STRING:
-    _current_expr << "\"" << node.value() << "\"";
+    _current_expr << node.value();
     break;
   case literal_type_e::BOOL:
     _current_expr << (node.value() == "true" ? "true" : "false");
