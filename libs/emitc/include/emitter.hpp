@@ -6,6 +6,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <sstream>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace truk::emitc {
 
@@ -32,6 +35,8 @@ public:
   ~emitter_c() override = default;
 
   void emit(const truk::language::nodes::base_c *root);
+  
+  void finalize();
 
   result_c result() const { return _result; }
 
@@ -64,7 +69,22 @@ public:
   void visit(const truk::language::nodes::type_param_c &node) override;
 
 private:
+  std::string emit_type(const truk::language::nodes::type_c *type);
+  std::string get_slice_type_name(const truk::language::nodes::type_c *element_type);
+  void ensure_slice_typedef(const truk::language::nodes::type_c *element_type);
+  bool is_slice_type(const truk::language::nodes::type_c *type);
+  void register_variable_type(const std::string& name, const truk::language::nodes::type_c *type);
+  bool is_variable_slice(const std::string& name);
+  
   result_c _result;
+  std::stringstream _current_expr;
+  std::stringstream _header;
+  std::stringstream _structs;
+  std::stringstream _functions;
+  int _indent_level{0};
+  std::unordered_set<std::string> _slice_types_emitted;
+  std::unordered_map<std::string, bool> _variable_is_slice;
+  bool _in_expression{false};
 };
 
 } // namespace truk::emitc

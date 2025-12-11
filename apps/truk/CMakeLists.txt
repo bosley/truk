@@ -22,4 +22,9 @@ if(ENABLE_TSAN)
     target_link_options(truk PRIVATE -fsanitize=thread)
 endif()
 
-target_link_libraries(truk PRIVATE truk_core fmt::fmt)
+target_link_libraries(truk PRIVATE 
+    truk_core 
+    truk_emitc
+    truk_ingestion
+    fmt::fmt
+)

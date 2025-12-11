@@ -1,14 +1,74 @@
 #include "truk/core/core.hpp"
+#include <emitter.hpp>
+#include <truk/ingestion/parser.hpp>
 #include <fmt/core.h>
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <cstring>
 
-int main() {
-  truk::core::core_c core;
-  core.initialize();
+int main(int argc, char** argv) {
+  if (argc < 2) {
+    fmt::print(stderr, "Usage: {} <input.truk> [-o <output.c>]\n", argv[0]);
+    return 1;
+  }
 
-  fmt::print("Hello World from truk!\n");
-  fmt::print("Build hash: {}\n", core.get_build_hash());
+  std::string input_file = argv[1];
+  std::string output_file = "truk.out";
 
-  core.shutdown();
+  for (int i = 2; i < argc; ++i) {
+    if (std::strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+      output_file = argv[i + 1];
+      ++i;
+    }
+  }
+
+  std::ifstream file(input_file);
+  if (!file.is_open()) {
+    fmt::print(stderr, "Error: Could not open file '{}'\n", input_file);
+    return 1;
+  }
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  std::string source = buffer.str();
+  file.close();
+
+  truk::ingestion::parser_c parser(source.c_str(), source.size());
+  auto parse_result = parser.parse();
+
+  if (!parse_result.success) {
+    fmt::print(stderr, "Error: Parse failed\n");
+    return 1;
+  }
+
+  truk::emitc::emitter_c emitter;
+  for (auto& decl : parse_result.declarations) {
+    emitter.emit(decl.get());
+  }
+  emitter.finalize();
+
+  auto emit_result = emitter.result();
+
+  if (emit_result.has_errors()) {
+    fmt::print(stderr, "Error: Emit failed\n");
+    for (const auto& err : emit_result.errors) {
+      fmt::print(stderr, "  {}\n", err.message);
+    }
+    return 1;
+  }
+
+  std::ofstream out(output_file);
+  if (!out.is_open()) {
+    fmt::print(stderr, "Error: Could not open output file '{}'\n", output_file);
+    return 1;
+  }
+
+  for (const auto& chunk : emit_result.chunks) {
+    out << chunk;
+  }
+  out.close();
+
+  fmt::print("Successfully emitted C code to '{}'\n", output_file);
   return 0;
 }
