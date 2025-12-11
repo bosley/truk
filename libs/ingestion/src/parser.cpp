@@ -546,7 +546,28 @@ language::nodes::base_ptr parser_c::parse_for_stmt() {
   }
 
   if (!check(token_type_e::SEMICOLON)) {
-    init = parse_expression();
+    if (check_keyword(language::keywords_e::VAR)) {
+      const auto &var_token =
+          consume_keyword(language::keywords_e::VAR, "Expected 'var' keyword");
+      const auto &name_token = consume_identifier("Expected variable name");
+      language::nodes::identifier_s name(name_token.lexeme,
+                                         name_token.source_index);
+
+      language::nodes::type_info_s type("", var_token.source_index);
+      if (check(token_type_e::COLON)) {
+        type = parse_type_annotation();
+      }
+
+      consume(token_type_e::EQUAL, "Expected '=' in variable declaration");
+
+      auto initializer = parse_expression();
+
+      init = std::make_unique<language::nodes::var_c>(
+          var_token.source_index, std::move(name), std::move(type),
+          std::move(initializer));
+    } else {
+      init = parse_expression();
+    }
   }
   consume(token_type_e::SEMICOLON, "Expected ';' after for loop initializer");
 

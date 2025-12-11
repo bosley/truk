@@ -70,4 +70,6 @@ function(truk_add_test)
     endif()
 
     add_test(NAME ${ARG_NAME} COMMAND $<TARGET_FILE:${ARG_NAME}>)
+    
+    set_property(GLOBAL APPEND PROPERTY TRUK_TEST_TARGETS ${ARG_NAME})
 endfunction()

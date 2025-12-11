@@ -13,3 +13,5 @@ target_link_libraries(truk_validation PUBLIC
 )
 
 target_compile_features(truk_validation PRIVATE cxx_std_20)
+
+add_subdirectory(tests)

@@ -68,12 +68,19 @@ type_checker_c::resolve_type(const type_info_s &type_info) {
   }
 
   auto resolved = std::make_unique<type_entry_s>(*base_type);
-  resolved->pointer_depth = type_info.pointer_depth;
-  resolved->array_size = type_info.array_size;
-
+  
   if (type_info.array_size.has_value()) {
-    resolved->kind = type_kind_e::ARRAY;
+    auto element_type = std::make_unique<type_entry_s>(*base_type);
+    element_type->pointer_depth = type_info.pointer_depth;
+    if (type_info.pointer_depth > 0) {
+      element_type->kind = type_kind_e::POINTER;
+    }
+    
+    resolved = std::make_unique<type_entry_s>(type_kind_e::ARRAY, base_type->name);
+    resolved->element_type = std::move(element_type);
+    resolved->array_size = type_info.array_size;
   } else if (type_info.pointer_depth > 0) {
+    resolved->pointer_depth = type_info.pointer_depth;
     resolved->kind = type_kind_e::POINTER;
   }
 
@@ -117,6 +124,12 @@ bool type_checker_c::types_equal(const type_entry_s *a, const type_entry_s *b) {
     return false;
   }
 
+  if (a->kind == type_kind_e::ARRAY && a->element_type && b->element_type) {
+    if (!types_equal(a->element_type.get(), b->element_type.get())) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -147,6 +160,25 @@ bool type_checker_c::is_boolean_type(const type_entry_s *type) {
   }
 
   return type->name == "bool";
+}
+
+bool type_checker_c::is_compatible_for_assignment(const type_entry_s *target,
+                                                   const type_entry_s *source) {
+  if (types_equal(target, source)) {
+    return true;
+  }
+
+  if (is_numeric_type(target) && is_numeric_type(source)) {
+    return true;
+  }
+
+  if (target->kind == type_kind_e::POINTER && source->kind == type_kind_e::POINTER) {
+    if (source->name == "void") {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 void type_checker_c::report_error(const std::string &message,
@@ -305,22 +337,32 @@ void type_checker_c::visit(const fn_c &node) {
 }
 
 void type_checker_c::visit(const struct_c &node) {
-  auto struct_type =
+  auto incomplete_type =
       std::make_unique<type_entry_s>(type_kind_e::STRUCT, node.name().name);
+  register_type(node.name().name, std::move(incomplete_type));
 
   for (const auto &field : node.fields()) {
-    auto field_type = resolve_type(field.type);
-    if (!field_type) {
+    auto *check_type = lookup_type(field.type.name);
+    if (!check_type) {
       report_error("Unknown field type: " + field.type.name,
                    field.type.source_index);
       continue;
     }
+    
+    auto field_type = resolve_type(field.type);
+    if (!field_type) {
+      report_error("Failed to resolve field type: " + field.type.name,
+                   field.type.source_index);
+      continue;
+    }
 
-    struct_type->struct_field_names.push_back(field.name.name);
-    struct_type->struct_fields[field.name.name] = std::move(field_type);
+    auto *registered_type = lookup_type(node.name().name);
+    if (registered_type) {
+      registered_type->struct_field_names.push_back(field.name.name);
+      registered_type->struct_fields[field.name.name] = std::move(field_type);
+    }
   }
 
-  register_type(node.name().name, std::make_unique<type_entry_s>(*struct_type));
   _memory.defer_hoist("__type__" + node.name().name);
 }
 
@@ -336,7 +378,7 @@ void type_checker_c::visit(const var_c &node) {
     node.initializer()->accept(*this);
 
     if (_current_expression_type &&
-        !types_equal(var_type.get(), _current_expression_type.get())) {
+        !is_compatible_for_assignment(var_type.get(), _current_expression_type.get())) {
       report_error("Type mismatch in variable initialization",
                    node.source_index());
     }
@@ -358,7 +400,7 @@ void type_checker_c::visit(const const_c &node) {
     node.value()->accept(*this);
 
     if (_current_expression_type &&
-        !types_equal(const_type.get(), _current_expression_type.get())) {
+        !is_compatible_for_assignment(const_type.get(), _current_expression_type.get())) {
       report_error("Type mismatch in constant initialization",
                    node.source_index());
     }
@@ -583,10 +625,18 @@ void type_checker_c::visit(const unary_op_c &node) {
       report_error("Dereference requires pointer type", node.source_index());
     } else {
       _current_expression_type->pointer_depth--;
-      if (_current_expression_type->pointer_depth == 0 &&
-          _current_expression_type->pointee_type) {
-        _current_expression_type = std::make_unique<type_entry_s>(
-            *_current_expression_type->pointee_type);
+      if (_current_expression_type->pointer_depth == 0) {
+        if (_current_expression_type->pointee_type) {
+          _current_expression_type = std::make_unique<type_entry_s>(
+              *_current_expression_type->pointee_type);
+        } else {
+          auto *base_type = lookup_type(_current_expression_type->name);
+          if (base_type) {
+            _current_expression_type->kind = base_type->kind;
+          } else {
+            _current_expression_type->kind = type_kind_e::PRIMITIVE;
+          }
+        }
       }
     }
     break;
@@ -734,7 +784,7 @@ void type_checker_c::visit(const assignment_c &node) {
     return;
   }
 
-  if (!types_equal(target_type.get(), value_type.get())) {
+  if (!is_compatible_for_assignment(target_type.get(), value_type.get())) {
     report_error("Assignment type mismatch", node.source_index());
   }
 

@@ -63,10 +63,11 @@ if(BUILD_EXPERIMENTS)
 endif()
 
 if(BUILD_TESTS)
+    get_property(ALL_TEST_TARGETS GLOBAL PROPERTY TRUK_TEST_TARGETS)
     add_custom_target(run_tests ALL
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Running tests..."
-        DEPENDS test_core test_memory test_environment test_ingestion test_parser
+        DEPENDS ${ALL_TEST_TARGETS}
     )
 endif()
