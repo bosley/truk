@@ -174,9 +174,12 @@ language::nodes::base_ptr parser_c::parse_fn_decl() {
 
   consume(token_type_e::RIGHT_PAREN, "Expected ')' after parameters");
 
-  language::nodes::type_info_s return_type("void", fn_token.source_index);
+  language::nodes::type_ptr return_type;
   if (check(token_type_e::COLON)) {
     return_type = parse_type_annotation();
+  } else {
+    return_type = std::make_unique<language::nodes::primitive_type_c>(
+        language::keywords_e::VOID, fn_token.source_index);
   }
 
   auto body = parse_block();
@@ -213,10 +216,7 @@ language::nodes::base_ptr parser_c::parse_var_decl() {
   language::nodes::identifier_s name(name_token.lexeme,
                                      name_token.source_index);
 
-  language::nodes::type_info_s type("", var_token.source_index);
-  if (check(token_type_e::COLON)) {
-    type = parse_type_annotation();
-  }
+  auto type = parse_type_annotation();
 
   consume(token_type_e::EQUAL, "Expected '=' in variable declaration");
 
@@ -236,10 +236,7 @@ language::nodes::base_ptr parser_c::parse_const_decl() {
   language::nodes::identifier_s name(name_token.lexeme,
                                      name_token.source_index);
 
-  language::nodes::type_info_s type("", const_token.source_index);
-  if (check(token_type_e::COLON)) {
-    type = parse_type_annotation();
-  }
+  auto type = parse_type_annotation();
 
   consume(token_type_e::EQUAL, "Expected '=' in constant declaration");
 
@@ -252,71 +249,9 @@ language::nodes::base_ptr parser_c::parse_const_decl() {
       std::move(value));
 }
 
-std::size_t count_pointer_depth(const language::nodes::base_c *type_node) {
-  if (auto *pointer =
-          dynamic_cast<const language::nodes::pointer_type_c *>(type_node)) {
-    return 1 + count_pointer_depth(pointer->pointee_type());
-  }
-  return 0;
-}
-
-std::string extract_base_type_name(const language::nodes::base_c *type_node) {
-  if (auto *primitive =
-          dynamic_cast<const language::nodes::primitive_type_c *>(type_node)) {
-    return language::keywords_c::to_string(primitive->keyword());
-  }
-  if (auto *named =
-          dynamic_cast<const language::nodes::named_type_c *>(type_node)) {
-    return named->name().name;
-  }
-  if (auto *pointer =
-          dynamic_cast<const language::nodes::pointer_type_c *>(type_node)) {
-    return extract_base_type_name(pointer->pointee_type());
-  }
-  if (auto *array =
-          dynamic_cast<const language::nodes::array_type_c *>(type_node)) {
-    return extract_base_type_name(array->element_type());
-  }
-  if (auto *function =
-          dynamic_cast<const language::nodes::function_type_c *>(type_node)) {
-    return "fn";
-  }
-  return "";
-}
-
-void extract_type_info(const language::nodes::base_c *type_node,
-                       language::nodes::type_info_s &type_info) {
-  if (auto *primitive =
-          dynamic_cast<const language::nodes::primitive_type_c *>(type_node)) {
-    type_info.name = language::keywords_c::to_string(primitive->keyword());
-  } else if (auto *named = dynamic_cast<const language::nodes::named_type_c *>(
-                 type_node)) {
-    type_info.name = named->name().name;
-  } else if (auto *function =
-                 dynamic_cast<const language::nodes::function_type_c *>(
-                     type_node)) {
-    type_info.name = "fn";
-  } else if (auto *pointer =
-                 dynamic_cast<const language::nodes::pointer_type_c *>(
-                     type_node)) {
-    type_info.pointer_depth = count_pointer_depth(pointer);
-    type_info.name = extract_base_type_name(pointer->pointee_type());
-  } else if (auto *array = dynamic_cast<const language::nodes::array_type_c *>(
-                 type_node)) {
-    type_info.array_size = array->size();
-    type_info.pointer_depth = count_pointer_depth(array->element_type());
-    type_info.name = extract_base_type_name(array->element_type());
-  }
-}
-
-language::nodes::type_info_s parser_c::parse_type_annotation() {
+language::nodes::type_ptr parser_c::parse_type_annotation() {
   consume(token_type_e::COLON, "Expected ':' in type annotation");
-  auto type_ptr = parse_type();
-
-  language::nodes::type_info_s type_info("", type_ptr->source_index());
-  extract_type_info(type_ptr.get(), type_info);
-
-  return type_info;
+  return parse_type();
 }
 
 language::nodes::type_ptr parser_c::parse_type() {
@@ -553,10 +488,7 @@ language::nodes::base_ptr parser_c::parse_for_stmt() {
       language::nodes::identifier_s name(name_token.lexeme,
                                          name_token.source_index);
 
-      language::nodes::type_info_s type("", var_token.source_index);
-      if (check(token_type_e::COLON)) {
-        type = parse_type_annotation();
-      }
+      auto type = parse_type_annotation();
 
       consume(token_type_e::EQUAL, "Expected '=' in variable declaration");
 
@@ -922,7 +854,7 @@ language::nodes::base_ptr parser_c::parse_unary() {
       op = language::nodes::unary_op_e::NEG;
       break;
     case token_type_e::TILDE:
-      op = language::nodes::unary_op_e::NOT;
+      op = language::nodes::unary_op_e::BITWISE_NOT;
       break;
     case token_type_e::AMP:
       op = language::nodes::unary_op_e::ADDRESS_OF;

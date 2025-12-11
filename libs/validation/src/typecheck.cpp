@@ -61,31 +61,110 @@ void type_checker_c::register_symbol(const std::string &name,
 }
 
 std::unique_ptr<type_entry_s>
-type_checker_c::resolve_type(const type_info_s &type_info) {
-  auto *base_type = lookup_type(type_info.name);
-  if (!base_type) {
+type_checker_c::resolve_type(const type_c *type_node) {
+  if (!type_node) {
     return nullptr;
   }
 
-  auto resolved = std::make_unique<type_entry_s>(*base_type);
-
-  if (type_info.array_size.has_value()) {
-    auto element_type = std::make_unique<type_entry_s>(*base_type);
-    element_type->pointer_depth = type_info.pointer_depth;
-    if (type_info.pointer_depth > 0) {
-      element_type->kind = type_kind_e::POINTER;
+  if (auto *primitive = dynamic_cast<const primitive_type_c *>(type_node)) {
+    std::string type_name =
+        language::keywords_c::to_string(primitive->keyword());
+    auto *base_type = lookup_type(type_name);
+    if (!base_type) {
+      return nullptr;
     }
-
-    resolved =
-        std::make_unique<type_entry_s>(type_kind_e::ARRAY, base_type->name);
-    resolved->element_type = std::move(element_type);
-    resolved->array_size = type_info.array_size;
-  } else if (type_info.pointer_depth > 0) {
-    resolved->pointer_depth = type_info.pointer_depth;
-    resolved->kind = type_kind_e::POINTER;
+    return std::make_unique<type_entry_s>(*base_type);
   }
 
-  return resolved;
+  if (auto *named = dynamic_cast<const named_type_c *>(type_node)) {
+    auto *base_type = lookup_type(named->name().name);
+    if (!base_type) {
+      return nullptr;
+    }
+    return std::make_unique<type_entry_s>(*base_type);
+  }
+
+  if (auto *pointer = dynamic_cast<const pointer_type_c *>(type_node)) {
+    auto pointee = resolve_type(pointer->pointee_type());
+    if (!pointee) {
+      return nullptr;
+    }
+
+    auto resolved = std::make_unique<type_entry_s>(type_kind_e::POINTER,
+                                                    pointee->name);
+    resolved->pointer_depth = pointee->pointer_depth + 1;
+    resolved->pointee_type = std::move(pointee);
+    return resolved;
+  }
+
+  if (auto *array = dynamic_cast<const array_type_c *>(type_node)) {
+    auto element = resolve_type(array->element_type());
+    if (!element) {
+      return nullptr;
+    }
+
+    auto resolved =
+        std::make_unique<type_entry_s>(type_kind_e::ARRAY, element->name);
+    resolved->element_type = std::move(element);
+    resolved->array_size = array->size();
+    return resolved;
+  }
+
+  if (auto *function = dynamic_cast<const function_type_c *>(type_node)) {
+    auto func_type =
+        std::make_unique<type_entry_s>(type_kind_e::FUNCTION, "function");
+
+    for (const auto &param_type : function->param_types()) {
+      auto resolved_param = resolve_type(param_type.get());
+      if (!resolved_param) {
+        return nullptr;
+      }
+      func_type->function_param_types.push_back(std::move(resolved_param));
+    }
+
+    auto return_type = resolve_type(function->return_type());
+    if (!return_type) {
+      return nullptr;
+    }
+    func_type->function_return_type = std::move(return_type);
+
+    return func_type;
+  }
+
+  return nullptr;
+}
+
+std::string
+type_checker_c::get_type_name_for_error(const type_c *type_node) {
+  if (!type_node) {
+    return "<unknown>";
+  }
+
+  if (auto *primitive = dynamic_cast<const primitive_type_c *>(type_node)) {
+    return language::keywords_c::to_string(primitive->keyword());
+  }
+
+  if (auto *named = dynamic_cast<const named_type_c *>(type_node)) {
+    return named->name().name;
+  }
+
+  if (auto *pointer = dynamic_cast<const pointer_type_c *>(type_node)) {
+    return "*" + get_type_name_for_error(pointer->pointee_type());
+  }
+
+  if (auto *array = dynamic_cast<const array_type_c *>(type_node)) {
+    std::string size_str = array->size().has_value()
+                               ? std::to_string(array->size().value())
+                               : "";
+    return "[" + size_str + "]" +
+           get_type_name_for_error(array->element_type());
+  }
+
+  if (auto *function = dynamic_cast<const function_type_c *>(type_node)) {
+    return "fn";
+  }
+
+  return "<unknown>";
 }
 
 type_entry_s *type_checker_c::lookup_type(const std::string &name) {
@@ -175,7 +254,7 @@ bool type_checker_c::is_compatible_for_assignment(const type_entry_s *target,
 
   if (target->kind == type_kind_e::POINTER &&
       source->kind == type_kind_e::POINTER) {
-    if (source->name == "void") {
+    if (source->name == "void" || target->name == "void") {
       return true;
     }
   }
@@ -294,7 +373,8 @@ void type_checker_c::visit(const function_type_c &node) {
 void type_checker_c::visit(const fn_c &node) {
   auto return_type = resolve_type(node.return_type());
   if (!return_type) {
-    report_error("Unknown return type: " + node.return_type().name,
+    report_error("Unknown return type: " +
+                     get_type_name_for_error(node.return_type()),
                  node.source_index());
     return;
   }
@@ -305,10 +385,11 @@ void type_checker_c::visit(const fn_c &node) {
       std::make_unique<type_entry_s>(*return_type);
 
   for (const auto &param : node.params()) {
-    auto param_type = resolve_type(param.type);
+    auto param_type = resolve_type(param.type.get());
     if (!param_type) {
-      report_error("Unknown parameter type: " + param.type.name,
-                   param.type.source_index);
+      report_error("Unknown parameter type: " +
+                       get_type_name_for_error(param.type.get()),
+                   param.name.source_index);
       continue;
     }
     func_type->function_param_types.push_back(std::move(param_type));
@@ -322,7 +403,7 @@ void type_checker_c::visit(const fn_c &node) {
   _current_function_return_type = std::move(return_type);
 
   for (const auto &param : node.params()) {
-    auto param_type = resolve_type(param.type);
+    auto param_type = resolve_type(param.type.get());
     if (param_type) {
       register_symbol(param.name.name, std::move(param_type), true,
                       param.name.source_index);
@@ -344,17 +425,11 @@ void type_checker_c::visit(const struct_c &node) {
   register_type(node.name().name, std::move(incomplete_type));
 
   for (const auto &field : node.fields()) {
-    auto *check_type = lookup_type(field.type.name);
-    if (!check_type) {
-      report_error("Unknown field type: " + field.type.name,
-                   field.type.source_index);
-      continue;
-    }
-
-    auto field_type = resolve_type(field.type);
+    auto field_type = resolve_type(field.type.get());
     if (!field_type) {
-      report_error("Failed to resolve field type: " + field.type.name,
-                   field.type.source_index);
+      report_error("Unknown field type: " +
+                       get_type_name_for_error(field.type.get()),
+                   field.name.source_index);
       continue;
     }
 
@@ -371,7 +446,8 @@ void type_checker_c::visit(const struct_c &node) {
 void type_checker_c::visit(const var_c &node) {
   auto var_type = resolve_type(node.type());
   if (!var_type) {
-    report_error("Unknown variable type: " + node.type().name,
+    report_error("Unknown variable type: " +
+                     get_type_name_for_error(node.type()),
                  node.source_index());
     return;
   }
@@ -394,7 +470,8 @@ void type_checker_c::visit(const var_c &node) {
 void type_checker_c::visit(const const_c &node) {
   auto const_type = resolve_type(node.type());
   if (!const_type) {
-    report_error("Unknown constant type: " + node.type().name,
+    report_error("Unknown constant type: " +
+                     get_type_name_for_error(node.type()),
                  node.source_index());
     return;
   }
@@ -612,6 +689,12 @@ void type_checker_c::visit(const unary_op_c &node) {
   case unary_op_e::NOT:
     if (!is_boolean_type(_current_expression_type.get())) {
       report_error("Logical NOT requires boolean type", node.source_index());
+    }
+    break;
+
+  case unary_op_e::BITWISE_NOT:
+    if (!is_integer_type(_current_expression_type.get())) {
+      report_error("Bitwise NOT requires integer type", node.source_index());
     }
     break;
 

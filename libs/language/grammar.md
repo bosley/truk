@@ -20,9 +20,9 @@ field_list      ::= field ("," field)* ","?
 
 field           ::= IDENTIFIER type_annotation
 
-var_decl        ::= "var" IDENTIFIER type_annotation? "=" expression ";"
+var_decl        ::= "var" IDENTIFIER type_annotation "=" expression ";"
 
-const_decl      ::= "const" IDENTIFIER type_annotation? "=" expression ";"
+const_decl      ::= "const" IDENTIFIER type_annotation "=" expression ";"
 
 type_annotation ::= ":" type
 
@@ -60,7 +60,6 @@ if_stmt         ::= "if" expression block ("else" (if_stmt | block))?
 while_stmt      ::= "while" expression block
 
 for_stmt        ::= "for" expression? ";" expression? ";" expression? block
-                  | "for" IDENTIFIER "in" IDENTIFIER block
 
 return_stmt     ::= "return" expression? ";"
 

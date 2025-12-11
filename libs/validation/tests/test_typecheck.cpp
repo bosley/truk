@@ -601,6 +601,284 @@ TEST(TypeCheckComplexTests, ComplexExpression) {
   CHECK_FALSE(checker->has_errors());
 }
 
+TEST(TypeCheckComplexTests, StructArrays) {
+  const char *source = R"(
+    struct Point {
+      x: i32,
+      y: i32
+    }
+    
+    fn test(): i32 {
+      var points: [3]Point = [Point{x: 1, y: 2}, Point{x: 3, y: 4}, Point{x: 5, y: 6}];
+      var p: Point = points[1];
+      return p.x;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, PointerToStruct) {
+  const char *source = R"(
+    struct Point {
+      x: i32,
+      y: i32
+    }
+    
+    fn test(): i32 {
+      var p: Point = Point{x: 10, y: 20};
+      var ptr: *Point = &p;
+      var deref: Point = *ptr;
+      return deref.x;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, StructAssignment) {
+  const char *source = R"(
+    struct Point {
+      x: i32,
+      y: i32
+    }
+    
+    fn test(): i32 {
+      var p1: Point = Point{x: 10, y: 20};
+      var p2: Point = p1;
+      p2 = p1;
+      return p2.x;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, StructAsParameter) {
+  const char *source = R"(
+    struct Point {
+      x: i32,
+      y: i32
+    }
+    
+    fn get_x(p: Point): i32 {
+      return p.x;
+    }
+    
+    fn test(): i32 {
+      var p: Point = Point{x: 42, y: 100};
+      return get_x(p);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, EmptyStruct) {
+  const char *source = R"(
+    struct Empty {
+    }
+    
+    fn test(): Empty {
+      var e: Empty = Empty{};
+      return e;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, StructWithArrayFields) {
+  const char *source = R"(
+    struct Container {
+      items: [10]i32,
+      count: i32
+    }
+    
+    fn test(): i32 {
+      var c: Container = Container{items: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], count: 10};
+      var arr: [10]i32 = c.items;
+      return arr[5];
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, StructFieldOrdering) {
+  const char *source = R"(
+    struct Data {
+      first: i32,
+      second: bool,
+      third: f64
+    }
+    
+    fn test(): f64 {
+      var d: Data = Data{first: 10, second: true, third: 3.14};
+      return d.third;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, MultipleStructTypes) {
+  const char *source = R"(
+    struct Point {
+      x: i32,
+      y: i32
+    }
+    
+    struct Rectangle {
+      top_left: Point,
+      bottom_right: Point
+    }
+    
+    struct Circle {
+      center: Point,
+      radius: f64
+    }
+    
+    fn test(): i32 {
+      var p1: Point = Point{x: 0, y: 0};
+      var p2: Point = Point{x: 10, y: 10};
+      var rect: Rectangle = Rectangle{top_left: p1, bottom_right: p2};
+      var circ: Circle = Circle{center: p1, radius: 5.0};
+      return rect.bottom_right.x + circ.center.y;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, ArrayOfPointers) {
+  const char *source = R"(
+    fn test(): i32 {
+      var a: i32 = 10;
+      var b: i32 = 20;
+      var c: i32 = 30;
+      var ptrs: [3]*i32 = [&a, &b, &c];
+      var ptr: *i32 = ptrs[1];
+      return *ptr;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, PointerToArrayElement) {
+  const char *source = R"(
+    fn test(): i32 {
+      var arr: [5]i32 = [1, 2, 3, 4, 5];
+      var ptr: *i32 = &arr[0];
+      var val: i32 = *ptr;
+      return val;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, ComplexPointerDereferencing) {
+  const char *source = R"(
+    fn test(): i32 {
+      var x: i32 = 42;
+      var ptr1: *i32 = &x;
+      var ptr2: **i32 = &ptr1;
+      var ptr3: ***i32 = &ptr2;
+      var deref1: **i32 = *ptr3;
+      var deref2: *i32 = *deref1;
+      var val: i32 = *deref2;
+      return val;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, NestedMemberAccessChains) {
+  const char *source = R"(
+    struct A {
+      value: i32
+    }
+    
+    struct B {
+      a: A
+    }
+    
+    struct C {
+      b: B
+    }
+    
+    struct D {
+      c: C
+    }
+    
+    fn test(): i32 {
+      var d: D = D{c: C{b: B{a: A{value: 42}}}};
+      return d.c.b.a.value;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, CompoundAssignmentOperators) {
+  const char *source = R"(
+    fn test(): i32 {
+      var x: i32 = 10;
+      x += 5;
+      x -= 3;
+      x *= 2;
+      x /= 4;
+      x %= 3;
+      return x;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, BitwiseNOT) {
+  const char *source = R"(
+    fn test(): i32 {
+      var x: i32 = 42;
+      var y: i32 = ~x;
+      return y;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, NumericTypeCompatibility) {
+  const char *source = R"(
+    fn test(): void {
+      var i: i32 = 10;
+      var f: f64 = 3.14;
+      i = 20;
+      f = 2.71;
+      i = f;
+      f = i;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckComplexTests, VoidPointerCompatibility) {
+  const char *source = R"(
+    fn test(): void {
+      var x: i32 = 42;
+      var ptr: *i32 = &x;
+      var void_ptr: *void = ptr;
+      var back_ptr: *i32 = void_ptr;
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
 TEST_GROUP(TypeCheckErrorTests) {
   truk::validation::type_checker_c *checker;
 
@@ -878,6 +1156,16 @@ TEST(TypeCheckErrorTests, StructLiteralUndefinedField) {
     
     fn test(): Point {
       return Point{x: 10, y: 20, z: 30};
+    }
+  )";
+  parse_and_check(source);
+  CHECK_TRUE(checker->has_errors());
+}
+
+TEST(TypeCheckErrorTests, ArrayLiteralInconsistentTypes) {
+  const char *source = R"(
+    fn test(): void {
+      var arr: [3]i32 = [1, 2, true];
     }
   )";
   parse_and_check(source);

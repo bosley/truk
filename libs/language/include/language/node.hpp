@@ -39,35 +39,6 @@ struct identifier_s {
       : name(std::move(n)), source_index(idx) {}
 };
 
-struct type_info_s {
-  std::string name;
-  std::size_t source_index;
-  std::size_t pointer_depth{0};
-  std::optional<std::size_t> array_size;
-
-  type_info_s() = delete;
-  type_info_s(std::string n, std::size_t idx)
-      : name(std::move(n)), source_index(idx) {}
-};
-
-struct parameter_s {
-  identifier_s name;
-  type_info_s type;
-
-  parameter_s() = delete;
-  parameter_s(identifier_s n, type_info_s t)
-      : name(std::move(n)), type(std::move(t)) {}
-};
-
-struct struct_field_s {
-  identifier_s name;
-  type_info_s type;
-
-  struct_field_s() = delete;
-  struct_field_s(identifier_s n, type_info_s t)
-      : name(std::move(n)), type(std::move(t)) {}
-};
-
 class type_c : public base_c {
 public:
   type_c() = delete;
@@ -77,6 +48,24 @@ public:
 };
 
 using type_ptr = std::unique_ptr<type_c>;
+
+struct parameter_s {
+  identifier_s name;
+  type_ptr type;
+
+  parameter_s() = delete;
+  parameter_s(identifier_s n, type_ptr t)
+      : name(std::move(n)), type(std::move(t)) {}
+};
+
+struct struct_field_s {
+  identifier_s name;
+  type_ptr type;
+
+  struct_field_s() = delete;
+  struct_field_s(identifier_s n, type_ptr t)
+      : name(std::move(n)), type(std::move(t)) {}
+};
 
 class primitive_type_c : public type_c {
 public:
@@ -158,14 +147,14 @@ class fn_c : public base_c {
 public:
   fn_c() = delete;
   fn_c(std::size_t source_index, identifier_s name,
-       std::vector<parameter_s> params, type_info_s return_type, base_ptr body)
+       std::vector<parameter_s> params, type_ptr return_type, base_ptr body)
       : base_c(keywords_e::FN, source_index), _name(std::move(name)),
         _params(std::move(params)), _return_type(std::move(return_type)),
         _body(std::move(body)) {}
 
   const identifier_s &name() const { return _name; }
   const std::vector<parameter_s> &params() const { return _params; }
-  const type_info_s &return_type() const { return _return_type; }
+  const type_c *return_type() const { return _return_type.get(); }
   const base_c *body() const { return _body.get(); }
 
   void accept(visitor_if &visitor) const override;
@@ -173,7 +162,7 @@ public:
 private:
   identifier_s _name;
   std::vector<parameter_s> _params;
-  type_info_s _return_type;
+  type_ptr _return_type;
   base_ptr _body;
 };
 
@@ -198,13 +187,13 @@ private:
 class var_c : public base_c {
 public:
   var_c() = delete;
-  var_c(std::size_t source_index, identifier_s name, type_info_s type,
+  var_c(std::size_t source_index, identifier_s name, type_ptr type,
         std::optional<base_ptr> initializer = std::nullopt)
       : base_c(keywords_e::VAR, source_index), _name(std::move(name)),
         _type(std::move(type)), _initializer(std::move(initializer)) {}
 
   const identifier_s &name() const { return _name; }
-  const type_info_s &type() const { return _type; }
+  const type_c *type() const { return _type.get(); }
   const base_c *initializer() const {
     return _initializer ? _initializer->get() : nullptr;
   }
@@ -213,27 +202,27 @@ public:
 
 private:
   identifier_s _name;
-  type_info_s _type;
+  type_ptr _type;
   std::optional<base_ptr> _initializer;
 };
 
 class const_c : public base_c {
 public:
   const_c() = delete;
-  const_c(std::size_t source_index, identifier_s name, type_info_s type,
+  const_c(std::size_t source_index, identifier_s name, type_ptr type,
           base_ptr value)
       : base_c(keywords_e::CONST, source_index), _name(std::move(name)),
         _type(std::move(type)), _value(std::move(value)) {}
 
   const identifier_s &name() const { return _name; }
-  const type_info_s &type() const { return _type; }
+  const type_c *type() const { return _type.get(); }
   const base_c *value() const { return _value.get(); }
 
   void accept(visitor_if &visitor) const override;
 
 private:
   identifier_s _name;
-  type_info_s _type;
+  type_ptr _type;
   base_ptr _value;
 };
 
@@ -379,7 +368,7 @@ private:
   base_ptr _right;
 };
 
-enum class unary_op_e { NEG, NOT, ADDRESS_OF, DEREF };
+enum class unary_op_e { NEG, NOT, BITWISE_NOT, ADDRESS_OF, DEREF };
 
 class unary_op_c : public base_c {
 public:

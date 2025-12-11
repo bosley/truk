@@ -65,7 +65,7 @@ private:
   language::nodes::base_ptr parse_const_decl();
 
   language::nodes::type_ptr parse_type();
-  language::nodes::type_info_s parse_type_annotation();
+  language::nodes::type_ptr parse_type_annotation();
   language::nodes::type_ptr parse_primitive_type(language::keywords_e keyword);
   language::nodes::type_ptr parse_array_type();
   language::nodes::type_ptr parse_pointer_type();

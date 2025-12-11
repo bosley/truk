@@ -151,7 +151,8 @@ private:
                        std::size_t source_index);
 
   std::unique_ptr<type_entry_s>
-  resolve_type(const truk::language::nodes::type_info_s &type_info);
+  resolve_type(const truk::language::nodes::type_c *type_node);
+  std::string get_type_name_for_error(const truk::language::nodes::type_c *type_node);
   type_entry_s *lookup_type(const std::string &name);
   symbol_entry_s *lookup_symbol(const std::string &name);
 
