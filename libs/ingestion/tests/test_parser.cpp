@@ -980,6 +980,45 @@ TEST(ParserTypeSystem, ArrayOfCustomType) {
   CHECK_EQUAL(10, get_array_size(fn->return_type()).value());
 }
 
+TEST(ParserTypeSystem, ArraySizeWithHexLiteral) {
+  const char *source = "fn test(arr: [0x10]i32) {}";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  CHECK_TRUE(is_array_type(fn->params()[0].type.get()));
+  CHECK_EQUAL(16, get_array_size(fn->params()[0].type.get()).value());
+}
+
+TEST(ParserTypeSystem, ArraySizeWithBinaryLiteral) {
+  const char *source = "fn test(arr: [0b1010]i32) {}";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  CHECK_TRUE(is_array_type(fn->params()[0].type.get()));
+  CHECK_EQUAL(10, get_array_size(fn->params()[0].type.get()).value());
+}
+
+TEST(ParserTypeSystem, ArraySizeWithOctalLiteral) {
+  const char *source = "fn test(arr: [0o12]i32) {}";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  CHECK_TRUE(is_array_type(fn->params()[0].type.get()));
+  CHECK_EQUAL(10, get_array_size(fn->params()[0].type.get()).value());
+}
+
 TEST(ParserTypeSystem, ErrorInvalidTypeSyntax) {
   const char *source = "fn test(x: @invalid) {}";
   validate_parse_failure(source, "Expected type");
@@ -988,6 +1027,36 @@ TEST(ParserTypeSystem, ErrorInvalidTypeSyntax) {
 TEST(ParserTypeSystem, ErrorMissingArraySize) {
   const char *source = "fn test(arr: [)i32) {}";
   validate_parse_failure(source);
+}
+
+TEST(ParserTypeSystem, ErrorArraySizeWithVariable) {
+  const char *source = "fn test(arr: [x]i32) {}";
+  validate_parse_failure(source, "Array size must be an integer literal");
+}
+
+TEST(ParserTypeSystem, ErrorArraySizeWithArithmetic) {
+  const char *source = "fn test(arr: [5 + 3]i32) {}";
+  validate_parse_failure(source, "Array size must be an integer literal");
+}
+
+TEST(ParserTypeSystem, ErrorArraySizeWithFunctionCall) {
+  const char *source = "fn test(arr: [get_size()]i32) {}";
+  validate_parse_failure(source, "Array size must be an integer literal");
+}
+
+TEST(ParserTypeSystem, ErrorArraySizeWithString) {
+  const char *source = "fn test(arr: [\"5\"]i32) {}";
+  validate_parse_failure(source, "Array size must be an integer literal");
+}
+
+TEST(ParserTypeSystem, ErrorArraySizeWithFloat) {
+  const char *source = "fn test(arr: [3.14]i32) {}";
+  validate_parse_failure(source, "Array size must be an integer literal");
+}
+
+TEST(ParserTypeSystem, ErrorArraySizeWithBoolean) {
+  const char *source = "fn test(arr: [true]i32) {}";
+  validate_parse_failure(source, "Array size must be an integer literal");
 }
 
 TEST_GROUP(ParserControlFlow){void setup() override{} void teardown()
