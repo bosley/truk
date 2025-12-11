@@ -1,0 +1,35 @@
+.
+├── apps
+│   ├── CMakeLists.txt
+│   └── truk
+│       ├── CMakeLists.txt
+│       └── main.cpp
+├── cmake
+│   ├── build_info.hpp.in
+│   ├── GetGitHash.cmake
+│   └── TrukHelpers.cmake
+├── CMakeLists.txt
+├── dirs.txt
+├── experiments
+│   ├── 2025-12-10-example
+│   │   ├── CMakeLists.txt
+│   │   ├── main.cpp
+│   │   └── tests
+│   │       ├── CMakeLists.txt
+│   │       └── test_example.cpp
+│   └── CMakeLists.txt
+└── libs
+    ├── CMakeLists.txt
+    └── core
+        ├── CMakeLists.txt
+        ├── include
+        │   └── truk
+        │       └── core
+        │           └── core.hpp
+        ├── src
+        │   └── core.cpp
+        └── tests
+            ├── CMakeLists.txt
+            └── test_core.cpp
+
+14 directories, 19 files

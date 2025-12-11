@@ -1,3 +1,10 @@
 build/
 .vscode/
 build-docker/
+.DS_Store
+build-*/
+.idea/
+.scratch/
+.vscode/
+.clangd/
+.tags/
