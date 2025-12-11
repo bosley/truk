@@ -32,7 +32,7 @@ TEST_GROUP(BuiltinTests){};
 TEST(BuiltinTests, AllocReturnsPointerType) {
   std::string code = R"(
     fn test() : void {
-      var ptr: *i32 = alloc("i32");
+      var ptr: *i32 = alloc(@i32);
     }
   )";
 
@@ -48,7 +48,7 @@ TEST(BuiltinTests, AllocWithStructType) {
     }
     
     fn test() : void {
-      var ptr: *Point = alloc("Point");
+      var ptr: *Point = alloc(@Point);
     }
   )";
 
@@ -60,7 +60,7 @@ TEST(BuiltinTests, AllocArrayReturnsSlice) {
   std::string code = R"(
     fn test() : void {
       var count: u64 = 10;
-      var arr: []i32 = alloc_array("i32", count);
+      var arr: []i32 = alloc_array(@i32, count);
     }
   )";
 
@@ -71,8 +71,8 @@ TEST(BuiltinTests, AllocArrayReturnsSlice) {
 TEST(BuiltinTests, FreeAcceptsPointer) {
   std::string code = R"(
     fn test() : void {
-      var ptr: *i32 = alloc("i32");
-      free("i32", ptr);
+      var ptr: *i32 = alloc(@i32);
+      free(@i32, ptr);
     }
   )";
 
@@ -84,8 +84,8 @@ TEST(BuiltinTests, FreeArrayAcceptsSlice) {
   std::string code = R"(
     fn test() : void {
       var count: u64 = 10;
-      var arr: []i32 = alloc_array("i32", count);
-      free_array("i32", arr);
+      var arr: []i32 = alloc_array(@i32, count);
+      free_array(@i32, arr);
     }
   )";
 
@@ -97,8 +97,8 @@ TEST(BuiltinTests, LenReturnsU64) {
   std::string code = R"(
     fn test() : void {
       var count: u64 = 10;
-      var arr: []i32 = alloc_array("i32", count);
-      var size: u64 = len("i32", arr);
+      var arr: []i32 = alloc_array(@i32, count);
+      var size: u64 = len(@i32, arr);
     }
   )";
 
@@ -109,7 +109,7 @@ TEST(BuiltinTests, LenReturnsU64) {
 TEST(BuiltinTests, SizeofReturnsU64) {
   std::string code = R"(
     fn test() : void {
-      var size: u64 = sizeof("i32");
+      var size: u64 = sizeof(@i32);
     }
   )";
 
@@ -121,7 +121,7 @@ TEST(BuiltinTests, PanicAcceptsU8Array) {
   std::string code = R"(
     fn test() : void {
       var count: u64 = 10;
-      var msg: []u8 = alloc_array("u8", count);
+      var msg: []u8 = alloc_array(@u8, count);
       panic(msg);
     }
   )";
@@ -140,7 +140,7 @@ TEST(BuiltinTests, TypeParameterMustBeType) {
 
   auto errors = typecheck_code(code);
   CHECK_FALSE(errors.empty());
-  CHECK_TRUE(errors[0].find("string literal") != std::string::npos);
+  CHECK_TRUE(errors[0].find("type parameter") != std::string::npos);
 }
 
 TEST(BuiltinTests, AllocRequiresTypeParameter) {
@@ -152,13 +152,13 @@ TEST(BuiltinTests, AllocRequiresTypeParameter) {
 
   auto errors = typecheck_code(code);
   CHECK_FALSE(errors.empty());
-  CHECK_TRUE(errors[0].find("requires a type string") != std::string::npos);
+  CHECK_TRUE(errors[0].find("requires a type parameter") != std::string::npos);
 }
 
 TEST(BuiltinTests, AllocArrayRequiresCountArgument) {
   std::string code = R"(
     fn test() : void {
-      var arr: []i32 = alloc_array("i32");
+      var arr: []i32 = alloc_array(@i32);
     }
   )";
 
@@ -171,7 +171,7 @@ TEST(BuiltinTests, FreeRequiresPointerArgument) {
   std::string code = R"(
     fn test() : void {
       var x: i32 = 5;
-      free("i32", x);
+      free(@i32, x);
     }
   )";
 
@@ -184,7 +184,7 @@ TEST(BuiltinTests, LenRequiresSliceArgument) {
   std::string code = R"(
     fn test() : void {
       var arr: [5]i32 = [1, 2, 3, 4, 5];
-      var size: u64 = len("i32", arr);
+      var size: u64 = len(@i32, arr);
     }
   )";
 
@@ -202,7 +202,7 @@ TEST(BuiltinTests, AllocArrayWithStructType) {
     
     fn test() : void {
       var count: u64 = 5;
-      var arr: []Point = alloc_array("Point", count);
+      var arr: []Point = alloc_array(@Point, count);
     }
   )";
 
@@ -213,7 +213,7 @@ TEST(BuiltinTests, AllocArrayWithStructType) {
 TEST(BuiltinTests, AllocWithPointerType) {
   std::string code = R"(
     fn test() : void {
-      var ptr: **i32 = alloc("*i32");
+      var ptr: **i32 = alloc(@*i32);
     }
   )";
 
@@ -225,7 +225,7 @@ TEST(BuiltinTests, AllocArrayWithArrayType) {
   std::string code = R"(
     fn test() : void {
       var count: u64 = 10;
-      var arr: [][5]i32 = alloc_array("[5]i32", count);
+      var arr: [][5]i32 = alloc_array(@[5]i32, count);
     }
   )";
 
@@ -238,13 +238,13 @@ TEST(BuiltinTests, AllocArrayWithArrayType) {
 TEST(BuiltinTests, MultipleBuiltinCalls) {
   std::string code = R"(
     fn test() : void {
-      var ptr: *i32 = alloc("i32");
+      var ptr: *i32 = alloc(@i32);
       var count: u64 = 10;
-      var arr: []i32 = alloc_array("i32", count);
-      var size: u64 = len("i32", arr);
-      var type_size: u64 = sizeof("i32");
-      free_array("i32", arr);
-      free("i32", ptr);
+      var arr: []i32 = alloc_array(@i32, count);
+      var size: u64 = len(@i32, arr);
+      var type_size: u64 = sizeof(@i32);
+      free_array(@i32, arr);
+      free(@i32, ptr);
     }
   )";
 
@@ -255,7 +255,7 @@ TEST(BuiltinTests, MultipleBuiltinCalls) {
 TEST(BuiltinTests, AllocInExpression) {
   std::string code = R"(
     fn get_ptr() : *i32 {
-      return alloc("i32");
+      return alloc(@i32);
     }
   )";
 
@@ -266,7 +266,7 @@ TEST(BuiltinTests, AllocInExpression) {
 TEST(BuiltinTests, LenInExpression) {
   std::string code = R"(
     fn get_size(arr: []i32) : u64 {
-      return len("i32", arr);
+      return len(@i32, arr);
     }
   )";
 
@@ -277,17 +277,17 @@ TEST(BuiltinTests, LenInExpression) {
 TEST(BuiltinTests, AllocWithAllPrimitiveTypes) {
   std::string code = R"(
     fn test() : void {
-      var p1: *i8 = alloc("i8");
-      var p2: *i16 = alloc("i16");
-      var p3: *i32 = alloc("i32");
-      var p4: *i64 = alloc("i64");
-      var p5: *u8 = alloc("u8");
-      var p6: *u16 = alloc("u16");
-      var p7: *u32 = alloc("u32");
-      var p8: *u64 = alloc("u64");
-      var p9: *f32 = alloc("f32");
-      var p10: *f64 = alloc("f64");
-      var p11: *bool = alloc("bool");
+      var p1: *i8 = alloc(@i8);
+      var p2: *i16 = alloc(@i16);
+      var p3: *i32 = alloc(@i32);
+      var p4: *i64 = alloc(@i64);
+      var p5: *u8 = alloc(@u8);
+      var p6: *u16 = alloc(@u16);
+      var p7: *u32 = alloc(@u32);
+      var p8: *u64 = alloc(@u64);
+      var p9: *f32 = alloc(@f32);
+      var p10: *f64 = alloc(@f64);
+      var p11: *bool = alloc(@bool);
     }
   )";
 

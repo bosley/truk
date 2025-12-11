@@ -1029,10 +1029,36 @@ language::nodes::struct_field_s parser_c::parse_field() {
 
 std::vector<language::nodes::base_ptr> parser_c::parse_argument_list() {
   std::vector<language::nodes::base_ptr> arguments;
-  arguments.push_back(parse_expression());
 
-  while (match(token_type_e::COMMA)) {
+  if (match(token_type_e::AT)) {
+    const auto &at_token = previous();
+    auto type = parse_type_internal();
+    arguments.push_back(std::make_unique<language::nodes::type_param_c>(
+        at_token.source_index, std::move(type)));
+
+    while (match(token_type_e::COMMA)) {
+      if (match(token_type_e::AT)) {
+        const auto &next_at_token = previous();
+        auto next_type = parse_type_internal();
+        arguments.push_back(std::make_unique<language::nodes::type_param_c>(
+            next_at_token.source_index, std::move(next_type)));
+      } else {
+        arguments.push_back(parse_expression());
+      }
+    }
+  } else {
     arguments.push_back(parse_expression());
+
+    while (match(token_type_e::COMMA)) {
+      if (match(token_type_e::AT)) {
+        const auto &at_token = previous();
+        auto type = parse_type_internal();
+        arguments.push_back(std::make_unique<language::nodes::type_param_c>(
+            at_token.source_index, std::move(type)));
+      } else {
+        arguments.push_back(parse_expression());
+      }
+    }
   }
 
   return arguments;

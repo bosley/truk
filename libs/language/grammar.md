@@ -113,6 +113,9 @@ primary         ::= INTEGER
                   | "(" expression ")"
                   | array_literal
                   | struct_literal
+                  | type_param
+
+type_param      ::= "@" type
 
 array_literal   ::= "[" (expression ("," expression)* ","?)? "]"
 

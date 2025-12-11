@@ -439,6 +439,21 @@ private:
   identifier_s _field;
 };
 
+class type_param_c : public base_c {
+public:
+  type_param_c() = delete;
+  type_param_c(std::size_t source_index, type_ptr type)
+      : base_c(keywords_e::UNKNOWN_KEYWORD, source_index),
+        _type(std::move(type)) {}
+
+  const type_c *type() const { return _type.get(); }
+
+  void accept(visitor_if &visitor) const override;
+
+private:
+  type_ptr _type;
+};
+
 enum class literal_type_e { INTEGER, FLOAT, STRING, BOOL, NIL };
 
 class literal_c : public base_c {

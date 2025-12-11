@@ -28,6 +28,7 @@ class assignment_c;
 class block_c;
 class array_literal_c;
 class struct_literal_c;
+class type_param_c;
 
 class visitor_if {
 public:
@@ -59,6 +60,7 @@ public:
   virtual void visit(const block_c &node) = 0;
   virtual void visit(const array_literal_c &node) = 0;
   virtual void visit(const struct_literal_c &node) = 0;
+  virtual void visit(const type_param_c &node) = 0;
 };
 
 } // namespace truk::language::nodes

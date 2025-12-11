@@ -312,43 +312,25 @@ void type_checker_c::validate_builtin_call(const call_c &node,
   if (builtin->takes_type_param) {
     if (node.arguments().empty()) {
       report_error("Builtin '" + builtin->name +
-                       "' requires a type string as first argument",
+                       "' requires a type parameter",
                    node.source_index());
       return;
     }
 
-    const auto *first_arg_literal =
-        dynamic_cast<const literal_c *>(node.arguments()[0].get());
-    if (!first_arg_literal ||
-        first_arg_literal->type() != literal_type_e::STRING) {
+    const auto *first_arg_type_param =
+        dynamic_cast<const type_param_c *>(node.arguments()[0].get());
+    if (!first_arg_type_param) {
       report_error("Builtin '" + builtin->name +
-                       "' requires a string literal type parameter (e.g., \"i32\", \"*Point\", \"[5]i32\")",
+                       "' requires a type parameter (use @type syntax)",
                    node.source_index());
       return;
     }
 
-    std::string type_str = first_arg_literal->value();
-    if (type_str.size() >= 2 && type_str.front() == '"' &&
-        type_str.back() == '"') {
-      type_str = type_str.substr(1, type_str.size() - 2);
-    }
-
-    ingestion::parser_c temp_parser(type_str.c_str(), type_str.size());
-    auto parsed_type = temp_parser.parse_type();
-    if (!parsed_type) {
-      report_error("Invalid type string: \"" + type_str + "\"",
-                   node.source_index());
-      return;
-    }
-
-    type_param = parsed_type.release();
+    type_param = first_arg_type_param->type();
     expected_arg_start = 1;
   }
 
   auto signature = builtin->build_signature(type_param);
-  if (type_param) {
-    delete type_param;
-  }
 
   if (!signature) {
     report_error("Failed to build signature for builtin '" + builtin->name +
@@ -1081,6 +1063,10 @@ void type_checker_c::visit(const struct_literal_c &node) {
   }
 
   _current_expression_type = std::make_unique<type_entry_s>(*struct_type);
+}
+
+void type_checker_c::visit(const type_param_c &node) {
+  _current_expression_type.reset();
 }
 
 } // namespace truk::validation

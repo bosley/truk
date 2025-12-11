@@ -399,6 +399,10 @@ std::optional<token_s> tokenizer_c::next_token() {
     advance();
     return make_token(token_type_e::DOT, start_pos, start_line, start_column);
 
+  case '@':
+    advance();
+    return make_token(token_type_e::AT, start_pos, start_line, start_column);
+
   default:
     advance();
     return make_token(token_type_e::UNKNOWN, start_pos, start_line,
