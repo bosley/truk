@@ -1,0 +1,17 @@
+fn average_i64(count: i32, ...nums) : i32 {
+  var sum: i64 = 0;
+  var i: i32 = 0;
+  while i < count {
+    var val: i64 = __TRUK_VA_ARG_I64();
+    printf("Value[%d] = %lld\n", i, val);
+    sum = sum + val;
+    i = i + 1;
+  }
+  var avg: i64 = sum / count as i64;
+  printf("Sum=%lld Count=%d Average=%lld\n", sum, count, avg);
+  return avg as i32;
+}
+
+fn main() : i32 {
+  return average_i64(5, 100, 100, 150, 100, 100);
+}

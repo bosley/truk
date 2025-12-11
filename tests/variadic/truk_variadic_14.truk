@@ -1,0 +1,15 @@
+fn weighted_avg_f64(w1: f64, w2: f64, ...values) : i32 {
+  var a: f64 = __TRUK_VA_ARG_F64();
+  var b: f64 = __TRUK_VA_ARG_F64();
+  printf("Weights: w1=%f w2=%f\n", w1, w2);
+  printf("Values: a=%f b=%f\n", a, b);
+  
+  var total_weight: f64 = w1 + w2;
+  var result: f64 = ((a * w1) + (b * w2)) / total_weight;
+  printf("Weighted average: %f\n", result);
+  return result as i32;
+}
+
+fn main() : i32 {
+  return weighted_avg_f64(1.0, 3.0, 8.0, 16.0);
+}

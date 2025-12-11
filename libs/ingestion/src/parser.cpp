@@ -601,7 +601,7 @@ clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
 }
 
 language::nodes::base_ptr parser_c::parse_assignment() {
-  auto expr = parse_cast();
+  auto expr = parse_logical_or();
 
   if (match(token_type_e::EQUAL) || match(token_type_e::PLUS_EQUAL) ||
       match(token_type_e::MINUS_EQUAL) || match(token_type_e::STAR_EQUAL) ||
@@ -922,6 +922,16 @@ language::nodes::base_ptr parser_c::parse_postfix() {
                                           field_token.source_index);
       expr = std::make_unique<language::nodes::member_access_c>(
           dot_token.source_index, std::move(expr), std::move(field));
+    } else if (check(token_type_e::KEYWORD)) {
+      const auto &tok = peek();
+      if (tok.keyword && tok.keyword.value() == language::keywords_e::AS) {
+        advance();
+        auto target_type = parse_type();
+        expr = std::make_unique<language::nodes::cast_c>(
+            tok.source_index, std::move(expr), std::move(target_type));
+      } else {
+        break;
+      }
     } else {
       break;
     }

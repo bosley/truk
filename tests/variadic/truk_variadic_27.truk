@@ -1,0 +1,20 @@
+fn loop_ptr_sum(count: i32, ...ptrs) : i32 {
+  var sum: i32 = 0;
+  var i: i32 = 0;
+  while i < count {
+    var ptr: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+    var val: i32 = *ptr;
+    printf("Value[%d] = %d\n", i, val);
+    sum = sum + val;
+    i = i + 1;
+  }
+  printf("Total sum: %d\n", sum);
+  return sum;
+}
+
+fn main() : i32 {
+  var a: i32 = 10;
+  var b: i32 = 8;
+  var c: i32 = 9;
+  return loop_ptr_sum(3, &a, &b, &c);
+}

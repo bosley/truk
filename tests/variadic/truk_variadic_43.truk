@@ -1,0 +1,26 @@
+fn mixed_threshold(threshold: i32, ...values) : i32 {
+  var a: i32 = __TRUK_VA_ARG_I32();
+  var b: i64 = __TRUK_VA_ARG_I64();
+  var c: f64 = __TRUK_VA_ARG_F64();
+  printf("threshold=%d a(i32)=%d b(i64)=%lld c(f64)=%f\n", threshold, a, b, c);
+  
+  var sum: i32 = 0;
+  if a > threshold {
+    printf("Adding a\n");
+    sum = sum + a;
+  }
+  if b as i32 > threshold {
+    printf("Adding b\n");
+    sum = sum + b as i32;
+  }
+  if c as i32 > threshold {
+    printf("Adding c\n");
+    sum = sum + c as i32;
+  }
+  printf("Sum: %d\n", sum);
+  return sum;
+}
+
+fn main() : i32 {
+  return mixed_threshold(10, 5, 20, 23.0);
+}

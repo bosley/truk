@@ -1,0 +1,26 @@
+fn min_via_ptr(count: i32, ...ptrs) : i32 {
+  var p1: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var p2: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var p3: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var v1: i32 = *p1;
+  var v2: i32 = *p2;
+  var v3: i32 = *p3;
+  printf("Finding min of v1=%d v2=%d v3=%d\n", v1, v2, v3);
+  
+  var min: i32 = v1;
+  if v2 < min {
+    min = v2;
+  }
+  if v3 < min {
+    min = v3;
+  }
+  printf("Minimum: %d\n", min);
+  return min;
+}
+
+fn main() : i32 {
+  var a: i32 = 50;
+  var b: i32 = 29;
+  var c: i32 = 40;
+  return min_via_ptr(3, &a, &b, &c);
+}

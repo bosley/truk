@@ -1,0 +1,27 @@
+fn complex_logic(mode: i32, threshold: i32, ...values) : i32 {
+  var x: i64 = __TRUK_VA_ARG_I64();
+  var y: i64 = __TRUK_VA_ARG_I64();
+  printf("mode=%d threshold=%d x=%lld y=%lld\n", mode, threshold, x, y);
+  
+  if mode == 1 {
+    if x > threshold as i64 {
+      printf("Mode 1: x > threshold\n");
+      return (x + y) as i32;
+    } else {
+      printf("Mode 1: x <= threshold\n");
+      return (x - y) as i32;
+    }
+  } else {
+    if y > threshold as i64 {
+      printf("Mode 2: y > threshold\n");
+      return (y * 2 as i64) as i32;
+    } else {
+      printf("Mode 2: y <= threshold\n");
+      return (x + y) as i32;
+    }
+  }
+}
+
+fn main() : i32 {
+  return complex_logic(1, 30, 60, 40);
+}

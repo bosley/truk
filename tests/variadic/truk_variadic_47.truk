@@ -1,0 +1,14 @@
+fn mixed_weighted(w1: i32, w2: i32, ...values) : i32 {
+  var a: i32 = __TRUK_VA_ARG_I32();
+  var b: f64 = __TRUK_VA_ARG_F64();
+  printf("Weights: w1=%d w2=%d\n", w1, w2);
+  printf("Values: a(i32)=%d b(f64)=%f\n", a, b);
+  
+  var result: i32 = (a * w1) + (b as i32 * w2);
+  printf("Weighted sum: %d\n", result);
+  return result;
+}
+
+fn main() : i32 {
+  return mixed_weighted(2, 3, 10, 9.0);
+}

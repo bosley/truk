@@ -1,0 +1,20 @@
+fn accumulate_with_limit(limit: i32, ...values) : i32 {
+  var sum: i64 = 0;
+  var i: i32 = 0;
+  while i < 5 {
+    var val: i64 = __TRUK_VA_ARG_I64();
+    printf("Value %d: %lld\n", i, val);
+    sum = sum + val;
+    if sum > limit as i64 {
+      printf("Limit exceeded at iteration %d\n", i);
+      return sum as i32;
+    }
+    i = i + 1;
+  }
+  printf("Final sum: %lld\n", sum);
+  return sum as i32;
+}
+
+fn main() : i32 {
+  return accumulate_with_limit(100, 20, 20, 20, 20, 5);
+}

@@ -1,0 +1,22 @@
+fn selective_op_f64(mode: i32, ...values) : i32 {
+  var a: f64 = __TRUK_VA_ARG_F64();
+  var b: f64 = __TRUK_VA_ARG_F64();
+  printf("mode=%d a=%f b=%f\n", mode, a, b);
+  
+  if mode == 1 {
+    printf("Adding\n");
+    return (a + b) as i32;
+  } else {
+    if mode == 2 {
+      printf("Multiplying\n");
+      return (a * b) as i32;
+    } else {
+      printf("Subtracting\n");
+      return (a - b) as i32;
+    }
+  }
+}
+
+fn main() : i32 {
+  return selective_op_f64(1, 10.0, 8.0);
+}

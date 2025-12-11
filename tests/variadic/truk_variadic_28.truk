@@ -1,0 +1,26 @@
+fn nested_ptr_logic(mode: i32, ...ptrs) : i32 {
+  var p1: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var p2: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var v1: i32 = *p1;
+  var v2: i32 = *p2;
+  printf("mode=%d v1=%d v2=%d\n", mode, v1, v2);
+  
+  if mode == 1 {
+    if v1 > v2 {
+      printf("Mode 1: v1 > v2\n");
+      return v1 - v2;
+    } else {
+      printf("Mode 1: v1 <= v2\n");
+      return v2 - v1;
+    }
+  } else {
+    printf("Mode 2: sum\n");
+    return v1 + v2;
+  }
+}
+
+fn main() : i32 {
+  var x: i32 = 20;
+  var y: i32 = 8;
+  return nested_ptr_logic(2, &x, &y);
+}

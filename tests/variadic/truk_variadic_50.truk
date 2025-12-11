@@ -1,0 +1,20 @@
+fn min_of_three(dummy: i32, ...values) : i32 {
+  var a: i64 = __TRUK_VA_ARG_I64();
+  var b: i64 = __TRUK_VA_ARG_I64();
+  var c: i64 = __TRUK_VA_ARG_I64();
+  printf("Finding min of a=%lld b=%lld c=%lld\n", a, b, c);
+  
+  var min: i64 = a;
+  if b < min {
+    min = b;
+  }
+  if c < min {
+    min = c;
+  }
+  printf("Minimum: %lld\n", min);
+  return min as i32;
+}
+
+fn main() : i32 {
+  return min_of_three(0, 100, 50, 75);
+}

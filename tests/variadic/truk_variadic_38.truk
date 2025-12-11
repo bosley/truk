@@ -1,0 +1,11 @@
+fn mixed_all_types(count: i32, ...values) : i32 {
+  var a: i32 = __TRUK_VA_ARG_I32();
+  var b: i64 = __TRUK_VA_ARG_I64();
+  var c: f64 = __TRUK_VA_ARG_F64();
+  printf("a(i32)=%d b(i64)=%lld c(f64)=%f\n", a, b, c);
+  return a + b as i32 + c as i32;
+}
+
+fn main() : i32 {
+  return mixed_all_types(3, 10, 15, 13.0);
+}

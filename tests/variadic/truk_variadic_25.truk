@@ -1,0 +1,25 @@
+fn conditional_sum(threshold: i32, ...nums) : i32 {
+  var a: i64 = __TRUK_VA_ARG_I64();
+  var b: i64 = __TRUK_VA_ARG_I64();
+  var c: i64 = __TRUK_VA_ARG_I64();
+  printf("a=%lld b=%lld c=%lld threshold=%d\n", a, b, c, threshold);
+  
+  var sum: i64 = 0;
+  if a > threshold as i64 {
+    printf("Adding a\n");
+    sum = sum + a;
+  }
+  if b > threshold as i64 {
+    printf("Adding b\n");
+    sum = sum + b;
+  }
+  if c > threshold as i64 {
+    printf("Adding c\n");
+    sum = sum + c;
+  }
+  return sum as i32;
+}
+
+fn main() : i32 {
+  return conditional_sum(5, 10, 15, 5);
+}

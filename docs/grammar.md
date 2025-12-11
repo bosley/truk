@@ -69,9 +69,7 @@ continue_stmt   ::= "continue" ";"
 
 expression      ::= assignment
 
-assignment      ::= cast (("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment)?
-
-cast            ::= logical_or ("as" type)*
+assignment      ::= logical_or (("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment)?
 
 logical_or      ::= logical_and ("||" logical_and)*
 
@@ -96,7 +94,7 @@ multiplicative  ::= unary (("*" | "/" | "%") unary)*
 unary           ::= ("!" | "-" | "~" | "&" | "*") unary
                   | postfix
 
-postfix         ::= primary (call | index | member)*
+postfix         ::= primary (call | index | member | cast)*
 
 call            ::= "(" argument_list? ")"
 
@@ -105,6 +103,8 @@ argument_list   ::= expression ("," expression)*
 index           ::= "[" expression "]"
 
 member          ::= "." IDENTIFIER
+
+cast            ::= "as" type
 
 primary         ::= INTEGER
                   | FLOAT

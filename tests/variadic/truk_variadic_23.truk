@@ -1,0 +1,21 @@
+fn max_via_ptr(count: i32, ...ptrs) : i32 {
+  var p1: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var p2: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var v1: i32 = *p1;
+  var v2: i32 = *p2;
+  printf("Comparing v1=%d v2=%d\n", v1, v2);
+  
+  if v1 > v2 {
+    printf("v1 is larger\n");
+    return v1;
+  } else {
+    printf("v2 is larger or equal\n");
+    return v2;
+  }
+}
+
+fn main() : i32 {
+  var a: i32 = 15;
+  var b: i32 = 23;
+  return max_via_ptr(2, &a, &b);
+}

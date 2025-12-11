@@ -1,0 +1,12 @@
+fn deref_ptr(count: i32, ...ptrs) : i32 {
+  var ptr: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var value: i32 = *ptr;
+  printf("Dereferenced value: %d\n", value);
+  return value;
+}
+
+fn main() : i32 {
+  var x: i32 = 17;
+  var ptr: *i32 = &x;
+  return deref_ptr(1, ptr);
+}

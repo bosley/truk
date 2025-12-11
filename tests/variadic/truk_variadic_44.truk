@@ -1,0 +1,20 @@
+fn mixed_max(count: i32, ...values) : i32 {
+  var a: i32 = __TRUK_VA_ARG_I32();
+  var b: i64 = __TRUK_VA_ARG_I64();
+  var c: f64 = __TRUK_VA_ARG_F64();
+  printf("a(i32)=%d b(i64)=%lld c(f64)=%f\n", a, b, c);
+  
+  var max: i32 = a;
+  if b as i32 > max {
+    max = b as i32;
+  }
+  if c as i32 > max {
+    max = c as i32;
+  }
+  printf("Maximum: %d\n", max);
+  return max;
+}
+
+fn main() : i32 {
+  return mixed_max(3, 20, 30, 44.0);
+}
