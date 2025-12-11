@@ -392,7 +392,8 @@ public:
   cast_c() = delete;
   cast_c(std::size_t source_index, base_ptr expression, type_ptr target_type)
       : base_c(keywords_e::UNKNOWN_KEYWORD, source_index),
-        _expression(std::move(expression)), _target_type(std::move(target_type)) {}
+        _expression(std::move(expression)),
+        _target_type(std::move(target_type)) {}
 
   const base_c *expression() const { return _expression.get(); }
   const type_c *target_type() const { return _target_type.get(); }

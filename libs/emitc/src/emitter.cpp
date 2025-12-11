@@ -490,9 +490,10 @@ void emitter_c::visit(const call_c &node) {
           _current_expr.str("");
           _current_expr.clear();
           _current_expr << "free(" << arg << ")";
-          
+
           if (!_in_expression) {
-            _functions << cdef::indent(_indent_level) << _current_expr.str() << ";\n";
+            _functions << cdef::indent(_indent_level) << _current_expr.str()
+                       << ";\n";
             _current_expr.str("");
             _current_expr.clear();
           }
@@ -534,9 +535,10 @@ void emitter_c::visit(const call_c &node) {
           _current_expr.str("");
           _current_expr.clear();
           _current_expr << "free((" << arg << ").data)";
-          
+
           if (!_in_expression) {
-            _functions << cdef::indent(_indent_level) << _current_expr.str() << ";\n";
+            _functions << cdef::indent(_indent_level) << _current_expr.str()
+                       << ";\n";
             _current_expr.str("");
             _current_expr.clear();
           }
@@ -628,7 +630,8 @@ void emitter_c::visit(const index_c &node) {
 
   if (is_slice) {
     _current_expr << "({ truk_bounds_check(" << idx_expr << ", (" << obj_expr
-                  << ").len); (" << obj_expr << ").data[" << idx_expr << "]; })";
+                  << ").len); (" << obj_expr << ").data[" << idx_expr
+                  << "]; })";
   } else {
     _current_expr << obj_expr << "[" << idx_expr << "]";
   }
@@ -696,8 +699,8 @@ void emitter_c::visit(const assignment_c &node) {
       _functions << "truk_bounds_check(" << idx_expr << ", (" << obj_expr
                  << ").len);\n";
       _functions << cdef::indent(_indent_level);
-      _functions << "(" << obj_expr << ").data[" << idx_expr << "] = "
-                 << value << ";\n";
+      _functions << "(" << obj_expr << ").data[" << idx_expr << "] = " << value
+                 << ";\n";
       return;
     }
   }
