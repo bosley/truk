@@ -59,7 +59,8 @@ if_stmt         ::= "if" expression block ("else" (if_stmt | block))?
 
 while_stmt      ::= "while" expression block
 
-for_stmt        ::= "for" IDENTIFIER "in" expression block
+for_stmt        ::= "for" expression? ";" expression? ";" expression? block
+                  | "for" IDENTIFIER "in" IDENTIFIER block
 
 return_stmt     ::= "return" expression? ";"
 
