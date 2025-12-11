@@ -11,6 +11,8 @@ if [ ! -f "$TRUK_BIN" ]; then
     exit 1
 fi
 
+CC="${CC:-cc}"
+
 TEMP_DIR=$(mktemp -d)
 trap "rm -rf $TEMP_DIR" EXIT
 
@@ -29,20 +31,38 @@ for truk_file in "$SCRIPT_DIR"/test_*.truk; do
     
     TOTAL=$((TOTAL + 1))
     filename=$(basename "$truk_file")
-    output_file="$TEMP_DIR/${filename%.truk}.c"
+    c_file="$TEMP_DIR/${filename%.truk}.c"
+    exe_file="$TEMP_DIR/${filename%.truk}"
     
     echo -n "Testing $filename ... "
     
-    if "$TRUK_BIN" "$truk_file" -o "$output_file" > /dev/null 2>&1; then
-        echo "✓ PASS"
-        PASSED=$((PASSED + 1))
-    else
-        echo "✗ FAIL"
+    if ! "$TRUK_BIN" "$truk_file" -o "$c_file" > /dev/null 2>&1; then
+        echo "✗ FAIL (truk compilation)"
         FAILED=$((FAILED + 1))
-        echo "  Error compiling $truk_file"
-        "$TRUK_BIN" "$truk_file" -o "$output_file" 2>&1 | sed 's/^/  /'
+        echo "  Error compiling $truk_file with truk"
+        "$TRUK_BIN" "$truk_file" -o "$c_file" 2>&1 | sed 's/^/  /'
         exit 1
     fi
+    
+    if ! "$CC" "$c_file" -o "$exe_file" 2>&1 | tee "$TEMP_DIR/${filename%.truk}.cc_err" | sed 's/^/  /'; then
+        echo "✗ FAIL (C compilation)"
+        FAILED=$((FAILED + 1))
+        echo "  Error compiling generated C code"
+        echo "  Generated C file: $c_file"
+        cat "$TEMP_DIR/${filename%.truk}.cc_err" | sed 's/^/  /'
+        exit 1
+    fi
+    
+    if ! "$exe_file" > /dev/null 2>&1; then
+        exit_code=$?
+        echo "✗ FAIL (execution: exit code $exit_code)"
+        FAILED=$((FAILED + 1))
+        echo "  Executable returned non-zero exit code: $exit_code"
+        exit 1
+    fi
+    
+    echo "✓ PASS"
+    PASSED=$((PASSED + 1))
 done
 
 echo ""

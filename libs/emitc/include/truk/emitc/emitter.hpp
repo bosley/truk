@@ -71,6 +71,7 @@ public:
 
 private:
   std::string emit_type(const truk::language::nodes::type_c *type);
+  std::string emit_type_for_sizeof(const truk::language::nodes::type_c *type);
   std::string
   get_slice_type_name(const truk::language::nodes::type_c *element_type);
   void ensure_slice_typedef(const truk::language::nodes::type_c *element_type);

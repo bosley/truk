@@ -77,8 +77,37 @@ std::string emitter_c::emit_type(const type_c *type) {
   return "void";
 }
 
+std::string emitter_c::emit_type_for_sizeof(const type_c *type) {
+  if (!type) {
+    return "void";
+  }
+
+  if (auto prim = dynamic_cast<const primitive_type_c *>(type)) {
+    return emit_type(prim);
+  }
+
+  if (auto named = dynamic_cast<const named_type_c *>(type)) {
+    return named->name().name;
+  }
+
+  if (auto ptr = dynamic_cast<const pointer_type_c *>(type)) {
+    return emit_type_for_sizeof(ptr->pointee_type()) + "*";
+  }
+
+  if (auto arr = dynamic_cast<const array_type_c *>(type)) {
+    if (arr->size().has_value()) {
+      std::string base = emit_type_for_sizeof(arr->element_type());
+      return base + "[" + std::to_string(arr->size().value()) + "]";
+    } else {
+      return get_slice_type_name(arr->element_type());
+    }
+  }
+
+  return "void";
+}
+
 std::string emitter_c::get_slice_type_name(const type_c *element_type) {
-  std::string elem_type_str = emit_type(element_type);
+  std::string elem_type_str = emit_type_for_sizeof(element_type);
   std::string slice_name = "truk_slice_" + elem_type_str;
   for (auto &c : slice_name) {
     if (c == '*')
@@ -93,8 +122,19 @@ void emitter_c::ensure_slice_typedef(const type_c *element_type) {
   std::string slice_name = get_slice_type_name(element_type);
   if (_slice_types_emitted.find(slice_name) == _slice_types_emitted.end()) {
     _slice_types_emitted.insert(slice_name);
-    std::string elem_type_str = emit_type(element_type);
-    _header << cdef::emit_slice_typedef(elem_type_str, slice_name);
+    std::string elem_type_for_sizeof = emit_type_for_sizeof(element_type);
+    
+    if (auto arr = dynamic_cast<const array_type_c *>(element_type)) {
+      if (arr->size().has_value()) {
+        std::string base_type = emit_type(arr->element_type());
+        size_t size = arr->size().value();
+        _header << "typedef struct {\n  " << base_type << " (*data)[" << size 
+                << "];\n  u64 len;\n} " << slice_name << ";\n\n";
+        return;
+      }
+    }
+    
+    _header << cdef::emit_slice_typedef(elem_type_for_sizeof, slice_name);
   }
 }
 
@@ -491,14 +531,11 @@ void emitter_c::visit(const call_c &node) {
       }
       case builtins::builtin_kind_e::FREE: {
         if (!node.arguments().empty()) {
-          _current_expr << cdef::emit_builtin_free("");
-          std::string saved = _current_expr.str();
-          _current_expr.str("");
-          _current_expr.clear();
+          std::stringstream arg_stream;
+          std::swap(arg_stream, _current_expr);
           node.arguments()[0]->accept(*this);
           std::string arg = _current_expr.str();
-          _current_expr.str("");
-          _current_expr.clear();
+          std::swap(arg_stream, _current_expr);
           _current_expr << "free(" << arg << ")";
 
           if (!_in_expression) {
@@ -515,20 +552,32 @@ void emitter_c::visit(const call_c &node) {
         if (node.arguments().size() >= 2) {
           if (auto type_param = dynamic_cast<const type_param_c *>(
                   node.arguments()[0].get())) {
-            std::string elem_type_str = emit_type(type_param->type());
+            std::string elem_type_for_sizeof = emit_type_for_sizeof(type_param->type());
             ensure_slice_typedef(type_param->type());
 
-            std::string saved = _current_expr.str();
-            _current_expr.str("");
-            _current_expr.clear();
+            std::stringstream count_stream;
+            std::swap(count_stream, _current_expr);
             node.arguments()[1]->accept(*this);
             std::string count_expr = _current_expr.str();
-            _current_expr.str("");
-            _current_expr.clear();
+            std::swap(count_stream, _current_expr);
 
             std::string slice_type = get_slice_type_name(type_param->type());
-            _current_expr << "(" << slice_type << "){(" << elem_type_str
-                          << "*)malloc(sizeof(" << elem_type_str << ") * ("
+            
+            std::string cast_type;
+            if (auto arr = dynamic_cast<const array_type_c *>(type_param->type())) {
+              if (arr->size().has_value()) {
+                std::string base_type = emit_type(arr->element_type());
+                size_t size = arr->size().value();
+                cast_type = base_type + " (*)[" + std::to_string(size) + "]";
+              } else {
+                cast_type = elem_type_for_sizeof + "*";
+              }
+            } else {
+              cast_type = elem_type_for_sizeof + "*";
+            }
+            
+            _current_expr << "(" << slice_type << "){(" << cast_type
+                          << ")malloc(sizeof(" << elem_type_for_sizeof << ") * ("
                           << count_expr << ")), (" << count_expr << ")}";
             return;
           }
@@ -537,13 +586,11 @@ void emitter_c::visit(const call_c &node) {
       }
       case builtins::builtin_kind_e::FREE_ARRAY: {
         if (!node.arguments().empty()) {
-          std::string saved = _current_expr.str();
-          _current_expr.str("");
-          _current_expr.clear();
+          std::stringstream arg_stream;
+          std::swap(arg_stream, _current_expr);
           node.arguments()[0]->accept(*this);
           std::string arg = _current_expr.str();
-          _current_expr.str("");
-          _current_expr.clear();
+          std::swap(arg_stream, _current_expr);
           _current_expr << "free((" << arg << ").data)";
 
           if (!_in_expression) {
@@ -558,13 +605,11 @@ void emitter_c::visit(const call_c &node) {
       }
       case builtins::builtin_kind_e::LEN: {
         if (!node.arguments().empty()) {
-          std::string saved = _current_expr.str();
-          _current_expr.str("");
-          _current_expr.clear();
+          std::stringstream arg_stream;
+          std::swap(arg_stream, _current_expr);
           node.arguments()[0]->accept(*this);
           std::string arg = _current_expr.str();
-          _current_expr.str("");
-          _current_expr.clear();
+          std::swap(arg_stream, _current_expr);
           _current_expr << "(" << arg << ").len";
           return;
         }
@@ -574,7 +619,7 @@ void emitter_c::visit(const call_c &node) {
         if (!node.arguments().empty()) {
           if (auto type_param = dynamic_cast<const type_param_c *>(
                   node.arguments()[0].get())) {
-            std::string type_str = emit_type(type_param->type());
+            std::string type_str = emit_type_for_sizeof(type_param->type());
             _current_expr << "sizeof(" << type_str << ")";
             return;
           }
@@ -583,15 +628,20 @@ void emitter_c::visit(const call_c &node) {
       }
       case builtins::builtin_kind_e::PANIC: {
         if (!node.arguments().empty()) {
-          std::string saved = _current_expr.str();
-          _current_expr.str("");
-          _current_expr.clear();
+          std::stringstream arg_stream;
+          std::swap(arg_stream, _current_expr);
           node.arguments()[0]->accept(*this);
           std::string arg = _current_expr.str();
-          _current_expr.str("");
-          _current_expr.clear();
+          std::swap(arg_stream, _current_expr);
           _current_expr << "TRUK_PANIC((" << arg << ").data, (" << arg
                         << ").len)";
+          
+          if (!_in_expression) {
+            _functions << cdef::indent(_indent_level) << _current_expr.str()
+                       << ";\n";
+            _current_expr.str("");
+            _current_expr.clear();
+          }
           return;
         }
         break;
@@ -634,8 +684,18 @@ void emitter_c::visit(const index_c &node) {
   bool is_slice = false;
   if (auto ident = dynamic_cast<const identifier_c *>(node.object())) {
     is_slice = is_variable_slice(ident->id().name);
+  } else if (auto inner_idx = dynamic_cast<const index_c *>(node.object())) {
+    if (auto inner_ident = dynamic_cast<const identifier_c *>(inner_idx->object())) {
+      if (is_variable_slice(inner_ident->id().name)) {
+        is_slice = false;
+      } else {
+        is_slice = false;
+      }
+    } else {
+      is_slice = false;
+    }
   } else {
-    is_slice = true;
+    is_slice = false;
   }
 
   if (is_slice) {
@@ -681,8 +741,10 @@ void emitter_c::visit(const assignment_c &node) {
     bool is_slice = false;
     if (auto ident = dynamic_cast<const identifier_c *>(idx->object())) {
       is_slice = is_variable_slice(ident->id().name);
+    } else if (auto inner_idx = dynamic_cast<const index_c *>(idx->object())) {
+      is_slice = false;
     } else {
-      is_slice = true;
+      is_slice = false;
     }
 
     if (is_slice && !was_in_expr) {
