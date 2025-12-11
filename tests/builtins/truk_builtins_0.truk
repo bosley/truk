@@ -1,0 +1,6 @@
+fn main() : i32 {
+  var ptr: *i32 = alloc(@i32);
+  *ptr = 42;
+  free(ptr);
+  return 0;
+}

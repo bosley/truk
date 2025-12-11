@@ -1,0 +1,8 @@
+struct Value {
+  val: i32
+}
+
+fn main() : i32 {
+  var v: Value = Value{val: 5};
+  return v.val;
+}

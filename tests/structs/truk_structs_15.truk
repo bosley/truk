@@ -1,0 +1,13 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+fn get_x(p: Point) : i32 {
+  return p.x;
+}
+
+fn main() : i32 {
+  var p: Point = Point{x: 15, y: 25};
+  return get_x(p);
+}

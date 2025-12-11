@@ -484,6 +484,12 @@ void emitter_c::visit(const call_c &node) {
           _current_expr.str("");
           _current_expr.clear();
           _current_expr << "free(" << arg << ")";
+          
+          if (!_in_expression) {
+            _functions << cdef::indent(_indent_level) << _current_expr.str() << ";\n";
+            _current_expr.str("");
+            _current_expr.clear();
+          }
           return;
         }
         break;
@@ -522,6 +528,12 @@ void emitter_c::visit(const call_c &node) {
           _current_expr.str("");
           _current_expr.clear();
           _current_expr << "free((" << arg << ").data)";
+          
+          if (!_in_expression) {
+            _functions << cdef::indent(_indent_level) << _current_expr.str() << ";\n";
+            _current_expr.str("");
+            _current_expr.clear();
+          }
           return;
         }
         break;
@@ -580,6 +592,12 @@ void emitter_c::visit(const call_c &node) {
   }
 
   _current_expr << ")";
+
+  if (!_in_expression) {
+    _functions << cdef::indent(_indent_level) << _current_expr.str() << ";\n";
+    _current_expr.str("");
+    _current_expr.clear();
+  }
 }
 
 void emitter_c::visit(const index_c &node) {

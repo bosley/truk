@@ -1,0 +1,11 @@
+fn get_value() : i32 {
+  return 12;
+}
+
+fn double_it(x: i32) : i32 {
+  return x * 2;
+}
+
+fn main() : i32 {
+  return double_it(get_value());
+}

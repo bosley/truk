@@ -1,0 +1,8 @@
+struct Empty {
+  x: i32
+}
+
+fn main() : i32 {
+  var e: Empty = Empty{x: 100};
+  return 0;
+}

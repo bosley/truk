@@ -1,0 +1,7 @@
+fn returns_zero() : i32 {
+  return 0;
+}
+
+fn main() : i32 {
+  return returns_zero();
+}
