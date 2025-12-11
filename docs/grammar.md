@@ -20,7 +20,7 @@ field_list      ::= field ("," field)* ","?
 
 field           ::= IDENTIFIER type_annotation
 
-var_decl        ::= "var" IDENTIFIER type_annotation "=" expression ";"
+var_decl        ::= "var" IDENTIFIER type_annotation ("=" expression)? ";"
 
 const_decl      ::= "const" IDENTIFIER type_annotation "=" expression ";"
 

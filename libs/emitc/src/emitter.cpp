@@ -147,18 +147,18 @@ void emitter_c::visit(const fn_c &node) {
     register_variable_type(param.name.name, param.type.get());
 
     std::string param_type = emit_type(param.type.get());
+    _functions << param_type << " " << param.name.name;
 
-    if (auto arr = dynamic_cast<const array_type_c *>(param.type.get())) {
+    const type_c *current_type = param.type.get();
+    while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
       if (arr->size().has_value()) {
-        _functions << param_type << " " << param.name.name << "["
-                   << arr->size().value() << "]";
-        continue;
+        _functions << "[" << arr->size().value() << "]";
+        current_type = arr->element_type();
       } else {
         ensure_slice_typedef(arr->element_type());
+        break;
       }
     }
-
-    _functions << param_type << " " << param.name.name;
   }
 
   _functions << ") ";
@@ -177,11 +177,14 @@ void emitter_c::visit(const struct_c &node) {
     std::string field_type = emit_type(field.type.get());
     _structs << "  " << field_type << " " << field.name.name;
 
-    if (auto arr = dynamic_cast<const array_type_c *>(field.type.get())) {
+    const type_c *current_type = field.type.get();
+    while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
       if (arr->size().has_value()) {
         _structs << "[" << arr->size().value() << "]";
+        current_type = arr->element_type();
       } else {
         ensure_slice_typedef(arr->element_type());
+        break;
       }
     }
 
@@ -203,11 +206,14 @@ void emitter_c::visit(const var_c &node) {
                << node.name().name;
   }
 
-  if (auto arr = dynamic_cast<const array_type_c *>(node.type())) {
+  const type_c *current_type = node.type();
+  while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
     if (arr->size().has_value()) {
       _functions << "[" << arr->size().value() << "]";
+      current_type = arr->element_type();
     } else {
       ensure_slice_typedef(arr->element_type());
+      break;
     }
   }
 
@@ -236,9 +242,13 @@ void emitter_c::visit(const const_c &node) {
                << node.name().name;
   }
 
-  if (auto arr = dynamic_cast<const array_type_c *>(node.type())) {
+  const type_c *current_type = node.type();
+  while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
     if (arr->size().has_value()) {
       _functions << "[" << arr->size().value() << "]";
+      current_type = arr->element_type();
+    } else {
+      break;
     }
   }
 

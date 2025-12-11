@@ -162,6 +162,7 @@ private:
   resolve_type(const truk::language::nodes::type_c *type_node);
   std::string
   get_type_name_for_error(const truk::language::nodes::type_c *type_node);
+  std::string get_type_name_from_entry(const type_entry_s *type);
   type_entry_s *lookup_type(const std::string &name);
   symbol_entry_s *lookup_symbol(const std::string &name);
 
@@ -169,6 +170,7 @@ private:
   bool is_numeric_type(const type_entry_s *type);
   bool is_integer_type(const type_entry_s *type);
   bool is_boolean_type(const type_entry_s *type);
+  bool is_comparable_type(const type_entry_s *type);
   bool is_compatible_for_assignment(const type_entry_s *target,
                                     const type_entry_s *source);
   bool is_type_identifier(const truk::language::nodes::identifier_c *id_node);

@@ -646,9 +646,25 @@ TEST(ParserVariableDeclarations, ErrorMissingVarName) {
   validate_parse_failure(source, "Expected variable name");
 }
 
-TEST(ParserVariableDeclarations, ErrorMissingEquals) {
-  const char *source = "fn test() { var x: i32 42; }";
-  validate_parse_failure(source, "Expected '='");
+TEST(ParserVariableDeclarations, UninitializedVariable) {
+  const char *source = "fn test() { var x: i32; }";
+  parse_result_wrapper_s wrapper(source);
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_TRUE(wrapper.result.declarations.size() == 1);
+
+  auto *fn_node =
+      dynamic_cast<const nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn_node != nullptr);
+
+  auto *block = dynamic_cast<const nodes::block_c *>(fn_node->body());
+  CHECK_TRUE(block != nullptr);
+  CHECK_TRUE(block->statements().size() == 1);
+
+  auto *var_node =
+      dynamic_cast<const nodes::var_c *>(block->statements()[0].get());
+  CHECK_TRUE(var_node != nullptr);
+  CHECK_TRUE(var_node->name().name == "x");
+  CHECK_TRUE(var_node->initializer() == nullptr);
 }
 
 TEST(ParserVariableDeclarations, ErrorMissingInitializer) {

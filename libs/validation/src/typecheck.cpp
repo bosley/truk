@@ -181,6 +181,32 @@ std::string type_checker_c::get_type_name_for_error(const type_c *type_node) {
   return "<unknown>";
 }
 
+std::string type_checker_c::get_type_name_from_entry(const type_entry_s *type) {
+  if (!type) {
+    return "<unknown>";
+  }
+
+  std::string base_name = type->name;
+
+  if (type->kind == type_kind_e::POINTER) {
+    std::string result;
+    for (std::size_t i = 0; i < type->pointer_depth; ++i) {
+      result += "*";
+    }
+    result += base_name;
+    return result;
+  }
+
+  if (type->kind == type_kind_e::ARRAY) {
+    std::string size_str = type->array_size.has_value()
+                               ? std::to_string(type->array_size.value())
+                               : "";
+    return "[" + size_str + "]" + base_name;
+  }
+
+  return base_name;
+}
+
 type_entry_s *type_checker_c::lookup_type(const std::string &name) {
   auto *item = _memory.get("__type__" + name, true);
   if (!item) {
@@ -254,6 +280,22 @@ bool type_checker_c::is_boolean_type(const type_entry_s *type) {
   }
 
   return type->name == "bool";
+}
+
+bool type_checker_c::is_comparable_type(const type_entry_s *type) {
+  if (!type) {
+    return false;
+  }
+
+  if (is_numeric_type(type) || is_boolean_type(type)) {
+    return true;
+  }
+
+  if (type->kind == type_kind_e::POINTER) {
+    return true;
+  }
+
+  return false;
 }
 
 bool type_checker_c::is_compatible_for_assignment(const type_entry_s *target,
@@ -746,7 +788,11 @@ void type_checker_c::visit(const binary_op_c &node) {
       return;
     }
     if (!types_equal(left_type.get(), right_type.get())) {
-      report_error("Arithmetic operation type mismatch", node.source_index());
+      std::string left_name = get_type_name_from_entry(left_type.get());
+      std::string right_name = get_type_name_from_entry(right_type.get());
+      report_error("Cannot perform arithmetic on " + left_name + " and " +
+                       right_name + " (hint: use explicit cast)",
+                   node.source_index());
       return;
     }
     _current_expression_type = std::move(left_type);
@@ -758,9 +804,24 @@ void type_checker_c::visit(const binary_op_c &node) {
   case binary_op_e::LE:
   case binary_op_e::GT:
   case binary_op_e::GE:
-    if (!types_equal(left_type.get(), right_type.get())) {
-      report_error("Comparison operation type mismatch", node.source_index());
+    if (!is_comparable_type(left_type.get()) ||
+        !is_comparable_type(right_type.get())) {
+      report_error(
+          "Comparison operation requires comparable types (numeric, bool, or "
+          "pointer)",
+          node.source_index());
       return;
+    }
+    if (!types_equal(left_type.get(), right_type.get())) {
+      if (is_numeric_type(left_type.get()) &&
+          is_numeric_type(right_type.get())) {
+      } else {
+        std::string left_name = get_type_name_from_entry(left_type.get());
+        std::string right_name = get_type_name_from_entry(right_type.get());
+        report_error("Cannot compare " + left_name + " with " + right_name,
+                     node.source_index());
+        return;
+      }
     }
     _current_expression_type =
         std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "bool");

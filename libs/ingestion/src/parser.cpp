@@ -226,9 +226,10 @@ language::nodes::base_ptr parser_c::parse_var_decl() {
 
   auto type = parse_type_annotation();
 
-  consume(token_type_e::EQUAL, "Expected '=' in variable declaration");
-
-  auto initializer = parse_expression();
+  std::optional<language::nodes::base_ptr> initializer = std::nullopt;
+  if (match(token_type_e::EQUAL)) {
+    initializer = parse_expression();
+  }
 
   consume(token_type_e::SEMICOLON, "Expected ';' after variable declaration");
 
@@ -357,7 +358,7 @@ language::nodes::type_ptr parser_c::parse_array_type() {
 
   consume(token_type_e::RIGHT_BRACKET, "Expected ']' after array size");
 
-  auto element_type = parse_type();
+  auto element_type = parse_type_internal();
 
   return std::make_unique<language::nodes::array_type_c>(
       bracket_token.source_index, std::move(element_type), size);
@@ -365,7 +366,7 @@ language::nodes::type_ptr parser_c::parse_array_type() {
 
 language::nodes::type_ptr parser_c::parse_pointer_type() {
   const auto &star_token = consume(token_type_e::STAR, "Expected '*'");
-  auto pointee_type = parse_type();
+  auto pointee_type = parse_type_internal();
   return std::make_unique<language::nodes::pointer_type_c>(
       star_token.source_index, std::move(pointee_type));
 }
@@ -975,11 +976,33 @@ language::nodes::base_ptr parser_c::parse_primary() {
     advance();
 
     if (check(token_type_e::LEFT_BRACE)) {
+      advance();
+      bool is_struct_literal = false;
+      if (check(token_type_e::RIGHT_BRACE)) {
+        advance();
+        if (check(token_type_e::SEMICOLON) || check(token_type_e::COMMA) ||
+            check(token_type_e::RIGHT_PAREN) ||
+            check(token_type_e::RIGHT_BRACKET) ||
+            check(token_type_e::RIGHT_BRACE) || is_at_end()) {
+          is_struct_literal = true;
+        }
+        _current = saved_pos + 1;
+      } else if (check(token_type_e::IDENTIFIER)) {
+        advance();
+        if (check(token_type_e::COLON) || check(token_type_e::RIGHT_BRACE) ||
+            check(token_type_e::COMMA)) {
+          is_struct_literal = true;
+        }
+      }
+
       _current = saved_pos;
-      return parse_struct_literal();
+      if (is_struct_literal) {
+        return parse_struct_literal();
+      }
+    } else {
+      _current = saved_pos;
     }
 
-    _current = saved_pos;
     const auto &id_token = advance();
     language::nodes::identifier_s id(id_token.lexeme, id_token.source_index);
     return std::make_unique<language::nodes::identifier_c>(

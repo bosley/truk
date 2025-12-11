@@ -10,9 +10,7 @@ fn test_i8() : i32 {
   
   var count: u64 = 10;
   var arr: []i8 = alloc_array(@i8, count);
-  var arr_len: u64 = len(arr);
-  var expected_len: u64 = 10;
-  if arr_len != expected_len {
+  if len(arr) != 10 {
     var msg_count: u64 = 1;
     var msg: []u8 = alloc_array(@u8, msg_count);
     panic(msg);
@@ -33,9 +31,7 @@ fn test_i8() : i32 {
     panic(msg);
   }
   
-  var size: u64 = sizeof(@i8);
-  var expected_size: u64 = 1;
-  if size != expected_size {
+  if sizeof(@i8) != 1 {
     var msg_count: u64 = 1;
     var msg: []u8 = alloc_array(@u8, msg_count);
     panic(msg);
