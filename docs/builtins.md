@@ -218,14 +218,14 @@ fn main() : void {
   
   var count: u64 = 10;
   var arr: []Point = alloc_array(@Point, count);
-  var size: u64 = len(@Point, arr);
+  var size: u64 = len(arr);
   
   arr[0] = Point{x: 10, y: 20};
   
   var type_size: u64 = sizeof(@Point);
   
-  free_array(@Point, arr);
-  free(@i32, ptr);
+  free_array(arr);
+  free(ptr);
 }
 ```
 

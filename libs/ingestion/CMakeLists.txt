@@ -1,16 +1,16 @@
-add_library(ingestion STATIC
+add_library(truk_ingestion STATIC
     src/tokenize.cpp
     src/parser.cpp
 )
 
 add_subdirectory(tests)
 
-target_include_directories(ingestion PUBLIC
+target_include_directories(truk_ingestion PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(ingestion PUBLIC
+target_link_libraries(truk_ingestion PUBLIC
     truk_language
 )
 
-target_compile_features(ingestion PRIVATE cxx_std_20)
+target_compile_features(truk_ingestion PRIVATE cxx_std_20)

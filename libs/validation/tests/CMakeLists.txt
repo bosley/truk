@@ -4,7 +4,7 @@ truk_add_test(
         test_typecheck.cpp
     DEPENDENCIES
         truk_validation
-        ingestion
+        truk_ingestion
         truk_language
         truk_core
 )
@@ -15,7 +15,7 @@ truk_add_test(
         test_builtins.cpp
     DEPENDENCIES
         truk_validation
-        ingestion
+        truk_ingestion
         truk_language
         truk_core
 )

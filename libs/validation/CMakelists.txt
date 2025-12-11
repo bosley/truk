@@ -10,7 +10,7 @@ target_include_directories(truk_validation
 target_link_libraries(truk_validation PUBLIC
     truk_core
     truk_language
-    ingestion
+    truk_ingestion
 )
 
 target_compile_features(truk_validation PRIVATE cxx_std_20)

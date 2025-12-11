@@ -3,7 +3,7 @@ truk_add_test(
     SOURCES
         test_ingestion.cpp
     DEPENDENCIES
-        ingestion
+        truk_ingestion
 )
 
 truk_add_test(
@@ -11,5 +11,5 @@ truk_add_test(
     SOURCES
         test_parser.cpp
     DEPENDENCIES
-        ingestion
+        truk_ingestion
 )
