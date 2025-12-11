@@ -1,0 +1,18 @@
+fn test_if() : i32 {
+  var a: i32 = 10;
+  var b: i32 = 20;
+  var c: i32 = 30;
+  
+  if a < b && b < c {
+  } else {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  return 0;
+}
+
+fn main() : i32 {
+  return test_if();
+}

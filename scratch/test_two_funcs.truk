@@ -1,0 +1,20 @@
+fn test_i8() : i32 {
+  var ptr: *i8 = alloc(@i8);
+  *ptr = 42;
+  free(ptr);
+  return 0;
+}
+
+fn test_i16() : i32 {
+  var ptr: *i16 = alloc(@i16);
+  *ptr = 1000;
+  free(ptr);
+  return 0;
+}
+
+fn main() : i32 {
+  var result: i32 = 0;
+  result = test_i8();
+  result = test_i16();
+  return 0;
+}

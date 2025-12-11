@@ -1,0 +1,49 @@
+fn test_i8() : i32 {
+  var ptr: *i8 = alloc(@i8);
+  *ptr = 42;
+  if *ptr != 42 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  free(ptr);
+  
+  var count: u64 = 10;
+  var arr: []i8 = alloc_array(@i8, count);
+  var arr_len: u64 = len(arr);
+  var expected_len: u64 = 10;
+  if arr_len != expected_len {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  arr[5] = 100;
+  if arr[5] != 100 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  free_array(arr);
+  
+  var a: i8 = 5;
+  var b: i8 = 3;
+  if a + b != 8 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  var size: u64 = sizeof(@i8);
+  var expected_size: u64 = 1;
+  if size != expected_size {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  return 0;
+}
+
+fn main() : i32 {
+  return test_i8();
+}

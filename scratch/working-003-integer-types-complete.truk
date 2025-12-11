@@ -1,0 +1,250 @@
+fn test_i8() : i32 {
+  var ptr: *i8 = alloc(@i8);
+  *ptr = 42;
+  if *ptr != 42 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  free(ptr);
+  
+  var count: u64 = 10;
+  var arr: []i8 = alloc_array(@i8, count);
+  var arr_len: u64 = len(arr);
+  var expected_len: u64 = 10;
+  if arr_len != expected_len {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  arr[5] = 100;
+  if arr[5] != 100 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  free_array(arr);
+  
+  var a: i8 = 5;
+  var b: i8 = 3;
+  if a + b != 8 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  var size: u64 = sizeof(@i8);
+  var expected_size: u64 = 1;
+  if size != expected_size {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  return 0;
+}
+
+fn test_i16() : i32 {
+  var ptr: *i16 = alloc(@i16);
+  *ptr = 1000;
+  if *ptr != 1000 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  free(ptr);
+  
+  var count: u64 = 10;
+  var arr: []i16 = alloc_array(@i16, count);
+  arr[5] = 5000;
+  if arr[5] != 5000 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  free_array(arr);
+  
+  var size: u64 = sizeof(@i16);
+  var expected_size: u64 = 2;
+  if size != expected_size {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  return 0;
+}
+
+fn test_i32() : i32 {
+  var ptr: *i32 = alloc(@i32);
+  *ptr = 100000;
+  if *ptr != 100000 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  free(ptr);
+  
+  var count: u64 = 10;
+  var arr: []i32 = alloc_array(@i32, count);
+  arr[5] = 50000;
+  if arr[5] != 50000 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  free_array(arr);
+  
+  var a: i32 = 500;
+  var b: i32 = 300;
+  if a / b != 1 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  var size: u64 = sizeof(@i32);
+  var expected_size: u64 = 4;
+  if size != expected_size {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  return 0;
+}
+
+fn test_i64() : i32 {
+  var ptr: *i64 = alloc(@i64);
+  *ptr = 10000000;
+  free(ptr);
+  
+  var count: u64 = 10;
+  var arr: []i64 = alloc_array(@i64, count);
+  arr[5] = 500000;
+  free_array(arr);
+  
+  var size: u64 = sizeof(@i64);
+  var expected_size: u64 = 8;
+  if size != expected_size {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  return 0;
+}
+
+fn test_u8() : i32 {
+  var ptr: *u8 = alloc(@u8);
+  *ptr = 200;
+  free(ptr);
+  
+  var count: u64 = 10;
+  var arr: []u8 = alloc_array(@u8, count);
+  arr[5] = 100;
+  free_array(arr);
+  
+  var size: u64 = sizeof(@u8);
+  var expected_size: u64 = 1;
+  if size != expected_size {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  return 0;
+}
+
+fn test_u16() : i32 {
+  var ptr: *u16 = alloc(@u16);
+  *ptr = 50000;
+  free(ptr);
+  
+  var count: u64 = 10;
+  var arr: []u16 = alloc_array(@u16, count);
+  arr[5] = 5000;
+  free_array(arr);
+  
+  var size: u64 = sizeof(@u16);
+  var expected_size: u64 = 2;
+  if size != expected_size {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  return 0;
+}
+
+fn test_u32() : i32 {
+  var ptr: *u32 = alloc(@u32);
+  *ptr = 1000000;
+  free(ptr);
+  
+  var count: u64 = 10;
+  var arr: []u32 = alloc_array(@u32, count);
+  arr[5] = 50000;
+  free_array(arr);
+  
+  var size: u64 = sizeof(@u32);
+  var expected_size: u64 = 4;
+  if size != expected_size {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  return 0;
+}
+
+fn test_u64() : i32 {
+  var ptr: *u64 = alloc(@u64);
+  *ptr = 10000000;
+  free(ptr);
+  
+  var count: u64 = 10;
+  var arr: []u64 = alloc_array(@u64, count);
+  arr[5] = 500000;
+  free_array(arr);
+  
+  var size: u64 = sizeof(@u64);
+  var expected_size: u64 = 8;
+  if size != expected_size {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  
+  return 0;
+}
+
+fn main() : i32 {
+  var result: i32 = 0;
+  
+  result = test_i8();
+  if result != 0 { return 1; }
+  
+  result = test_i16();
+  if result != 0 { return 2; }
+  
+  result = test_i32();
+  if result != 0 { return 3; }
+  
+  result = test_i64();
+  if result != 0 { return 4; }
+  
+  result = test_u8();
+  if result != 0 { return 5; }
+  
+  result = test_u16();
+  if result != 0 { return 6; }
+  
+  result = test_u32();
+  if result != 0 { return 7; }
+  
+  result = test_u64();
+  if result != 0 { return 8; }
+  
+  return 0;
+}

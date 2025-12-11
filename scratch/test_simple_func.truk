@@ -1,0 +1,9 @@
+fn test_simple() : i32 {
+  return 0;
+}
+
+fn main() : i32 {
+  var result: i32 = 0;
+  result = test_simple();
+  return result;
+}

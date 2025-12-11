@@ -1,0 +1,11 @@
+fn main() : i32 {
+  var a: i32 = 10;
+  var b: i32 = 20;
+  var c: i32 = 30;
+  
+  if a < b && b < c {
+    return 0;
+  }
+  
+  return 1;
+}

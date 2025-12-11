@@ -1,0 +1,7 @@
+fn main() : i32 {
+  var count: u64 = 3;
+  var arr: [][5]i32 = alloc_array(@[5]i32, count);
+  arr[0][0] = 1;
+  free_array(arr);
+  return 0;
+}

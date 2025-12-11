@@ -1,0 +1,14 @@
+fn test_i8() : i32 {
+  var arr: [5]i8;
+  arr[0] = 10;
+  
+  var ptr: *i8 = alloc(@i8);
+  *ptr = 42;
+  free(ptr);
+  
+  return 0;
+}
+
+fn main() : i32 {
+  return test_i8();
+}

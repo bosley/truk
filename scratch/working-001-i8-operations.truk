@@ -1,0 +1,99 @@
+fn test_i8_alloc() : i32 {
+  var ptr: *i8 = alloc(@i8);
+  *ptr = 42;
+  if *ptr != 42 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  free(ptr);
+  return 0;
+}
+
+fn test_i8_sized_array() : i32 {
+  var arr: [5]i8;
+  arr[0] = 10;
+  arr[1] = 20;
+  arr[2] = -30;
+  if arr[0] != 10 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  if arr[2] != -30 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  return 0;
+}
+
+fn test_i8_unsized_array() : i32 {
+  var count: u64 = 10;
+  var arr: []i8 = alloc_array(@i8, count);
+  if len(arr) != 10 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  arr[5] = 100;
+  if arr[5] != 100 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  free_array(arr);
+  return 0;
+}
+
+fn test_i8_arithmetic() : i32 {
+  var a: i8 = 5;
+  var b: i8 = 3;
+  if a + b != 8 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  if a - b != 2 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  if a * b != 15 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  return 0;
+}
+
+fn test_i8_sizeof() : i32 {
+  var size: u64 = sizeof(@i8);
+  if size != 1 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  return 0;
+}
+
+fn main() : i32 {
+  var result: i32 = 0;
+  
+  result = test_i8_alloc();
+  if result != 0 { return 1; }
+  
+  result = test_i8_sized_array();
+  if result != 0 { return 2; }
+  
+  result = test_i8_unsized_array();
+  if result != 0 { return 3; }
+  
+  result = test_i8_arithmetic();
+  if result != 0 { return 4; }
+  
+  result = test_i8_sizeof();
+  if result != 0 { return 5; }
+  
+  return 0;
+}
