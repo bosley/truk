@@ -1,8 +1,8 @@
-#pragma once 
+#pragma once
 
 #include <fmt/core.h>
-#include <string>
 #include <sstream>
+#include <string>
 
 namespace truk::emitc::cdef {
 
@@ -40,48 +40,48 @@ typedef double f64;
 )";
 }
 
-inline std::string emit_slice_typedef(const std::string& element_type, const std::string& slice_name) {
-  return fmt::format("typedef struct {{\n  {}* data;\n  u64 len;\n}} {};\n\n", 
+inline std::string emit_slice_typedef(const std::string &element_type,
+                                      const std::string &slice_name) {
+  return fmt::format("typedef struct {{\n  {}* data;\n  u64 len;\n}} {};\n\n",
                      element_type, slice_name);
 }
 
-inline std::string emit_builtin_alloc(const std::string& type_str) {
+inline std::string emit_builtin_alloc(const std::string &type_str) {
   return fmt::format("({0}*)malloc(sizeof({0}))", type_str);
 }
 
-inline std::string emit_builtin_free(const std::string& ptr_expr) {
+inline std::string emit_builtin_free(const std::string &ptr_expr) {
   return fmt::format("free({})", ptr_expr);
 }
 
-inline std::string emit_builtin_alloc_array(const std::string& element_type, 
-                                             const std::string& slice_type,
-                                             const std::string& count_expr) {
-  return fmt::format("({{{0}*)malloc(sizeof({1}) * ({2})), ({2})}})", 
+inline std::string emit_builtin_alloc_array(const std::string &element_type,
+                                            const std::string &slice_type,
+                                            const std::string &count_expr) {
+  return fmt::format("({{{0}*)malloc(sizeof({1}) * ({2})), ({2})}})",
                      element_type, element_type, count_expr);
 }
 
-inline std::string emit_builtin_free_array(const std::string& arr_expr) {
+inline std::string emit_builtin_free_array(const std::string &arr_expr) {
   return fmt::format("free(({}).data)", arr_expr);
 }
 
-inline std::string emit_builtin_len(const std::string& arr_expr) {
+inline std::string emit_builtin_len(const std::string &arr_expr) {
   return fmt::format("({}).len", arr_expr);
 }
 
-inline std::string emit_builtin_sizeof(const std::string& type_str) {
+inline std::string emit_builtin_sizeof(const std::string &type_str) {
   return fmt::format("sizeof({})", type_str);
 }
 
-inline std::string emit_builtin_panic(const std::string& msg_expr) {
+inline std::string emit_builtin_panic(const std::string &msg_expr) {
   return fmt::format("TRUK_PANIC(({0}).data, ({0}).len)", msg_expr);
 }
 
-inline std::string emit_bounds_check(const std::string& idx_expr, const std::string& len_expr) {
+inline std::string emit_bounds_check(const std::string &idx_expr,
+                                     const std::string &len_expr) {
   return fmt::format("TRUK_BOUNDS_CHECK({}, {})", idx_expr, len_expr);
 }
 
-inline std::string indent(int level) {
-  return std::string(level * 2, ' ');
-}
+inline std::string indent(int level) { return std::string(level * 2, ' '); }
 
-}
+} // namespace truk::emitc::cdef

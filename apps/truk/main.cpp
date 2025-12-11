@@ -1,13 +1,13 @@
 #include "truk/core/core.hpp"
-#include <emitter.hpp>
-#include <truk/ingestion/parser.hpp>
-#include <fmt/core.h>
-#include <iostream>
-#include <fstream>
-#include <sstream>
 #include <cstring>
+#include <emitter.hpp>
+#include <fmt/core.h>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <truk/ingestion/parser.hpp>
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   if (argc < 2) {
     fmt::print(stderr, "Usage: {} <input.truk> [-o <output.c>]\n", argv[0]);
     return 1;
@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
   }
 
   truk::emitc::emitter_c emitter;
-  for (auto& decl : parse_result.declarations) {
+  for (auto &decl : parse_result.declarations) {
     emitter.emit(decl.get());
   }
   emitter.finalize();
@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
 
   if (emit_result.has_errors()) {
     fmt::print(stderr, "Error: Emit failed\n");
-    for (const auto& err : emit_result.errors) {
+    for (const auto &err : emit_result.errors) {
       fmt::print(stderr, "  {}\n", err.message);
     }
     return 1;
@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  for (const auto& chunk : emit_result.chunks) {
+  for (const auto &chunk : emit_result.chunks) {
     out << chunk;
   }
   out.close();
