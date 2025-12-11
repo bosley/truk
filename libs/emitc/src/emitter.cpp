@@ -18,8 +18,7 @@ void emitter_c::collect_declarations(const base_c *root) {
   _collecting_declarations = false;
 }
 
-void emitter_c::emit_forward_declarations() {
-}
+void emitter_c::emit_forward_declarations() {}
 
 void emitter_c::emit(const base_c *root) {
   if (root) {
@@ -32,7 +31,7 @@ void emitter_c::finalize() {
   final_header << cdef::emit_program_header();
   final_header
       << "typedef struct {\n  void* data;\n  u64 len;\n} truk_slice_void;\n\n";
-  
+
   _result.chunks.push_back(final_header.str());
   _result.chunks.push_back(_structs.str());
   _result.chunks.push_back(_header.str());
@@ -181,9 +180,10 @@ void emitter_c::ensure_slice_typedef(const type_c *element_type) {
 
     if (auto arr = dynamic_cast<const array_type_c *>(element_type)) {
       if (arr->size().has_value()) {
-        std::string pointer_type = emit_array_pointer_type(element_type, "data");
-        _header << "typedef struct {\n  " << pointer_type
-                << ";\n  u64 len;\n} " << slice_name << ";\n\n";
+        std::string pointer_type =
+            emit_array_pointer_type(element_type, "data");
+        _header << "typedef struct {\n  " << pointer_type << ";\n  u64 len;\n} "
+                << slice_name << ";\n\n";
         return;
       }
     }
