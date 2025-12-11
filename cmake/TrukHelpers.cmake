@@ -69,5 +69,5 @@ function(truk_add_test)
         target_link_libraries(${ARG_NAME} PRIVATE ${ARG_DEPENDENCIES})
     endif()
 
-    add_test(NAME ${ARG_NAME} COMMAND ${ARG_NAME})
+    add_test(NAME ${ARG_NAME} COMMAND $<TARGET_FILE:${ARG_NAME}>)
 endfunction()

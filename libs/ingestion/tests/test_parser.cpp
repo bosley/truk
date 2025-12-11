@@ -1,9 +1,11 @@
-#include <CppUTest/CommandLineTestRunner.h>
-#include <CppUTest/TestHarness.h>
+// clang-format off
 #include <cstring>
 #include <string>
 #include <truk/ingestion/parser.hpp>
 #include <truk/ingestion/tokenize.hpp>
+#include <CppUTest/CommandLineTestRunner.h>
+#include <CppUTest/TestHarness.h>
+// clang-format on
 
 using namespace truk::ingestion;
 using namespace truk::language;
@@ -324,439 +326,2359 @@ TEST(ParserFunctionDeclarations, MultipleFunctions) {
 TEST_GROUP(ParserStructDeclarations){void setup() override{} void teardown()
                                          override{}};
 
-TEST(ParserStructDeclarations, EmptyStruct) { FAIL("Not implemented yet"); }
+TEST(ParserStructDeclarations, EmptyStruct) {
+  const char *source = "struct Point {}";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(1, wrapper.result.declarations.size());
+
+  auto *struct_decl =
+      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(struct_decl != nullptr);
+  STRCMP_EQUAL("Point", struct_decl->name().name.c_str());
+  CHECK_EQUAL(0, struct_decl->fields().size());
+}
 
 TEST(ParserStructDeclarations, StructWithSingleField) {
-  FAIL("Not implemented yet");
+  const char *source = "struct Point { x: i32 }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(1, wrapper.result.declarations.size());
+
+  auto *struct_decl =
+      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(struct_decl != nullptr);
+  STRCMP_EQUAL("Point", struct_decl->name().name.c_str());
+  CHECK_EQUAL(1, struct_decl->fields().size());
+
+  const auto &field = struct_decl->fields()[0];
+  STRCMP_EQUAL("x", field.name.name.c_str());
+  STRCMP_EQUAL("i32", field.type.name.c_str());
+  CHECK_FALSE(field.type.is_pointer);
+  CHECK_FALSE(field.type.array_size.has_value());
 }
 
 TEST(ParserStructDeclarations, StructWithMultipleFields) {
-  FAIL("Not implemented yet");
+  const char *source = "struct Point { x: i32, y: i32, z: f64 }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(1, wrapper.result.declarations.size());
+
+  auto *struct_decl =
+      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(struct_decl != nullptr);
+  STRCMP_EQUAL("Point", struct_decl->name().name.c_str());
+  CHECK_EQUAL(3, struct_decl->fields().size());
+
+  STRCMP_EQUAL("x", struct_decl->fields()[0].name.name.c_str());
+  STRCMP_EQUAL("i32", struct_decl->fields()[0].type.name.c_str());
+
+  STRCMP_EQUAL("y", struct_decl->fields()[1].name.name.c_str());
+  STRCMP_EQUAL("i32", struct_decl->fields()[1].type.name.c_str());
+
+  STRCMP_EQUAL("z", struct_decl->fields()[2].name.name.c_str());
+  STRCMP_EQUAL("f64", struct_decl->fields()[2].type.name.c_str());
 }
 
 TEST(ParserStructDeclarations, StructWithPointerField) {
-  FAIL("Not implemented yet");
+  const char *source = "struct Node { next: *Node }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(1, wrapper.result.declarations.size());
+
+  auto *struct_decl =
+      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(struct_decl != nullptr);
+  STRCMP_EQUAL("Node", struct_decl->name().name.c_str());
+  CHECK_EQUAL(1, struct_decl->fields().size());
+
+  const auto &field = struct_decl->fields()[0];
+  STRCMP_EQUAL("next", field.name.name.c_str());
+  STRCMP_EQUAL("Node", field.type.name.c_str());
+  CHECK_TRUE(field.type.is_pointer);
 }
 
 TEST(ParserStructDeclarations, StructWithArrayField) {
-  FAIL("Not implemented yet");
+  const char *source = "struct Buffer { data: [256]u8 }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(1, wrapper.result.declarations.size());
+
+  auto *struct_decl =
+      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(struct_decl != nullptr);
+  STRCMP_EQUAL("Buffer", struct_decl->name().name.c_str());
+  CHECK_EQUAL(1, struct_decl->fields().size());
+
+  const auto &field = struct_decl->fields()[0];
+  STRCMP_EQUAL("data", field.name.name.c_str());
+  STRCMP_EQUAL("u8", field.type.name.c_str());
+  CHECK_TRUE(field.type.array_size.has_value());
+  CHECK_EQUAL(256, field.type.array_size.value());
 }
 
 TEST(ParserStructDeclarations, StructWithCustomTypeField) {
-  FAIL("Not implemented yet");
+  const char *source =
+      "struct Rectangle { topLeft: Point, bottomRight: Point }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(1, wrapper.result.declarations.size());
+
+  auto *struct_decl =
+      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(struct_decl != nullptr);
+  STRCMP_EQUAL("Rectangle", struct_decl->name().name.c_str());
+  CHECK_EQUAL(2, struct_decl->fields().size());
+
+  STRCMP_EQUAL("topLeft", struct_decl->fields()[0].name.name.c_str());
+  STRCMP_EQUAL("Point", struct_decl->fields()[0].type.name.c_str());
+
+  STRCMP_EQUAL("bottomRight", struct_decl->fields()[1].name.name.c_str());
+  STRCMP_EQUAL("Point", struct_decl->fields()[1].type.name.c_str());
 }
 
 TEST(ParserStructDeclarations, StructWithMixedFieldTypes) {
-  FAIL("Not implemented yet");
+  const char *source =
+      "struct Mixed { id: i32, name: *u8, values: [10]f32, next: *Mixed }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(1, wrapper.result.declarations.size());
+
+  auto *struct_decl =
+      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(struct_decl != nullptr);
+  STRCMP_EQUAL("Mixed", struct_decl->name().name.c_str());
+  CHECK_EQUAL(4, struct_decl->fields().size());
+
+  STRCMP_EQUAL("id", struct_decl->fields()[0].name.name.c_str());
+  STRCMP_EQUAL("i32", struct_decl->fields()[0].type.name.c_str());
+  CHECK_FALSE(struct_decl->fields()[0].type.is_pointer);
+
+  STRCMP_EQUAL("name", struct_decl->fields()[1].name.name.c_str());
+  STRCMP_EQUAL("u8", struct_decl->fields()[1].type.name.c_str());
+  CHECK_TRUE(struct_decl->fields()[1].type.is_pointer);
+
+  STRCMP_EQUAL("values", struct_decl->fields()[2].name.name.c_str());
+  STRCMP_EQUAL("f32", struct_decl->fields()[2].type.name.c_str());
+  CHECK_TRUE(struct_decl->fields()[2].type.array_size.has_value());
+  CHECK_EQUAL(10, struct_decl->fields()[2].type.array_size.value());
+
+  STRCMP_EQUAL("next", struct_decl->fields()[3].name.name.c_str());
+  STRCMP_EQUAL("Mixed", struct_decl->fields()[3].type.name.c_str());
+  CHECK_TRUE(struct_decl->fields()[3].type.is_pointer);
 }
 
 TEST(ParserStructDeclarations, ErrorMissingStructName) {
-  FAIL("Not implemented yet");
+  const char *source = "struct {}";
+  validate_parse_failure(source, "Expected struct name");
 }
 
 TEST(ParserStructDeclarations, ErrorMissingLeftBrace) {
-  FAIL("Not implemented yet");
+  const char *source = "struct Point }";
+  validate_parse_failure(source, "Expected '{'");
 }
 
 TEST(ParserStructDeclarations, ErrorMissingRightBrace) {
-  FAIL("Not implemented yet");
+  const char *source = "struct Point { x: i32";
+  validate_parse_failure(source, "Expected '}'");
 }
 
 TEST(ParserStructDeclarations, ErrorInvalidFieldSyntax) {
-  FAIL("Not implemented yet");
+  const char *source = "struct Point { x }";
+  validate_parse_failure(source, "Expected ':'");
 }
 
 TEST(ParserStructDeclarations, ErrorMissingFieldType) {
-  FAIL("Not implemented yet");
+  const char *source = "struct Point { x: }";
+  validate_parse_failure(source, "Expected type");
 }
 
 TEST_GROUP(ParserVariableDeclarations){void setup() override{} void teardown()
                                            override{}};
 
 TEST(ParserVariableDeclarations, VarWithTypeAndInitializer) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { var x: i32 = 42; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  CHECK_TRUE(body != nullptr);
+  CHECK_EQUAL(1, body->statements().size());
+
+  auto *var_decl =
+      dynamic_cast<const nodes::var_c *>(body->statements()[0].get());
+  CHECK_TRUE(var_decl != nullptr);
+  STRCMP_EQUAL("x", var_decl->name().name.c_str());
+  STRCMP_EQUAL("i32", var_decl->type().name.c_str());
+  CHECK_TRUE(var_decl->initializer() != nullptr);
 }
 
 TEST(ParserVariableDeclarations, VarWithoutTypeAnnotation) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { var x = 42; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *var_decl =
+      dynamic_cast<const nodes::var_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(var_decl != nullptr);
+  STRCMP_EQUAL("x", var_decl->name().name.c_str());
+  STRCMP_EQUAL("", var_decl->type().name.c_str());
+  CHECK_TRUE(var_decl->initializer() != nullptr);
 }
 
 TEST(ParserVariableDeclarations, VarWithPointerType) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { var ptr: *i32 = nil; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *var_decl =
+      dynamic_cast<const nodes::var_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(var_decl != nullptr);
+  STRCMP_EQUAL("ptr", var_decl->name().name.c_str());
+  STRCMP_EQUAL("i32", var_decl->type().name.c_str());
+  CHECK_TRUE(var_decl->type().is_pointer);
 }
 
 TEST(ParserVariableDeclarations, VarWithArrayType) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { var arr: [10]i32 = nil; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *var_decl =
+      dynamic_cast<const nodes::var_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(var_decl != nullptr);
+  STRCMP_EQUAL("arr", var_decl->name().name.c_str());
+  STRCMP_EQUAL("i32", var_decl->type().name.c_str());
+  CHECK_TRUE(var_decl->type().array_size.has_value());
+  CHECK_EQUAL(10, var_decl->type().array_size.value());
 }
 
 TEST(ParserVariableDeclarations, VarWithComplexInitializer) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { var result: i32 = x + y * 2; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *var_decl =
+      dynamic_cast<const nodes::var_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(var_decl != nullptr);
+  STRCMP_EQUAL("result", var_decl->name().name.c_str());
+  CHECK_TRUE(var_decl->initializer() != nullptr);
+
+  auto *init_expr =
+      dynamic_cast<const nodes::binary_op_c *>(var_decl->initializer());
+  CHECK_TRUE(init_expr != nullptr);
+  CHECK_TRUE(init_expr->op() == nodes::binary_op_e::ADD);
 }
 
 TEST(ParserVariableDeclarations, ErrorMissingVarName) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { var : i32 = 42; }";
+  validate_parse_failure(source, "Expected variable name");
 }
 
 TEST(ParserVariableDeclarations, ErrorMissingEquals) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { var x: i32 42; }";
+  validate_parse_failure(source, "Expected '='");
 }
 
 TEST(ParserVariableDeclarations, ErrorMissingInitializer) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { var x: i32 = ; }";
+  validate_parse_failure(source, "Expected expression");
 }
 
 TEST(ParserVariableDeclarations, ErrorMissingSemicolon) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { var x: i32 = 42 }";
+  validate_parse_failure(source, "Expected ';'");
 }
 
 TEST_GROUP(ParserConstantDeclarations){void setup() override{} void teardown()
                                            override{}};
 
 TEST(ParserConstantDeclarations, ConstWithTypeAndValue) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { const PI: f64 = 3.14159; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  CHECK_TRUE(body != nullptr);
+  CHECK_EQUAL(1, body->statements().size());
+
+  auto *const_decl =
+      dynamic_cast<const nodes::const_c *>(body->statements()[0].get());
+  CHECK_TRUE(const_decl != nullptr);
+  STRCMP_EQUAL("PI", const_decl->name().name.c_str());
+  STRCMP_EQUAL("f64", const_decl->type().name.c_str());
+  CHECK_TRUE(const_decl->value() != nullptr);
 }
 
 TEST(ParserConstantDeclarations, ConstWithoutTypeAnnotation) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { const MAX = 100; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *const_decl =
+      dynamic_cast<const nodes::const_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(const_decl != nullptr);
+  STRCMP_EQUAL("MAX", const_decl->name().name.c_str());
+  STRCMP_EQUAL("", const_decl->type().name.c_str());
+  CHECK_TRUE(const_decl->value() != nullptr);
 }
 
 TEST(ParserConstantDeclarations, ConstWithPointerType) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { const ptr: *i32 = nil; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *const_decl =
+      dynamic_cast<const nodes::const_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(const_decl != nullptr);
+  STRCMP_EQUAL("ptr", const_decl->name().name.c_str());
+  STRCMP_EQUAL("i32", const_decl->type().name.c_str());
+  CHECK_TRUE(const_decl->type().is_pointer);
 }
 
 TEST(ParserConstantDeclarations, ConstWithArrayType) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { const arr: [5]i32 = nil; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *const_decl =
+      dynamic_cast<const nodes::const_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(const_decl != nullptr);
+  STRCMP_EQUAL("arr", const_decl->name().name.c_str());
+  STRCMP_EQUAL("i32", const_decl->type().name.c_str());
+  CHECK_TRUE(const_decl->type().array_size.has_value());
+  CHECK_EQUAL(5, const_decl->type().array_size.value());
 }
 
 TEST(ParserConstantDeclarations, ConstWithComplexValue) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { const result: i32 = a + b * 3; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *const_decl =
+      dynamic_cast<const nodes::const_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(const_decl != nullptr);
+  STRCMP_EQUAL("result", const_decl->name().name.c_str());
+  CHECK_TRUE(const_decl->value() != nullptr);
+
+  auto *value_expr =
+      dynamic_cast<const nodes::binary_op_c *>(const_decl->value());
+  CHECK_TRUE(value_expr != nullptr);
+  CHECK_TRUE(value_expr->op() == nodes::binary_op_e::ADD);
 }
 
 TEST(ParserConstantDeclarations, ErrorMissingConstName) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { const : i32 = 42; }";
+  validate_parse_failure(source, "Expected constant name");
 }
 
 TEST(ParserConstantDeclarations, ErrorMissingEquals) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { const X: i32 42; }";
+  validate_parse_failure(source, "Expected '='");
 }
 
 TEST(ParserConstantDeclarations, ErrorMissingValue) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { const X: i32 = ; }";
+  validate_parse_failure(source, "Expected expression");
 }
 
 TEST(ParserConstantDeclarations, ErrorMissingSemicolon) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { const X: i32 = 42 }";
+  validate_parse_failure(source, "Expected ';'");
 }
 
 TEST_GROUP(ParserTypeSystem){void setup() override{} void teardown()
                                  override{}};
 
-TEST(ParserTypeSystem, PrimitiveTypes) { FAIL("Not implemented yet"); }
+TEST(ParserTypeSystem, PrimitiveTypes) {
+  const char *source = R"(
+    fn test_i8(x: i8): i8 {}
+    fn test_i16(x: i16): i16 {}
+    fn test_i32(x: i32): i32 {}
+    fn test_i64(x: i64): i64 {}
+    fn test_u8(x: u8): u8 {}
+    fn test_u16(x: u16): u16 {}
+    fn test_u32(x: u32): u32 {}
+    fn test_u64(x: u64): u64 {}
+    fn test_f32(x: f32): f32 {}
+    fn test_f64(x: f64): f64 {}
+    fn test_bool(x: bool): bool {}
+    fn test_void(): void {}
+  )";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserTypeSystem, SinglePointerType) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(12, wrapper.result.declarations.size());
 
-TEST(ParserTypeSystem, MultiLevelPointerType) { FAIL("Not implemented yet"); }
+  const char *expected_types[] = {"i8",  "i16", "i32", "i64", "u8",   "u16",
+                                  "u32", "u64", "f32", "f64", "bool", "void"};
 
-TEST(ParserTypeSystem, SizedArrayType) { FAIL("Not implemented yet"); }
+  for (size_t i = 0; i < 12; i++) {
+    auto *fn =
+        dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[i].get());
+    CHECK_TRUE(fn != nullptr);
+    STRCMP_EQUAL(expected_types[i], fn->return_type().name.c_str());
+    if (i < 11) {
+      CHECK_EQUAL(1, fn->params().size());
+      STRCMP_EQUAL(expected_types[i], fn->params()[0].type.name.c_str());
+    }
+  }
+}
 
-TEST(ParserTypeSystem, UnsizedArrayType) { FAIL("Not implemented yet"); }
+TEST(ParserTypeSystem, SinglePointerType) {
+  const char *source = "fn test(ptr: *i32): *i32 {}";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserTypeSystem, ArrayOfPointers) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserTypeSystem, PointerToArray) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
 
-TEST(ParserTypeSystem, NamedCustomType) { FAIL("Not implemented yet"); }
+  STRCMP_EQUAL("i32", fn->params()[0].type.name.c_str());
+  CHECK_TRUE(fn->params()[0].type.is_pointer);
 
-TEST(ParserTypeSystem, PointerToCustomType) { FAIL("Not implemented yet"); }
+  STRCMP_EQUAL("i32", fn->return_type().name.c_str());
+  CHECK_TRUE(fn->return_type().is_pointer);
+}
 
-TEST(ParserTypeSystem, ArrayOfCustomType) { FAIL("Not implemented yet"); }
+TEST(ParserTypeSystem, MultiLevelPointerType) {
+  const char *source = "fn test(ptr: **i32): **i32 {}";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserTypeSystem, ErrorInvalidTypeSyntax) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserTypeSystem, ErrorMissingArraySize) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  STRCMP_EQUAL("i32", fn->params()[0].type.name.c_str());
+  CHECK_TRUE(fn->params()[0].type.is_pointer);
+
+  STRCMP_EQUAL("i32", fn->return_type().name.c_str());
+  CHECK_TRUE(fn->return_type().is_pointer);
+}
+
+TEST(ParserTypeSystem, SizedArrayType) {
+  const char *source = "fn test(arr: [10]i32): [5]i32 {}";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  STRCMP_EQUAL("i32", fn->params()[0].type.name.c_str());
+  CHECK_TRUE(fn->params()[0].type.array_size.has_value());
+  CHECK_EQUAL(10, fn->params()[0].type.array_size.value());
+
+  STRCMP_EQUAL("i32", fn->return_type().name.c_str());
+  CHECK_TRUE(fn->return_type().array_size.has_value());
+  CHECK_EQUAL(5, fn->return_type().array_size.value());
+}
+
+TEST(ParserTypeSystem, UnsizedArrayType) {
+  const char *source = "fn test(arr: []i32): []i32 {}";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  STRCMP_EQUAL("i32", fn->params()[0].type.name.c_str());
+  CHECK_FALSE(fn->params()[0].type.array_size.has_value());
+
+  STRCMP_EQUAL("i32", fn->return_type().name.c_str());
+  CHECK_FALSE(fn->return_type().array_size.has_value());
+}
+
+TEST(ParserTypeSystem, ArrayOfPointers) {
+  const char *source = "fn test(arr: [10]*i32) {}";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  STRCMP_EQUAL("i32", fn->params()[0].type.name.c_str());
+  CHECK_TRUE(fn->params()[0].type.array_size.has_value());
+  CHECK_EQUAL(10, fn->params()[0].type.array_size.value());
+  CHECK_TRUE(fn->params()[0].type.is_pointer);
+}
+
+TEST(ParserTypeSystem, PointerToArray) {
+  const char *source = "fn test(ptr: *[10]i32) {}";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  STRCMP_EQUAL("i32", fn->params()[0].type.name.c_str());
+  CHECK_TRUE(fn->params()[0].type.is_pointer);
+}
+
+TEST(ParserTypeSystem, NamedCustomType) {
+  const char *source = "fn test(p: Point): Point {}";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  STRCMP_EQUAL("Point", fn->params()[0].type.name.c_str());
+  CHECK_FALSE(fn->params()[0].type.is_pointer);
+
+  STRCMP_EQUAL("Point", fn->return_type().name.c_str());
+  CHECK_FALSE(fn->return_type().is_pointer);
+}
+
+TEST(ParserTypeSystem, PointerToCustomType) {
+  const char *source = "fn test(p: *Point): *Point {}";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  STRCMP_EQUAL("Point", fn->params()[0].type.name.c_str());
+  CHECK_TRUE(fn->params()[0].type.is_pointer);
+
+  STRCMP_EQUAL("Point", fn->return_type().name.c_str());
+  CHECK_TRUE(fn->return_type().is_pointer);
+}
+
+TEST(ParserTypeSystem, ArrayOfCustomType) {
+  const char *source = "fn test(arr: [5]Point): [10]Point {}";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  STRCMP_EQUAL("Point", fn->params()[0].type.name.c_str());
+  CHECK_TRUE(fn->params()[0].type.array_size.has_value());
+  CHECK_EQUAL(5, fn->params()[0].type.array_size.value());
+
+  STRCMP_EQUAL("Point", fn->return_type().name.c_str());
+  CHECK_TRUE(fn->return_type().array_size.has_value());
+  CHECK_EQUAL(10, fn->return_type().array_size.value());
+}
+
+TEST(ParserTypeSystem, ErrorInvalidTypeSyntax) {
+  const char *source = "fn test(x: @invalid) {}";
+  validate_parse_failure(source, "Expected type");
+}
+
+TEST(ParserTypeSystem, ErrorMissingArraySize) {
+  const char *source = "fn test(arr: [)i32) {}";
+  validate_parse_failure(source);
+}
 
 TEST_GROUP(ParserControlFlow){void setup() override{} void teardown()
                                   override{}};
 
-TEST(ParserControlFlow, SimpleIfStatement) { FAIL("Not implemented yet"); }
+TEST(ParserControlFlow, SimpleIfStatement) {
+  const char *source = "fn test() { if x > 0 { return 1; } }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserControlFlow, IfElseStatement) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserControlFlow, IfElseIfElseChain) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *if_stmt =
+      dynamic_cast<const nodes::if_c *>(body->statements()[0].get());
 
-TEST(ParserControlFlow, NestedIfStatements) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(if_stmt != nullptr);
+  CHECK_TRUE(if_stmt->condition() != nullptr);
+  CHECK_TRUE(if_stmt->then_block() != nullptr);
+  CHECK_FALSE(if_stmt->else_block() != nullptr);
+}
 
-TEST(ParserControlFlow, WhileLoop) { FAIL("Not implemented yet"); }
+TEST(ParserControlFlow, IfElseStatement) {
+  const char *source =
+      "fn test() { if x > 0 { return 1; } else { return 0; } }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserControlFlow, WhileLoopWithBreak) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserControlFlow, WhileLoopWithContinue) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *if_stmt =
+      dynamic_cast<const nodes::if_c *>(body->statements()[0].get());
 
-TEST(ParserControlFlow, ForLoopCStyle) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(if_stmt != nullptr);
+  CHECK_TRUE(if_stmt->condition() != nullptr);
+  CHECK_TRUE(if_stmt->then_block() != nullptr);
+  CHECK_TRUE(if_stmt->else_block() != nullptr);
+}
 
-TEST(ParserControlFlow, ForLoopRangeBased) { FAIL("Not implemented yet"); }
+TEST(ParserControlFlow, IfElseIfElseChain) {
+  const char *source = R"(
+    fn test() {
+      if x > 0 {
+        return 1;
+      } else if x < 0 {
+        return -1;
+      } else {
+        return 0;
+      }
+    }
+  )";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *if_stmt =
+      dynamic_cast<const nodes::if_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(if_stmt != nullptr);
+  CHECK_TRUE(if_stmt->condition() != nullptr);
+  CHECK_TRUE(if_stmt->then_block() != nullptr);
+  CHECK_TRUE(if_stmt->else_block() != nullptr);
+
+  auto *else_if = dynamic_cast<const nodes::if_c *>(if_stmt->else_block());
+  CHECK_TRUE(else_if != nullptr);
+  CHECK_TRUE(else_if->condition() != nullptr);
+  CHECK_TRUE(else_if->else_block() != nullptr);
+}
+
+TEST(ParserControlFlow, NestedIfStatements) {
+  const char *source = R"(
+    fn test() {
+      if x > 0 {
+        if y > 0 {
+          return 1;
+        }
+      }
+    }
+  )";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *outer_if =
+      dynamic_cast<const nodes::if_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(outer_if != nullptr);
+
+  auto *then_block =
+      dynamic_cast<const nodes::block_c *>(outer_if->then_block());
+  CHECK_TRUE(then_block != nullptr);
+
+  auto *inner_if =
+      dynamic_cast<const nodes::if_c *>(then_block->statements()[0].get());
+  CHECK_TRUE(inner_if != nullptr);
+}
+
+TEST(ParserControlFlow, WhileLoop) {
+  const char *source = "fn test() { while x > 0 { x = x - 1; } }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *while_stmt =
+      dynamic_cast<const nodes::while_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(while_stmt != nullptr);
+  CHECK_TRUE(while_stmt->condition() != nullptr);
+  CHECK_TRUE(while_stmt->body() != nullptr);
+}
+
+TEST(ParserControlFlow, WhileLoopWithBreak) {
+  const char *source = "fn test() { while true { break; } }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *while_stmt =
+      dynamic_cast<const nodes::while_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(while_stmt != nullptr);
+
+  auto *loop_body = dynamic_cast<const nodes::block_c *>(while_stmt->body());
+  CHECK_TRUE(loop_body != nullptr);
+
+  auto *break_stmt =
+      dynamic_cast<const nodes::break_c *>(loop_body->statements()[0].get());
+  CHECK_TRUE(break_stmt != nullptr);
+}
+
+TEST(ParserControlFlow, WhileLoopWithContinue) {
+  const char *source = "fn test() { while true { continue; } }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *while_stmt =
+      dynamic_cast<const nodes::while_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(while_stmt != nullptr);
+
+  auto *loop_body = dynamic_cast<const nodes::block_c *>(while_stmt->body());
+  CHECK_TRUE(loop_body != nullptr);
+
+  auto *continue_stmt =
+      dynamic_cast<const nodes::continue_c *>(loop_body->statements()[0].get());
+  CHECK_TRUE(continue_stmt != nullptr);
+}
+
+TEST(ParserControlFlow, ForLoopCStyle) {
+  const char *source =
+      "fn test() { for i = 0; i < 10; i = i + 1 { x = x + i; } }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *for_stmt =
+      dynamic_cast<const nodes::for_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(for_stmt != nullptr);
+  CHECK_TRUE(for_stmt->init() != nullptr);
+  CHECK_TRUE(for_stmt->condition() != nullptr);
+  CHECK_TRUE(for_stmt->post() != nullptr);
+  CHECK_TRUE(for_stmt->body() != nullptr);
+}
+
+TEST(ParserControlFlow, ForLoopRangeBased) {
+  const char *source = "fn test() { for i in range { x = x + i; } }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *for_stmt =
+      dynamic_cast<const nodes::for_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(for_stmt != nullptr);
+  CHECK_TRUE(for_stmt->init() != nullptr);
+  CHECK_TRUE(for_stmt->condition() != nullptr);
+  CHECK_TRUE(for_stmt->body() != nullptr);
+}
 
 TEST(ParserControlFlow, ForLoopWithBreakContinue) {
-  FAIL("Not implemented yet");
+  const char *source = R"(
+    fn test() {
+      for i = 0; i < 10; i = i + 1 {
+        if i == 5 { break; }
+        if i == 3 { continue; }
+      }
+    }
+  )";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *for_stmt =
+      dynamic_cast<const nodes::for_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(for_stmt != nullptr);
+  CHECK_TRUE(for_stmt->body() != nullptr);
 }
 
-TEST(ParserControlFlow, NestedLoops) { FAIL("Not implemented yet"); }
+TEST(ParserControlFlow, NestedLoops) {
+  const char *source = R"(
+    fn test() {
+      while x > 0 {
+        for i = 0; i < 10; i = i + 1 {
+          x = x - 1;
+        }
+      }
+    }
+  )";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserControlFlow, ReturnStatement) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserControlFlow, ReturnWithExpression) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *while_stmt =
+      dynamic_cast<const nodes::while_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(while_stmt != nullptr);
+
+  auto *while_body = dynamic_cast<const nodes::block_c *>(while_stmt->body());
+  CHECK_TRUE(while_body != nullptr);
+
+  auto *for_stmt =
+      dynamic_cast<const nodes::for_c *>(while_body->statements()[0].get());
+  CHECK_TRUE(for_stmt != nullptr);
+}
+
+TEST(ParserControlFlow, ReturnStatement) {
+  const char *source = "fn test() { return; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(return_stmt != nullptr);
+  CHECK_FALSE(return_stmt->expression() != nullptr);
+}
+
+TEST(ParserControlFlow, ReturnWithExpression) {
+  const char *source = "fn test(): i32 { return 42; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(return_stmt != nullptr);
+  CHECK_TRUE(return_stmt->expression() != nullptr);
+}
 
 TEST(ParserControlFlow, ErrorMissingIfCondition) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { if { return 1; } }";
+  validate_parse_failure(source, "Expected expression");
 }
 
-TEST(ParserControlFlow, ErrorMissingIfBody) { FAIL("Not implemented yet"); }
+TEST(ParserControlFlow, ErrorMissingIfBody) {
+  const char *source = "fn test() { if x > 0 }";
+  validate_parse_failure(source, "Expected '{'");
+}
 
 TEST(ParserControlFlow, ErrorMissingWhileCondition) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { while { x = x - 1; } }";
+  validate_parse_failure(source, "Expected expression");
 }
 
-TEST(ParserControlFlow, ErrorMissingWhileBody) { FAIL("Not implemented yet"); }
+TEST(ParserControlFlow, ErrorMissingWhileBody) {
+  const char *source = "fn test() { while x > 0 }";
+  validate_parse_failure(source, "Expected '{'");
+}
 
-TEST(ParserControlFlow, ErrorInvalidForSyntax) { FAIL("Not implemented yet"); }
+TEST(ParserControlFlow, ErrorInvalidForSyntax) {
+  const char *source = "fn test() { for { x = x + 1; } }";
+  validate_parse_failure(source);
+}
 
 TEST_GROUP(ParserExpressions){void setup() override{} void teardown()
                                   override{}};
 
-TEST(ParserExpressions, BinaryAddition) { FAIL("Not implemented yet"); }
+TEST(ParserExpressions, BinaryAddition) {
+  const char *source = "fn test() { return a + b; }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserExpressions, BinarySubtraction) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserExpressions, BinaryMultiplication) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
 
-TEST(ParserExpressions, BinaryDivision) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::ADD);
+  CHECK_TRUE(bin_op->left() != nullptr);
+  CHECK_TRUE(bin_op->right() != nullptr);
+}
 
-TEST(ParserExpressions, BinaryModulo) { FAIL("Not implemented yet"); }
+TEST(ParserExpressions, BinarySubtraction) {
+  const char *source = "fn test() { return a - b; }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserExpressions, LogicalAnd) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserExpressions, LogicalOr) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
 
-TEST(ParserExpressions, BitwiseAnd) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::SUB);
+}
 
-TEST(ParserExpressions, BitwiseOr) { FAIL("Not implemented yet"); }
+TEST(ParserExpressions, BinaryMultiplication) {
+  const char *source = "fn test() { return a * b; }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserExpressions, BitwiseXor) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserExpressions, LeftShift) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
 
-TEST(ParserExpressions, RightShift) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::MUL);
+}
 
-TEST(ParserExpressions, EqualityComparison) { FAIL("Not implemented yet"); }
+TEST(ParserExpressions, BinaryDivision) {
+  const char *source = "fn test() { return a / b; }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserExpressions, InequalityComparison) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserExpressions, LessThanComparison) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
 
-TEST(ParserExpressions, LessEqualComparison) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::DIV);
+}
 
-TEST(ParserExpressions, GreaterThanComparison) { FAIL("Not implemented yet"); }
+TEST(ParserExpressions, BinaryModulo) {
+  const char *source = "fn test() { return a % b; }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserExpressions, GreaterEqualComparison) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserExpressions, UnaryNegation) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
 
-TEST(ParserExpressions, UnaryLogicalNot) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::MOD);
+}
 
-TEST(ParserExpressions, UnaryBitwiseNot) { FAIL("Not implemented yet"); }
+TEST(ParserExpressions, LogicalAnd) {
+  const char *source = "fn test() { return a && b; }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserExpressions, UnaryAddressOf) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserExpressions, UnaryDereference) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
 
-TEST(ParserExpressions, SimpleAssignment) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::AND);
+}
 
-TEST(ParserExpressions, CompoundAssignmentAdd) { FAIL("Not implemented yet"); }
+TEST(ParserExpressions, LogicalOr) {
+  const char *source = "fn test() { return a || b; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::OR);
+}
+
+TEST(ParserExpressions, BitwiseAnd) {
+  const char *source = "fn test() { return a & b; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::BITWISE_AND);
+}
+
+TEST(ParserExpressions, BitwiseOr) {
+  const char *source = "fn test() { return a | b; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::BITWISE_OR);
+}
+
+TEST(ParserExpressions, BitwiseXor) {
+  const char *source = "fn test() { return a ^ b; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::BITWISE_XOR);
+}
+
+TEST(ParserExpressions, LeftShift) {
+  const char *source = "fn test() { return a << b; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::LEFT_SHIFT);
+}
+
+TEST(ParserExpressions, RightShift) {
+  const char *source = "fn test() { return a >> b; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::RIGHT_SHIFT);
+}
+
+TEST(ParserExpressions, EqualityComparison) {
+  const char *source = "fn test() { return a == b; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::EQ);
+}
+
+TEST(ParserExpressions, InequalityComparison) {
+  const char *source = "fn test() { return a != b; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::NE);
+}
+
+TEST(ParserExpressions, LessThanComparison) {
+  const char *source = "fn test() { return a < b; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::LT);
+}
+
+TEST(ParserExpressions, LessEqualComparison) {
+  const char *source = "fn test() { return a <= b; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::LE);
+}
+
+TEST(ParserExpressions, GreaterThanComparison) {
+  const char *source = "fn test() { return a > b; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::GT);
+}
+
+TEST(ParserExpressions, GreaterEqualComparison) {
+  const char *source = "fn test() { return a >= b; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *bin_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(bin_op != nullptr);
+  CHECK_TRUE(bin_op->op() == nodes::binary_op_e::GE);
+}
+
+TEST(ParserExpressions, UnaryNegation) {
+  const char *source = "fn test() { return -x; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *unary_op =
+      dynamic_cast<const nodes::unary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(unary_op != nullptr);
+  CHECK_TRUE(unary_op->op() == nodes::unary_op_e::NEG);
+  CHECK_TRUE(unary_op->operand() != nullptr);
+}
+
+TEST(ParserExpressions, UnaryLogicalNot) {
+  const char *source = "fn test() { return !x; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *unary_op =
+      dynamic_cast<const nodes::unary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(unary_op != nullptr);
+  CHECK_TRUE(unary_op->op() == nodes::unary_op_e::NOT);
+}
+
+TEST(ParserExpressions, UnaryBitwiseNot) {
+  const char *source = "fn test() { return ~x; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *unary_op =
+      dynamic_cast<const nodes::unary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(unary_op != nullptr);
+  CHECK_TRUE(unary_op->op() == nodes::unary_op_e::NOT);
+}
+
+TEST(ParserExpressions, UnaryAddressOf) {
+  const char *source = "fn test() { return &x; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *unary_op =
+      dynamic_cast<const nodes::unary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(unary_op != nullptr);
+  CHECK_TRUE(unary_op->op() == nodes::unary_op_e::ADDRESS_OF);
+}
+
+TEST(ParserExpressions, UnaryDereference) {
+  const char *source = "fn test() { return *ptr; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *unary_op =
+      dynamic_cast<const nodes::unary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(unary_op != nullptr);
+  CHECK_TRUE(unary_op->op() == nodes::unary_op_e::DEREF);
+}
+
+TEST(ParserExpressions, SimpleAssignment) {
+  const char *source = "fn test() { x = 42; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *assign =
+      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(assign != nullptr);
+  CHECK_TRUE(assign->target() != nullptr);
+  CHECK_TRUE(assign->value() != nullptr);
+}
+
+TEST(ParserExpressions, CompoundAssignmentAdd) {
+  const char *source = "fn test() { x += 5; }";
+  parse_result_wrapper_s wrapper(source);
+
+  if (!wrapper.result.success) {
+    printf("Parse error: %s\n", wrapper.result.error_message.c_str());
+  }
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *assign =
+      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(assign != nullptr);
+  CHECK_TRUE(assign->target() != nullptr);
+  CHECK_TRUE(assign->value() != nullptr);
+}
 
 TEST(ParserExpressions, CompoundAssignmentSubtract) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { x -= 5; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *assign =
+      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(assign != nullptr);
+  CHECK_TRUE(assign->target() != nullptr);
+  CHECK_TRUE(assign->value() != nullptr);
 }
 
 TEST(ParserExpressions, CompoundAssignmentMultiply) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { x *= 5; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *assign =
+      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(assign != nullptr);
+  CHECK_TRUE(assign->target() != nullptr);
+  CHECK_TRUE(assign->value() != nullptr);
 }
 
 TEST(ParserExpressions, CompoundAssignmentDivide) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { x /= 5; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *assign =
+      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(assign != nullptr);
+  CHECK_TRUE(assign->target() != nullptr);
+  CHECK_TRUE(assign->value() != nullptr);
 }
 
 TEST(ParserExpressions, CompoundAssignmentModulo) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { x %= 5; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *assign =
+      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(assign != nullptr);
+  CHECK_TRUE(assign->target() != nullptr);
+  CHECK_TRUE(assign->value() != nullptr);
 }
 
 TEST(ParserExpressions, OperatorPrecedenceArithmetic) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return a + b * c; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *add_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(add_op != nullptr);
+  CHECK_TRUE(add_op->op() == nodes::binary_op_e::ADD);
+
+  auto *mul_op = dynamic_cast<const nodes::binary_op_c *>(add_op->right());
+  CHECK_TRUE(mul_op != nullptr);
+  CHECK_TRUE(mul_op->op() == nodes::binary_op_e::MUL);
 }
 
 TEST(ParserExpressions, OperatorPrecedenceLogical) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return a || b && c; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *or_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(or_op != nullptr);
+  CHECK_TRUE(or_op->op() == nodes::binary_op_e::OR);
+
+  auto *and_op = dynamic_cast<const nodes::binary_op_c *>(or_op->right());
+  CHECK_TRUE(and_op != nullptr);
+  CHECK_TRUE(and_op->op() == nodes::binary_op_e::AND);
 }
 
 TEST(ParserExpressions, OperatorPrecedenceMixed) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return a + b < c * d; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *lt_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(lt_op != nullptr);
+  CHECK_TRUE(lt_op->op() == nodes::binary_op_e::LT);
+
+  auto *add_op = dynamic_cast<const nodes::binary_op_c *>(lt_op->left());
+  CHECK_TRUE(add_op != nullptr);
+  CHECK_TRUE(add_op->op() == nodes::binary_op_e::ADD);
+
+  auto *mul_op = dynamic_cast<const nodes::binary_op_c *>(lt_op->right());
+  CHECK_TRUE(mul_op != nullptr);
+  CHECK_TRUE(mul_op->op() == nodes::binary_op_e::MUL);
 }
 
 TEST(ParserExpressions, ParenthesizedExpression) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return (a + b) * c; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *mul_op =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+
+  CHECK_TRUE(mul_op != nullptr);
+  CHECK_TRUE(mul_op->op() == nodes::binary_op_e::MUL);
+
+  auto *add_op = dynamic_cast<const nodes::binary_op_c *>(mul_op->left());
+  CHECK_TRUE(add_op != nullptr);
+  CHECK_TRUE(add_op->op() == nodes::binary_op_e::ADD);
 }
 
 TEST(ParserExpressions, ComplexNestedExpression) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return (a + b * c) / (d - e) + f; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(return_stmt != nullptr);
+  CHECK_TRUE(return_stmt->expression() != nullptr);
+
+  auto *outer_add =
+      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  CHECK_TRUE(outer_add != nullptr);
+  CHECK_TRUE(outer_add->op() == nodes::binary_op_e::ADD);
 }
 
 TEST(ParserExpressions, ErrorUnbalancedParentheses) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return (a + b; }";
+  validate_parse_failure(source, "Expected ')'");
 }
 
-TEST(ParserExpressions, ErrorInvalidOperator) { FAIL("Not implemented yet"); }
+TEST(ParserExpressions, ErrorInvalidOperator) {
+  const char *source = "fn test() { return a @ b; }";
+  validate_parse_failure(source);
+}
 
-TEST(ParserExpressions, ErrorMissingOperand) { FAIL("Not implemented yet"); }
+TEST(ParserExpressions, ErrorMissingOperand) {
+  const char *source = "fn test() { return a + ; }";
+  validate_parse_failure(source, "Expected expression");
+}
 
 TEST_GROUP(ParserPostfixOperations){void setup() override{} void teardown()
                                         override{}};
 
 TEST(ParserPostfixOperations, FunctionCallNoArgs) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return foo(); }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *call = dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+
+  CHECK_TRUE(call != nullptr);
+  CHECK_TRUE(call->callee() != nullptr);
+  CHECK_EQUAL(0, call->arguments().size());
 }
 
 TEST(ParserPostfixOperations, FunctionCallSingleArg) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return foo(42); }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *call = dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+
+  CHECK_TRUE(call != nullptr);
+  CHECK_EQUAL(1, call->arguments().size());
 }
 
 TEST(ParserPostfixOperations, FunctionCallMultipleArgs) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return foo(1, 2, 3); }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *call = dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+
+  CHECK_TRUE(call != nullptr);
+  CHECK_EQUAL(3, call->arguments().size());
 }
 
 TEST(ParserPostfixOperations, NestedFunctionCalls) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return foo(bar(baz())); }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *outer_call =
+      dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+
+  CHECK_TRUE(outer_call != nullptr);
+  CHECK_EQUAL(1, outer_call->arguments().size());
+
+  auto *inner_call =
+      dynamic_cast<const nodes::call_c *>(outer_call->arguments()[0].get());
+  CHECK_TRUE(inner_call != nullptr);
 }
 
-TEST(ParserPostfixOperations, ArrayIndexing) { FAIL("Not implemented yet"); }
+TEST(ParserPostfixOperations, ArrayIndexing) {
+  const char *source = "fn test() { return arr[0]; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *index = dynamic_cast<const nodes::index_c *>(return_stmt->expression());
+
+  CHECK_TRUE(index != nullptr);
+  CHECK_TRUE(index->object() != nullptr);
+  CHECK_TRUE(index->index() != nullptr);
+}
 
 TEST(ParserPostfixOperations, MultiDimensionalArrayIndexing) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return matrix[i][j]; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *outer_index =
+      dynamic_cast<const nodes::index_c *>(return_stmt->expression());
+
+  CHECK_TRUE(outer_index != nullptr);
+
+  auto *inner_index =
+      dynamic_cast<const nodes::index_c *>(outer_index->object());
+  CHECK_TRUE(inner_index != nullptr);
 }
 
-TEST(ParserPostfixOperations, MemberAccess) { FAIL("Not implemented yet"); }
+TEST(ParserPostfixOperations, MemberAccess) {
+  const char *source = "fn test() { return obj.field; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *member =
+      dynamic_cast<const nodes::member_access_c *>(return_stmt->expression());
+
+  CHECK_TRUE(member != nullptr);
+  CHECK_TRUE(member->object() != nullptr);
+  STRCMP_EQUAL("field", member->field().name.c_str());
+}
 
 TEST(ParserPostfixOperations, ChainedMemberAccess) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return obj.field1.field2; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *outer_member =
+      dynamic_cast<const nodes::member_access_c *>(return_stmt->expression());
+
+  CHECK_TRUE(outer_member != nullptr);
+  STRCMP_EQUAL("field2", outer_member->field().name.c_str());
+
+  auto *inner_member =
+      dynamic_cast<const nodes::member_access_c *>(outer_member->object());
+  CHECK_TRUE(inner_member != nullptr);
+  STRCMP_EQUAL("field1", inner_member->field().name.c_str());
 }
 
 TEST(ParserPostfixOperations, MemberAccessOnFunctionCall) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return foo().bar; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *member =
+      dynamic_cast<const nodes::member_access_c *>(return_stmt->expression());
+
+  CHECK_TRUE(member != nullptr);
+  STRCMP_EQUAL("bar", member->field().name.c_str());
+
+  auto *call = dynamic_cast<const nodes::call_c *>(member->object());
+  CHECK_TRUE(call != nullptr);
 }
 
 TEST(ParserPostfixOperations, ArrayIndexOnMemberAccess) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return obj.arr[0]; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *index = dynamic_cast<const nodes::index_c *>(return_stmt->expression());
+
+  CHECK_TRUE(index != nullptr);
+
+  auto *member = dynamic_cast<const nodes::member_access_c *>(index->object());
+  CHECK_TRUE(member != nullptr);
+  STRCMP_EQUAL("arr", member->field().name.c_str());
 }
 
 TEST(ParserPostfixOperations, ComplexChainedOperations) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return obj.method(arg).field[0]; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(return_stmt != nullptr);
+  CHECK_TRUE(return_stmt->expression() != nullptr);
+
+  auto *index = dynamic_cast<const nodes::index_c *>(return_stmt->expression());
+  CHECK_TRUE(index != nullptr);
 }
 
 TEST(ParserPostfixOperations, ErrorMissingClosingParen) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return foo(42; }";
+  validate_parse_failure(source, "Expected ')'");
 }
 
 TEST(ParserPostfixOperations, ErrorMissingClosingBracket) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return arr[0; }";
+  validate_parse_failure(source, "Expected ']'");
 }
 
 TEST(ParserPostfixOperations, ErrorMissingMemberName) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return obj.; }";
+  validate_parse_failure(source, "Expected field name");
 }
 
 TEST(ParserPostfixOperations, ErrorInvalidArgumentSyntax) {
-  FAIL("Not implemented yet");
+  const char *source = "fn test() { return foo(,); }";
+  validate_parse_failure(source, "Expected expression");
 }
 
 TEST_GROUP(ParserLiterals){void setup() override{} void teardown() override{}};
 
-TEST(ParserLiterals, IntegerLiteralDecimal) { FAIL("Not implemented yet"); }
+TEST(ParserLiterals, IntegerLiteralDecimal) {
+  const char *source = "fn test() { return 42; }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserLiterals, IntegerLiteralHexadecimal) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserLiterals, IntegerLiteralBinary) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *literal =
+      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
 
-TEST(ParserLiterals, IntegerLiteralOctal) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(literal != nullptr);
+  CHECK_TRUE(literal->type() == nodes::literal_type_e::INTEGER);
+  STRCMP_EQUAL("42", literal->value().c_str());
+}
 
-TEST(ParserLiterals, FloatLiteralSimple) { FAIL("Not implemented yet"); }
+TEST(ParserLiterals, IntegerLiteralHexadecimal) {
+  const char *source = "fn test() { return 0x2A; }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserLiterals, FloatLiteralScientific) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserLiterals, StringLiteralSimple) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *literal =
+      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
 
-TEST(ParserLiterals, StringLiteralWithEscapes) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(literal != nullptr);
+  CHECK_TRUE(literal->type() == nodes::literal_type_e::INTEGER);
+  STRCMP_EQUAL("0x2A", literal->value().c_str());
+}
 
-TEST(ParserLiterals, BoolLiteralTrue) { FAIL("Not implemented yet"); }
+TEST(ParserLiterals, IntegerLiteralBinary) {
+  const char *source = "fn test() { return 0b101010; }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserLiterals, BoolLiteralFalse) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserLiterals, NilLiteral) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *literal =
+      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
 
-TEST(ParserLiterals, IdentifierSimple) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(literal != nullptr);
+  CHECK_TRUE(literal->type() == nodes::literal_type_e::INTEGER);
+  STRCMP_EQUAL("0b101010", literal->value().c_str());
+}
 
-TEST(ParserLiterals, IdentifierWithUnderscores) { FAIL("Not implemented yet"); }
+TEST(ParserLiterals, IntegerLiteralOctal) {
+  const char *source = "fn test() { return 0o52; }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserLiterals, ParenthesizedExpression) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserLiterals, ArrayLiteralEmpty) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *literal =
+      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
 
-TEST(ParserLiterals, ArrayLiteralWithElements) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(literal != nullptr);
+  CHECK_TRUE(literal->type() == nodes::literal_type_e::INTEGER);
+  STRCMP_EQUAL("0o52", literal->value().c_str());
+}
 
-TEST(ParserLiterals, ArrayLiteralNested) { FAIL("Not implemented yet"); }
+TEST(ParserLiterals, FloatLiteralSimple) {
+  const char *source = "fn test() { return 3.14; }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserLiterals, StructLiteralEmpty) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserLiterals, StructLiteralWithFields) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *literal =
+      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
 
-TEST(ParserLiterals, StructLiteralNested) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(literal != nullptr);
+  CHECK_TRUE(literal->type() == nodes::literal_type_e::FLOAT);
+  STRCMP_EQUAL("3.14", literal->value().c_str());
+}
 
-TEST(ParserLiterals, ErrorUnterminatedString) { FAIL("Not implemented yet"); }
+TEST(ParserLiterals, FloatLiteralScientific) {
+  const char *source = "fn test() { return 1.5e10; }";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserLiterals, ErrorInvalidArraySyntax) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
 
-TEST(ParserLiterals, ErrorInvalidStructSyntax) { FAIL("Not implemented yet"); }
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *literal =
+      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+
+  CHECK_TRUE(literal != nullptr);
+  CHECK_TRUE(literal->type() == nodes::literal_type_e::FLOAT);
+  STRCMP_EQUAL("1.5e10", literal->value().c_str());
+}
+
+TEST(ParserLiterals, StringLiteralSimple) {
+  const char *source = "fn test() { return \"hello\"; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *literal =
+      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+
+  CHECK_TRUE(literal != nullptr);
+  CHECK_TRUE(literal->type() == nodes::literal_type_e::STRING);
+  STRCMP_EQUAL("\"hello\"", literal->value().c_str());
+}
+
+TEST(ParserLiterals, StringLiteralWithEscapes) {
+  const char *source = "fn test() { return \"hello\\nworld\\t!\"; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *literal =
+      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+
+  CHECK_TRUE(literal != nullptr);
+  CHECK_TRUE(literal->type() == nodes::literal_type_e::STRING);
+}
+
+TEST(ParserLiterals, BoolLiteralTrue) {
+  const char *source = "fn test() { return true; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *literal =
+      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+
+  CHECK_TRUE(literal != nullptr);
+  CHECK_TRUE(literal->type() == nodes::literal_type_e::BOOL);
+  STRCMP_EQUAL("true", literal->value().c_str());
+}
+
+TEST(ParserLiterals, BoolLiteralFalse) {
+  const char *source = "fn test() { return false; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *literal =
+      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+
+  CHECK_TRUE(literal != nullptr);
+  CHECK_TRUE(literal->type() == nodes::literal_type_e::BOOL);
+  STRCMP_EQUAL("false", literal->value().c_str());
+}
+
+TEST(ParserLiterals, NilLiteral) {
+  const char *source = "fn test() { return nil; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *literal =
+      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+
+  CHECK_TRUE(literal != nullptr);
+  CHECK_TRUE(literal->type() == nodes::literal_type_e::NIL);
+  STRCMP_EQUAL("nil", literal->value().c_str());
+}
+
+TEST(ParserLiterals, IdentifierSimple) {
+  const char *source = "fn test() { return myVar; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *identifier =
+      dynamic_cast<const nodes::identifier_c *>(return_stmt->expression());
+
+  CHECK_TRUE(identifier != nullptr);
+  STRCMP_EQUAL("myVar", identifier->id().name.c_str());
+}
+
+TEST(ParserLiterals, IdentifierWithUnderscores) {
+  const char *source = "fn test() { return my_var_name; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *identifier =
+      dynamic_cast<const nodes::identifier_c *>(return_stmt->expression());
+
+  CHECK_TRUE(identifier != nullptr);
+  STRCMP_EQUAL("my_var_name", identifier->id().name.c_str());
+}
+
+TEST(ParserLiterals, ParenthesizedExpression) {
+  const char *source = "fn test() { return (42); }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *literal =
+      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+
+  CHECK_TRUE(literal != nullptr);
+  CHECK_TRUE(literal->type() == nodes::literal_type_e::INTEGER);
+}
+
+TEST(ParserLiterals, ArrayLiteralEmpty) {
+  const char *source = "fn test() { return []; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *block = dynamic_cast<const nodes::block_c *>(return_stmt->expression());
+
+  CHECK_TRUE(block != nullptr);
+  CHECK_EQUAL(0, block->statements().size());
+}
+
+TEST(ParserLiterals, ArrayLiteralWithElements) {
+  const char *source = "fn test() { return [1, 2, 3]; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *block = dynamic_cast<const nodes::block_c *>(return_stmt->expression());
+
+  CHECK_TRUE(block != nullptr);
+  CHECK_EQUAL(3, block->statements().size());
+}
+
+TEST(ParserLiterals, ArrayLiteralNested) {
+  const char *source = "fn test() { return [[1, 2], [3, 4]]; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *outer_block =
+      dynamic_cast<const nodes::block_c *>(return_stmt->expression());
+
+  CHECK_TRUE(outer_block != nullptr);
+  CHECK_EQUAL(2, outer_block->statements().size());
+}
+
+TEST(ParserLiterals, StructLiteralEmpty) {
+  const char *source = "fn test() { return Point{}; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *call = dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+
+  CHECK_TRUE(call != nullptr);
+  CHECK_EQUAL(1, call->arguments().size());
+}
+
+TEST(ParserLiterals, StructLiteralWithFields) {
+  const char *source = "fn test() { return Point{x: 1, y: 2}; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *call = dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+
+  CHECK_TRUE(call != nullptr);
+  CHECK_EQUAL(1, call->arguments().size());
+
+  auto *block =
+      dynamic_cast<const nodes::block_c *>(call->arguments()[0].get());
+  CHECK_TRUE(block != nullptr);
+  CHECK_EQUAL(2, block->statements().size());
+}
+
+TEST(ParserLiterals, StructLiteralNested) {
+  const char *source = "fn test() { return Rect{topLeft: Point{x: 0, y: 0}}; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *return_stmt =
+      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *outer_call =
+      dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+
+  CHECK_TRUE(outer_call != nullptr);
+}
+
+TEST(ParserLiterals, ErrorUnterminatedString) {
+  const char *source = "fn test() { return \"hello; }";
+  validate_parse_failure(source);
+}
+
+TEST(ParserLiterals, ErrorInvalidArraySyntax) {
+  const char *source = "fn test() { return [1, 2,]; }";
+  parse_result_wrapper_s wrapper(source);
+  CHECK_TRUE(wrapper.result.success);
+}
+
+TEST(ParserLiterals, ErrorInvalidStructSyntax) {
+  const char *source = "fn test() { return Point{x}; }";
+  validate_parse_failure(source, "Expected ':'");
+}
 
 TEST_GROUP(ParserComplexPrograms){void setup() override{} void teardown()
                                       override{}};
 
 TEST(ParserComplexPrograms, MultipleDeclarationsMixed) {
-  FAIL("Not implemented yet");
+  const char *source = R"(
+    struct Point { x: i32, y: i32 }
+    fn create_point(x: i32, y: i32): Point {}
+    const ORIGIN: Point = Point{x: 0, y: 0};
+    fn main() {}
+  )";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(4, wrapper.result.declarations.size());
+
+  auto *struct_decl =
+      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(struct_decl != nullptr);
+
+  auto *fn1 = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[1].get());
+  CHECK_TRUE(fn1 != nullptr);
+
+  auto *const_decl =
+      dynamic_cast<nodes::const_c *>(wrapper.result.declarations[2].get());
+  CHECK_TRUE(const_decl != nullptr);
+
+  auto *fn2 = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[3].get());
+  CHECK_TRUE(fn2 != nullptr);
 }
 
 TEST(ParserComplexPrograms, FunctionWithStructParameter) {
-  FAIL("Not implemented yet");
+  const char *source = R"(
+    struct Vec2 { x: f32, y: f32 }
+    fn magnitude(v: Vec2): f32 {
+      return v.x * v.x + v.y * v.y;
+    }
+  )";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(2, wrapper.result.declarations.size());
+
+  auto *struct_decl =
+      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(struct_decl != nullptr);
+  STRCMP_EQUAL("Vec2", struct_decl->name().name.c_str());
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[1].get());
+  CHECK_TRUE(fn != nullptr);
+  STRCMP_EQUAL("magnitude", fn->name().name.c_str());
+  CHECK_EQUAL(1, fn->params().size());
+  STRCMP_EQUAL("Vec2", fn->params()[0].type.name.c_str());
 }
 
 TEST(ParserComplexPrograms, StructWithFunctionPointer) {
-  FAIL("Not implemented yet");
+  const char *source = R"(
+    struct Handler {
+      callback: *fn(i32): void,
+      data: *void
+    }
+  )";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(1, wrapper.result.declarations.size());
+
+  auto *struct_decl =
+      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(struct_decl != nullptr);
+  STRCMP_EQUAL("Handler", struct_decl->name().name.c_str());
+  CHECK_EQUAL(2, struct_decl->fields().size());
 }
 
 TEST(ParserComplexPrograms, RecursiveFunctionDefinition) {
-  FAIL("Not implemented yet");
+  const char *source = R"(
+    fn factorial(n: i32): i32 {
+      if n <= 1 {
+        return 1;
+      }
+      return n * factorial(n - 1);
+    }
+  )";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(1, wrapper.result.declarations.size());
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+  STRCMP_EQUAL("factorial", fn->name().name.c_str());
+
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  CHECK_TRUE(body != nullptr);
+  CHECK_EQUAL(2, body->statements().size());
 }
 
 TEST(ParserComplexPrograms, ComplexControlFlowNesting) {
-  FAIL("Not implemented yet");
+  const char *source = R"(
+    fn process(data: [10]i32): i32 {
+      var sum: i32 = 0;
+      for i = 0; i < 10; i = i + 1 {
+        if data[i] > 0 {
+          while data[i] > 100 {
+            data[i] = data[i] / 2;
+          }
+          sum = sum + data[i];
+        } else {
+          continue;
+        }
+      }
+      return sum;
+    }
+  )";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(1, wrapper.result.declarations.size());
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  CHECK_TRUE(body != nullptr);
+  CHECK_EQUAL(3, body->statements().size());
 }
 
 TEST(ParserComplexPrograms, MixedDeclarationsAndStatements) {
-  FAIL("Not implemented yet");
+  const char *source = R"(
+    fn test() {
+      var x: i32 = 10;
+      const MAX: i32 = 100;
+      var y: i32 = x + MAX;
+      if y > 50 {
+        var z: i32 = y * 2;
+        return z;
+      }
+      return y;
+    }
+  )";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(1, wrapper.result.declarations.size());
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(fn != nullptr);
+
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  CHECK_TRUE(body != nullptr);
+  CHECK_EQUAL(5, body->statements().size());
 }
 
-TEST(ParserComplexPrograms, RealWorldExample1) { FAIL("Not implemented yet"); }
+TEST(ParserComplexPrograms, RealWorldExample1) {
+  const char *source = R"(
+    struct Vec2 {
+      x: f32,
+      y: f32
+    }
+    
+    fn distance(a: Vec2, b: Vec2): f32 {
+      var dx: f32 = b.x - a.x;
+      var dy: f32 = b.y - a.y;
+      return dx * dx + dy * dy;
+    }
+    
+    fn main() {
+      var p1: Vec2 = Vec2{x: 0.0, y: 0.0};
+      var p2: Vec2 = Vec2{x: 3.0, y: 4.0};
+      var dist: f32 = distance(p1, p2);
+    }
+  )";
+  parse_result_wrapper_s wrapper(source);
 
-TEST(ParserComplexPrograms, RealWorldExample2) { FAIL("Not implemented yet"); }
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(3, wrapper.result.declarations.size());
+
+  auto *struct_decl =
+      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(struct_decl != nullptr);
+
+  auto *distance_fn =
+      dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[1].get());
+  CHECK_TRUE(distance_fn != nullptr);
+
+  auto *main_fn =
+      dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[2].get());
+  CHECK_TRUE(main_fn != nullptr);
+}
+
+TEST(ParserComplexPrograms, RealWorldExample2) {
+  const char *source = R"(
+    struct Node {
+      value: i32,
+      next: *Node
+    }
+    
+    fn create_node(val: i32): *Node {
+      var node: *Node = nil;
+      return node;
+    }
+    
+    fn sum_list(head: *Node): i32 {
+      var sum: i32 = 0;
+      var current: *Node = head;
+      while current != nil {
+        sum = sum + current.value;
+        current = current.next;
+      }
+      return sum;
+    }
+  )";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+  CHECK_EQUAL(3, wrapper.result.declarations.size());
+
+  auto *struct_decl =
+      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  CHECK_TRUE(struct_decl != nullptr);
+  STRCMP_EQUAL("Node", struct_decl->name().name.c_str());
+
+  auto *create_fn =
+      dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[1].get());
+  CHECK_TRUE(create_fn != nullptr);
+
+  auto *sum_fn =
+      dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[2].get());
+  CHECK_TRUE(sum_fn != nullptr);
+}
 
 TEST(ParserComplexPrograms, ErrorInComplexProgram) {
-  FAIL("Not implemented yet");
+  const char *source = R"(
+    struct Point { x: i32, y: i32 }
+    fn test() {
+      var p: Point = Point{x: 1, y: 2}
+      return p.x;
+    }
+  )";
+  validate_parse_failure(source, "Expected ';'");
 }
 
 int main(int argc, char **argv) {

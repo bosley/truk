@@ -247,45 +247,68 @@ language::nodes::base_ptr parser_c::parse_const_decl() {
       std::move(value));
 }
 
+std::string extract_base_type_name(const language::nodes::base_c *type_node) {
+  if (auto *primitive =
+          dynamic_cast<const language::nodes::primitive_type_c *>(type_node)) {
+    return language::keywords_c::to_string(primitive->keyword());
+  }
+  if (auto *named =
+          dynamic_cast<const language::nodes::named_type_c *>(type_node)) {
+    return named->name().name;
+  }
+  if (auto *pointer =
+          dynamic_cast<const language::nodes::pointer_type_c *>(type_node)) {
+    return extract_base_type_name(pointer->pointee_type());
+  }
+  if (auto *array =
+          dynamic_cast<const language::nodes::array_type_c *>(type_node)) {
+    return extract_base_type_name(array->element_type());
+  }
+  if (auto *function =
+          dynamic_cast<const language::nodes::function_type_c *>(type_node)) {
+    return "fn";
+  }
+  return "";
+}
+
+void extract_type_info(const language::nodes::base_c *type_node,
+                       language::nodes::type_info_s &type_info) {
+  if (auto *primitive =
+          dynamic_cast<const language::nodes::primitive_type_c *>(type_node)) {
+    type_info.name = language::keywords_c::to_string(primitive->keyword());
+  } else if (auto *named = dynamic_cast<const language::nodes::named_type_c *>(
+                 type_node)) {
+    type_info.name = named->name().name;
+  } else if (auto *function =
+                 dynamic_cast<const language::nodes::function_type_c *>(
+                     type_node)) {
+    type_info.name = "fn";
+  } else if (auto *pointer =
+                 dynamic_cast<const language::nodes::pointer_type_c *>(
+                     type_node)) {
+    type_info.is_pointer = true;
+    type_info.name = extract_base_type_name(pointer->pointee_type());
+  } else if (auto *array = dynamic_cast<const language::nodes::array_type_c *>(
+                 type_node)) {
+    type_info.array_size = array->size();
+
+    if (auto *element_pointer =
+            dynamic_cast<const language::nodes::pointer_type_c *>(
+                array->element_type())) {
+      type_info.is_pointer = true;
+      type_info.name = extract_base_type_name(element_pointer->pointee_type());
+    } else {
+      type_info.name = extract_base_type_name(array->element_type());
+    }
+  }
+}
+
 language::nodes::type_info_s parser_c::parse_type_annotation() {
   consume(token_type_e::COLON, "Expected ':' in type annotation");
   auto type_ptr = parse_type();
 
   language::nodes::type_info_s type_info("", type_ptr->source_index());
-
-  if (auto *primitive =
-          dynamic_cast<language::nodes::primitive_type_c *>(type_ptr.get())) {
-    type_info.name = language::keywords_c::to_string(primitive->keyword());
-  } else if (auto *named = dynamic_cast<language::nodes::named_type_c *>(
-                 type_ptr.get())) {
-    type_info.name = named->name().name;
-  } else if (auto *pointer = dynamic_cast<language::nodes::pointer_type_c *>(
-                 type_ptr.get())) {
-    type_info.is_pointer = true;
-    if (auto *pointee_primitive =
-            dynamic_cast<const language::nodes::primitive_type_c *>(
-                pointer->pointee_type())) {
-      type_info.name =
-          language::keywords_c::to_string(pointee_primitive->keyword());
-    } else if (auto *pointee_named =
-                   dynamic_cast<const language::nodes::named_type_c *>(
-                       pointer->pointee_type())) {
-      type_info.name = pointee_named->name().name;
-    }
-  } else if (auto *array = dynamic_cast<language::nodes::array_type_c *>(
-                 type_ptr.get())) {
-    type_info.array_size = array->size();
-    if (auto *element_primitive =
-            dynamic_cast<const language::nodes::primitive_type_c *>(
-                array->element_type())) {
-      type_info.name =
-          language::keywords_c::to_string(element_primitive->keyword());
-    } else if (auto *element_named =
-                   dynamic_cast<const language::nodes::named_type_c *>(
-                       array->element_type())) {
-      type_info.name = element_named->name().name;
-    }
-  }
+  extract_type_info(type_ptr.get(), type_info);
 
   return type_info;
 }
@@ -302,6 +325,8 @@ language::nodes::type_ptr parser_c::parse_type() {
     if (token.keyword.has_value()) {
       auto keyword = token.keyword.value();
       switch (keyword) {
+      case language::keywords_e::FN:
+        return parse_function_type();
       case language::keywords_e::I8:
       case language::keywords_e::I16:
       case language::keywords_e::I32:
@@ -365,6 +390,33 @@ language::nodes::type_ptr parser_c::parse_pointer_type() {
   auto pointee_type = parse_type();
   return std::make_unique<language::nodes::pointer_type_c>(
       star_token.source_index, std::move(pointee_type));
+}
+
+language::nodes::type_ptr parser_c::parse_function_type() {
+  const auto &fn_token =
+      consume_keyword(language::keywords_e::FN, "Expected 'fn'");
+
+  consume(token_type_e::LEFT_PAREN, "Expected '(' after 'fn'");
+
+  std::vector<language::nodes::type_ptr> param_types;
+  if (!check(token_type_e::RIGHT_PAREN)) {
+    do {
+      param_types.push_back(parse_type());
+    } while (match(token_type_e::COMMA));
+  }
+
+  consume(token_type_e::RIGHT_PAREN, "Expected ')' after parameter types");
+
+  language::nodes::type_ptr return_type;
+  if (match(token_type_e::COLON)) {
+    return_type = parse_type();
+  } else {
+    return_type = std::make_unique<language::nodes::primitive_type_c>(
+        language::keywords_e::VOID, fn_token.source_index);
+  }
+
+  return std::make_unique<language::nodes::function_type_c>(
+      fn_token.source_index, std::move(param_types), std::move(return_type));
 }
 
 language::nodes::base_ptr parser_c::parse_statement() {
@@ -453,11 +505,18 @@ language::nodes::base_ptr parser_c::parse_for_stmt() {
   std::optional<language::nodes::base_ptr> post = std::nullopt;
 
   if (check(token_type_e::IDENTIFIER)) {
+    std::size_t saved_pos = _current;
     const auto &id_token = advance();
     if (match_keyword(language::keywords_e::IN)) {
       language::nodes::identifier_s iter_name(id_token.lexeme,
                                               id_token.source_index);
-      auto range = parse_expression();
+
+      const auto &range_token = consume_identifier("Expected range expression");
+      language::nodes::identifier_s range_name(range_token.lexeme,
+                                               range_token.source_index);
+      auto range = std::make_unique<language::nodes::identifier_c>(
+          range_token.source_index, std::move(range_name));
+
       auto body = parse_block();
 
       auto iter_id = std::make_unique<language::nodes::identifier_c>(
@@ -469,7 +528,7 @@ language::nodes::base_ptr parser_c::parse_for_stmt() {
           for_token.source_index, std::move(init), std::move(condition),
           std::move(post), std::move(body));
     }
-    _current--;
+    _current = saved_pos;
   }
 
   if (!check(token_type_e::SEMICOLON)) {
@@ -533,6 +592,34 @@ language::nodes::base_ptr parser_c::parse_expression() {
   return parse_assignment();
 }
 
+language::nodes::base_ptr
+clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
+  if (auto *id = dynamic_cast<const language::nodes::identifier_c *>(expr)) {
+    return std::make_unique<language::nodes::identifier_c>(
+        id->source_index(),
+        language::nodes::identifier_s(id->id().name, id->id().source_index));
+  }
+
+  if (auto *index = dynamic_cast<const language::nodes::index_c *>(expr)) {
+    auto cloned_object = clone_expr_for_compound_assignment(index->object());
+    auto cloned_index = clone_expr_for_compound_assignment(index->index());
+    return std::make_unique<language::nodes::index_c>(index->source_index(),
+                                                      std::move(cloned_object),
+                                                      std::move(cloned_index));
+  }
+
+  if (auto *member =
+          dynamic_cast<const language::nodes::member_access_c *>(expr)) {
+    auto cloned_object = clone_expr_for_compound_assignment(member->object());
+    return std::make_unique<language::nodes::member_access_c>(
+        member->source_index(), std::move(cloned_object),
+        language::nodes::identifier_s(member->field().name,
+                                      member->field().source_index));
+  }
+
+  return nullptr;
+}
+
 language::nodes::base_ptr parser_c::parse_assignment() {
   auto expr = parse_logical_or();
 
@@ -565,10 +652,15 @@ language::nodes::base_ptr parser_c::parse_assignment() {
         break;
       }
 
-      auto left_copy = parse_primary();
+      auto left_copy = clone_expr_for_compound_assignment(expr.get());
+      if (!left_copy) {
+        throw parse_error("Invalid left-hand side for compound assignment",
+                          op_token.line, op_token.column);
+      }
+
       value = std::make_unique<language::nodes::binary_op_c>(
-          op_token.source_index, bin_op, std::move(expr), std::move(value));
-      expr = std::move(left_copy);
+          op_token.source_index, bin_op, std::move(left_copy),
+          std::move(value));
     }
 
     return std::make_unique<language::nodes::assignment_c>(

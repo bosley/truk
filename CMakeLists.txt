@@ -67,6 +67,6 @@ if(BUILD_TESTS)
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Running tests..."
-        DEPENDS test_core test_memory
+        DEPENDS test_core test_memory test_environment test_ingestion test_parser
     )
 endif()
