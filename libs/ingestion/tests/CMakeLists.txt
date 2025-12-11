@@ -5,3 +5,11 @@ truk_add_test(
     DEPENDENCIES
         ingestion
 )
+
+truk_add_test(
+    NAME test_parser
+    SOURCES
+        test_parser.cpp
+    DEPENDENCIES
+        ingestion
+)
