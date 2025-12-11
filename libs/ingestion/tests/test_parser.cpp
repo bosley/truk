@@ -1167,23 +1167,6 @@ TEST(ParserControlFlow, ForLoopCStyle) {
   CHECK_TRUE(for_stmt->body() != nullptr);
 }
 
-TEST(ParserControlFlow, ForLoopRangeBased) {
-  const char *source = "fn test() { for i in range { x = x + i; } }";
-  parse_result_wrapper_s wrapper(source);
-
-  CHECK_TRUE(wrapper.result.success);
-
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *for_stmt =
-      dynamic_cast<const nodes::for_c *>(body->statements()[0].get());
-
-  CHECK_TRUE(for_stmt != nullptr);
-  CHECK_TRUE(for_stmt->init() != nullptr);
-  CHECK_TRUE(for_stmt->condition() != nullptr);
-  CHECK_TRUE(for_stmt->body() != nullptr);
-}
-
 TEST(ParserControlFlow, ForLoopWithBreakContinue) {
   const char *source = R"(
     fn test() {

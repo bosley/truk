@@ -453,33 +453,6 @@ language::nodes::base_ptr parser_c::parse_for_stmt() {
   std::optional<language::nodes::base_ptr> condition = std::nullopt;
   std::optional<language::nodes::base_ptr> post = std::nullopt;
 
-  if (check(token_type_e::IDENTIFIER)) {
-    std::size_t saved_pos = _current;
-    const auto &id_token = advance();
-    if (match_keyword(language::keywords_e::IN)) {
-      language::nodes::identifier_s iter_name(id_token.lexeme,
-                                              id_token.source_index);
-
-      const auto &range_token = consume_identifier("Expected range expression");
-      language::nodes::identifier_s range_name(range_token.lexeme,
-                                               range_token.source_index);
-      auto range = std::make_unique<language::nodes::identifier_c>(
-          range_token.source_index, std::move(range_name));
-
-      auto body = parse_block();
-
-      auto iter_id = std::make_unique<language::nodes::identifier_c>(
-          id_token.source_index, std::move(iter_name));
-      init = std::move(iter_id);
-      condition = std::move(range);
-
-      return std::make_unique<language::nodes::for_c>(
-          for_token.source_index, std::move(init), std::move(condition),
-          std::move(post), std::move(body));
-    }
-    _current = saved_pos;
-  }
-
   if (!check(token_type_e::SEMICOLON)) {
     if (check_keyword(language::keywords_e::VAR)) {
       const auto &var_token =

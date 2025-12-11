@@ -8,7 +8,7 @@ declaration     ::= fn_decl
                   | var_decl
                   | const_decl
 
-fn_decl         ::= "fn" IDENTIFIER "(" param_list? ")" type_annotation? block
+fn_decl         ::= "fn" IDENTIFIER "(" param_list? ")" (":" type)? block
 
 param_list      ::= param ("," param)*
 
