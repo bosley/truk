@@ -37,6 +37,7 @@ public:
 
   std::vector<token_s> tokenize();
   parse_result_s parse();
+  language::nodes::type_ptr parse_type();
 
 private:
   const char *_data{nullptr};
@@ -64,7 +65,7 @@ private:
   language::nodes::base_ptr parse_var_decl();
   language::nodes::base_ptr parse_const_decl();
 
-  language::nodes::type_ptr parse_type();
+  language::nodes::type_ptr parse_type_internal();
   language::nodes::type_ptr parse_type_annotation();
   language::nodes::type_ptr parse_primitive_type(language::keywords_e keyword);
   language::nodes::type_ptr parse_array_type();

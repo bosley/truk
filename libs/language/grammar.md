@@ -1,4 +1,4 @@
-# Glang Grammar
+# TRUK Grammar
 
 ```
 program         ::= declaration*

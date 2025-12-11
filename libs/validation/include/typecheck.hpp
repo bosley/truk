@@ -1,5 +1,6 @@
 #pragma once
 
+#include <language/builtins.hpp>
 #include <language/keywords.hpp>
 #include <language/node.hpp>
 #include <language/visitor.hpp>
@@ -37,12 +38,16 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
   std::unique_ptr<type_entry_s> pointee_type;
   std::unique_ptr<type_entry_s> element_type;
 
+  bool is_builtin{false};
+  std::optional<truk::language::builtins::builtin_kind_e> builtin_kind;
+
   type_entry_s(type_kind_e k, std::string n) : kind(k), name(std::move(n)) {}
 
   type_entry_s(const type_entry_s &other)
       : kind(other.kind), name(other.name), pointer_depth(other.pointer_depth),
         array_size(other.array_size),
-        struct_field_names(other.struct_field_names) {
+        struct_field_names(other.struct_field_names), is_builtin(other.is_builtin),
+        builtin_kind(other.builtin_kind) {
 
     for (const auto &[field_name, field_type] : other.struct_fields) {
       struct_fields[field_name] = std::make_unique<type_entry_s>(*field_type);
@@ -144,6 +149,7 @@ private:
   void pop_scope();
 
   void register_builtin_types();
+  void register_builtin_functions();
   void register_type(const std::string &name,
                      std::unique_ptr<type_entry_s> type);
   void register_symbol(const std::string &name,
@@ -162,6 +168,10 @@ private:
   bool is_boolean_type(const type_entry_s *type);
   bool is_compatible_for_assignment(const type_entry_s *target,
                                     const type_entry_s *source);
+  bool is_type_identifier(const truk::language::nodes::identifier_c *id_node);
+
+  void validate_builtin_call(const truk::language::nodes::call_c &node,
+                             const type_entry_s &func_type);
 
   void report_error(const std::string &message, std::size_t source_index);
 };

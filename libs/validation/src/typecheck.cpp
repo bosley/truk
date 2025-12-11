@@ -1,12 +1,16 @@
 #include "../include/typecheck.hpp"
 #include <sstream>
+#include <truk/ingestion/parser.hpp>
 
 namespace truk::validation {
 
 using namespace truk::language;
 using namespace truk::language::nodes;
 
-type_checker_c::type_checker_c() { register_builtin_types(); }
+type_checker_c::type_checker_c() {
+  register_builtin_types();
+  register_builtin_functions();
+}
 
 void type_checker_c::check(const base_c *root) {
   if (root) {
@@ -43,6 +47,18 @@ void type_checker_c::register_builtin_types() {
                 std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "bool"));
   register_type("void",
                 std::make_unique<type_entry_s>(type_kind_e::VOID_TYPE, "void"));
+}
+
+void type_checker_c::register_builtin_functions() {
+  for (const auto &builtin : language::builtins::get_builtins()) {
+    auto func_type =
+        std::make_unique<type_entry_s>(type_kind_e::FUNCTION, builtin.name);
+
+    func_type->is_builtin = true;
+    func_type->builtin_kind = builtin.kind;
+
+    register_symbol(builtin.name, std::move(func_type), false, 0);
+  }
 }
 
 void type_checker_c::register_type(const std::string &name,
@@ -267,6 +283,121 @@ void type_checker_c::report_error(const std::string &message,
   std::ostringstream oss;
   oss << "[" << source_index << "] " << message;
   _errors.push_back(oss.str());
+}
+
+bool type_checker_c::is_type_identifier(const identifier_c *id_node) {
+  if (!id_node) {
+    return false;
+  }
+  return lookup_type(id_node->id().name) != nullptr;
+}
+
+void type_checker_c::validate_builtin_call(const call_c &node,
+                                           const type_entry_s &func_type) {
+  if (!func_type.builtin_kind.has_value()) {
+    report_error("Internal error: builtin has no kind", node.source_index());
+    return;
+  }
+
+  const auto *builtin = language::builtins::lookup_builtin(func_type.name);
+  if (!builtin) {
+    report_error("Internal error: builtin not found in registry",
+                 node.source_index());
+    return;
+  }
+
+  std::size_t expected_arg_start = 0;
+  const type_c *type_param = nullptr;
+
+  if (builtin->takes_type_param) {
+    if (node.arguments().empty()) {
+      report_error("Builtin '" + builtin->name +
+                       "' requires a type string as first argument",
+                   node.source_index());
+      return;
+    }
+
+    const auto *first_arg_literal =
+        dynamic_cast<const literal_c *>(node.arguments()[0].get());
+    if (!first_arg_literal ||
+        first_arg_literal->type() != literal_type_e::STRING) {
+      report_error("Builtin '" + builtin->name +
+                       "' requires a string literal type parameter (e.g., \"i32\", \"*Point\", \"[5]i32\")",
+                   node.source_index());
+      return;
+    }
+
+    std::string type_str = first_arg_literal->value();
+    if (type_str.size() >= 2 && type_str.front() == '"' &&
+        type_str.back() == '"') {
+      type_str = type_str.substr(1, type_str.size() - 2);
+    }
+
+    ingestion::parser_c temp_parser(type_str.c_str(), type_str.size());
+    auto parsed_type = temp_parser.parse_type();
+    if (!parsed_type) {
+      report_error("Invalid type string: \"" + type_str + "\"",
+                   node.source_index());
+      return;
+    }
+
+    type_param = parsed_type.release();
+    expected_arg_start = 1;
+  }
+
+  auto signature = builtin->build_signature(type_param);
+  if (type_param) {
+    delete type_param;
+  }
+
+  if (!signature) {
+    report_error("Failed to build signature for builtin '" + builtin->name +
+                     "'",
+                 node.source_index());
+    return;
+  }
+
+  auto *func_sig = dynamic_cast<const function_type_c *>(signature.get());
+  if (!func_sig) {
+    report_error("Internal error: builtin signature is not a function type",
+                 node.source_index());
+    return;
+  }
+
+  std::size_t expected_param_count = func_sig->param_types().size();
+  std::size_t actual_arg_count = node.arguments().size() - expected_arg_start;
+
+  if (actual_arg_count != expected_param_count) {
+    report_error("Builtin '" + builtin->name + "' expects " +
+                     std::to_string(expected_param_count) + " argument(s) but got " +
+                     std::to_string(actual_arg_count),
+                 node.source_index());
+    return;
+  }
+
+  for (std::size_t i = 0; i < expected_param_count; ++i) {
+    node.arguments()[expected_arg_start + i]->accept(*this);
+
+    auto expected_type = resolve_type(func_sig->param_types()[i].get());
+    if (!expected_type) {
+      report_error("Failed to resolve parameter type for builtin",
+                   node.source_index());
+      continue;
+    }
+
+    if (_current_expression_type &&
+        !types_equal(_current_expression_type.get(), expected_type.get())) {
+      report_error("Argument type mismatch in builtin '" + builtin->name + "'",
+                   node.source_index());
+    }
+  }
+
+  auto return_type = resolve_type(func_sig->return_type());
+  if (return_type) {
+    _current_expression_type = std::move(return_type);
+  } else {
+    _current_expression_type.reset();
+  }
 }
 
 void type_checker_c::visit(const primitive_type_c &node) {
@@ -740,6 +871,11 @@ void type_checker_c::visit(const call_c &node) {
   }
 
   auto func_type = std::move(_current_expression_type);
+
+  if (func_type->is_builtin) {
+    validate_builtin_call(node, *func_type);
+    return;
+  }
 
   if (node.arguments().size() != func_type->function_param_types.size()) {
     report_error("Argument count mismatch", node.source_index());

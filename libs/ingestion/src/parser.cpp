@@ -49,6 +49,14 @@ parse_result_s parser_c::parse() {
   return result;
 }
 
+language::nodes::type_ptr parser_c::parse_type() {
+  try {
+    return parse_type_internal();
+  } catch (...) {
+    return nullptr;
+  }
+}
+
 const token_s &parser_c::peek() const {
   if (_current >= _tokens.size()) {
     return _tokens.back();
@@ -251,10 +259,10 @@ language::nodes::base_ptr parser_c::parse_const_decl() {
 
 language::nodes::type_ptr parser_c::parse_type_annotation() {
   consume(token_type_e::COLON, "Expected ':' in type annotation");
-  return parse_type();
+  return parse_type_internal();
 }
 
-language::nodes::type_ptr parser_c::parse_type() {
+language::nodes::type_ptr parser_c::parse_type_internal() {
   if (check(token_type_e::STAR)) {
     return parse_pointer_type();
   }
