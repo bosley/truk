@@ -62,6 +62,12 @@ int main(int argc, char **argv) {
   }
 
   truk::emitc::emitter_c emitter;
+  
+  for (auto &decl : parse_result.declarations) {
+    emitter.collect_declarations(decl.get());
+  }
+  emitter.emit_forward_declarations();
+  
   for (auto &decl : parse_result.declarations) {
     emitter.emit(decl.get());
   }

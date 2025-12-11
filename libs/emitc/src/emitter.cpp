@@ -8,10 +8,17 @@ namespace truk::emitc {
 using namespace truk::language;
 using namespace truk::language::nodes;
 
-emitter_c::emitter_c() {
-  _header << cdef::emit_program_header();
-  _header
-      << "typedef struct {\n  void* data;\n  u64 len;\n} truk_slice_void;\n\n";
+emitter_c::emitter_c() : _collecting_declarations(false) {}
+
+void emitter_c::collect_declarations(const base_c *root) {
+  _collecting_declarations = true;
+  if (root) {
+    root->accept(*this);
+  }
+  _collecting_declarations = false;
+}
+
+void emitter_c::emit_forward_declarations() {
 }
 
 void emitter_c::emit(const base_c *root) {
@@ -21,8 +28,14 @@ void emitter_c::emit(const base_c *root) {
 }
 
 void emitter_c::finalize() {
-  _result.chunks.push_back(_header.str());
+  std::stringstream final_header;
+  final_header << cdef::emit_program_header();
+  final_header
+      << "typedef struct {\n  void* data;\n  u64 len;\n} truk_slice_void;\n\n";
+  
+  _result.chunks.push_back(final_header.str());
   _result.chunks.push_back(_structs.str());
+  _result.chunks.push_back(_header.str());
   _result.chunks.push_back(_functions.str());
 }
 
@@ -110,6 +123,44 @@ std::string emitter_c::emit_type_for_sizeof(const type_c *type) {
   return "void";
 }
 
+std::string emitter_c::emit_array_pointer_type(const type_c *array_type,
+                                               const std::string &identifier) {
+  if (!array_type) {
+    return "";
+  }
+
+  auto arr = dynamic_cast<const array_type_c *>(array_type);
+  if (!arr || !arr->size().has_value()) {
+    return "";
+  }
+
+  std::string base_type;
+  std::vector<size_t> dimensions;
+
+  const type_c *current = array_type;
+  while (auto current_arr = dynamic_cast<const array_type_c *>(current)) {
+    if (current_arr->size().has_value()) {
+      dimensions.push_back(current_arr->size().value());
+      current = current_arr->element_type();
+    } else {
+      break;
+    }
+  }
+
+  base_type = emit_type(current);
+
+  std::string result = base_type + " (*";
+  if (!identifier.empty()) {
+    result += identifier;
+  }
+  result += ")";
+  for (size_t dim : dimensions) {
+    result += "[" + std::to_string(dim) + "]";
+  }
+
+  return result;
+}
+
 std::string emitter_c::get_slice_type_name(const type_c *element_type) {
   std::string elem_type_str = emit_type_for_sizeof(element_type);
   std::string slice_name = "truk_slice_" + elem_type_str;
@@ -130,10 +181,9 @@ void emitter_c::ensure_slice_typedef(const type_c *element_type) {
 
     if (auto arr = dynamic_cast<const array_type_c *>(element_type)) {
       if (arr->size().has_value()) {
-        std::string base_type = emit_type(arr->element_type());
-        size_t size = arr->size().value();
-        _header << "typedef struct {\n  " << base_type << " (*data)[" << size
-                << "];\n  u64 len;\n} " << slice_name << ";\n\n";
+        std::string pointer_type = emit_array_pointer_type(element_type, "data");
+        _header << "typedef struct {\n  " << pointer_type
+                << ";\n  u64 len;\n} " << slice_name << ";\n\n";
         return;
       }
     }
@@ -181,6 +231,11 @@ void emitter_c::visit(const array_type_c &node) {
 void emitter_c::visit(const function_type_c &node) {}
 
 void emitter_c::visit(const fn_c &node) {
+  if (_collecting_declarations) {
+    _function_names.insert(node.name().name);
+    return;
+  }
+
   std::string return_type = emit_type(node.return_type());
   _functions << return_type << " " << node.name().name << "(";
 
@@ -251,6 +306,11 @@ void emitter_c::visit(const fn_c &node) {
 }
 
 void emitter_c::visit(const struct_c &node) {
+  if (_collecting_declarations) {
+    _struct_names.insert(node.name().name);
+    return;
+  }
+
   _structs << "typedef struct {\n";
 
   for (const auto &field : node.fields()) {
@@ -608,9 +668,7 @@ void emitter_c::visit(const call_c &node) {
             if (auto arr =
                     dynamic_cast<const array_type_c *>(type_param->type())) {
               if (arr->size().has_value()) {
-                std::string base_type = emit_type(arr->element_type());
-                size_t size = arr->size().value();
-                cast_type = base_type + " (*)[" + std::to_string(size) + "]";
+                cast_type = emit_array_pointer_type(type_param->type());
               } else {
                 cast_type = elem_type_for_sizeof + "*";
               }

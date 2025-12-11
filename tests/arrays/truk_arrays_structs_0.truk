@@ -1,0 +1,54 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+struct Vec3 {
+  x: f64,
+  y: f64,
+  z: f64
+}
+
+struct Container {
+  id: i32,
+  active: bool
+}
+
+fn main() : i32 {
+  var arr_point: [5]Point;
+  arr_point[0] = Point{x: 10, y: 20};
+  arr_point[1] = Point{x: 30, y: 40};
+  arr_point[4] = Point{x: 100, y: 200};
+  
+  var arr_vec3: [3]Vec3;
+  arr_vec3[0] = Vec3{x: 1.0, y: 2.0, z: 3.0};
+  arr_vec3[1] = Vec3{x: 4.0, y: 5.0, z: 6.0};
+  arr_vec3[2] = Vec3{x: 7.0, y: 8.0, z: 9.0};
+  
+  var arr_container: [4]Container;
+  arr_container[0] = Container{id: 1, active: true};
+  arr_container[1] = Container{id: 2, active: false};
+  arr_container[3] = Container{id: 100, active: true};
+  
+  var count: u64 = 3;
+  
+  var dyn_point: []Point = alloc_array(@Point, count);
+  dyn_point[0] = Point{x: 5, y: 10};
+  dyn_point[1] = Point{x: 15, y: 25};
+  dyn_point[2] = Point{x: 50, y: 75};
+  free_array(dyn_point);
+  
+  var dyn_vec3: []Vec3 = alloc_array(@Vec3, count);
+  dyn_vec3[0] = Vec3{x: 1.1, y: 2.2, z: 3.3};
+  dyn_vec3[1] = Vec3{x: 4.4, y: 5.5, z: 6.6};
+  dyn_vec3[2] = Vec3{x: 7.7, y: 8.8, z: 9.9};
+  free_array(dyn_vec3);
+  
+  var dyn_container: []Container = alloc_array(@Container, count);
+  dyn_container[0] = Container{id: 10, active: true};
+  dyn_container[1] = Container{id: 20, active: false};
+  dyn_container[2] = Container{id: 30, active: true};
+  free_array(dyn_container);
+  
+  return 0;
+}

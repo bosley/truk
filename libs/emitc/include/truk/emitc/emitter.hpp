@@ -34,6 +34,8 @@ public:
   emitter_c();
   ~emitter_c() override = default;
 
+  void collect_declarations(const truk::language::nodes::base_c *root);
+  void emit_forward_declarations();
   void emit(const truk::language::nodes::base_c *root);
 
   void finalize();
@@ -73,6 +75,9 @@ private:
   std::string emit_type(const truk::language::nodes::type_c *type);
   std::string emit_type_for_sizeof(const truk::language::nodes::type_c *type);
   std::string
+  emit_array_pointer_type(const truk::language::nodes::type_c *array_type,
+                          const std::string &identifier = "");
+  std::string
   get_slice_type_name(const truk::language::nodes::type_c *element_type);
   void ensure_slice_typedef(const truk::language::nodes::type_c *element_type);
   bool is_slice_type(const truk::language::nodes::type_c *type);
@@ -83,12 +88,16 @@ private:
   result_c _result;
   std::stringstream _current_expr;
   std::stringstream _header;
+  std::stringstream _forward_decls;
   std::stringstream _structs;
   std::stringstream _functions;
   int _indent_level{0};
   std::unordered_set<std::string> _slice_types_emitted;
+  std::unordered_set<std::string> _struct_names;
+  std::unordered_set<std::string> _function_names;
   std::unordered_map<std::string, bool> _variable_is_slice;
   bool _in_expression{false};
+  bool _collecting_declarations{false};
   std::string _current_function_name;
   const truk::language::nodes::type_c *_current_function_return_type{nullptr};
 };
