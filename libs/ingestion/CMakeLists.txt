@@ -1,16 +1,15 @@
-add_library(parser STATIC
-    src/parser.cpp
+add_library(ingestion STATIC
+    src/ingestion.cpp
 )
 
 add_subdirectory(tests)
 
-
-target_include_directories(parser PUBLIC
+target_include_directories(ingestion PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(parser PUBLIC
-    core
+target_link_libraries(ingestion PUBLIC
+    truk_language
 )
 
-target_compile_features(parser PRIVATE cxx_std_20)
+target_compile_features(ingestion PRIVATE cxx_std_20)

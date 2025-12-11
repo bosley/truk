@@ -3,7 +3,4 @@
 #include "keywords.hpp"
 #include "node.hpp"
 
-namespace truk::language {
-
-
-}
+namespace truk::language {}

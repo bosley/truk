@@ -1,3 +1,3 @@
 add_subdirectory(core)
 add_subdirectory(language)
-add_subdirectory(parser)
+add_subdirectory(ingestion)
