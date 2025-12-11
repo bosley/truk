@@ -1,5 +1,6 @@
 add_library(truk_language STATIC
     src/keywords.cpp
+    src/node.cpp
 )
 
 target_include_directories(truk_language

@@ -8,6 +8,8 @@
 
 namespace truk::language::nodes {
 
+class visitor_if;
+
 class base_c {
 public:
   base_c() = delete;
@@ -16,6 +18,8 @@ public:
 
   keywords_e keyword() const { return _from_keyword; }
   std::size_t source_index() const { return _idx; }
+
+  virtual void accept(visitor_if &visitor) const = 0;
 
   virtual ~base_c() = default;
 
@@ -79,6 +83,8 @@ public:
   primitive_type_c() = delete;
   primitive_type_c(keywords_e primitive_keyword, std::size_t source_index)
       : type_c(primitive_keyword, source_index) {}
+
+  void accept(visitor_if &visitor) const override;
 };
 
 class named_type_c : public type_c {
@@ -89,6 +95,8 @@ public:
         _name(std::move(name)) {}
 
   const identifier_s &name() const { return _name; }
+
+  void accept(visitor_if &visitor) const override;
 
 private:
   identifier_s _name;
@@ -102,6 +110,8 @@ public:
         _pointee_type(std::move(pointee_type)) {}
 
   const type_c *pointee_type() const { return _pointee_type.get(); }
+
+  void accept(visitor_if &visitor) const override;
 
 private:
   type_ptr _pointee_type;
@@ -117,6 +127,8 @@ public:
 
   const type_c *element_type() const { return _element_type.get(); }
   std::optional<std::size_t> size() const { return _size; }
+
+  void accept(visitor_if &visitor) const override;
 
 private:
   type_ptr _element_type;
@@ -134,6 +146,8 @@ public:
 
   const std::vector<type_ptr> &param_types() const { return _param_types; }
   const type_c *return_type() const { return _return_type.get(); }
+
+  void accept(visitor_if &visitor) const override;
 
 private:
   std::vector<type_ptr> _param_types;
@@ -154,6 +168,8 @@ public:
   const type_info_s &return_type() const { return _return_type; }
   const base_c *body() const { return _body.get(); }
 
+  void accept(visitor_if &visitor) const override;
+
 private:
   identifier_s _name;
   std::vector<parameter_s> _params;
@@ -171,6 +187,8 @@ public:
 
   const identifier_s &name() const { return _name; }
   const std::vector<struct_field_s> &fields() const { return _fields; }
+
+  void accept(visitor_if &visitor) const override;
 
 private:
   identifier_s _name;
@@ -191,6 +209,8 @@ public:
     return _initializer ? _initializer->get() : nullptr;
   }
 
+  void accept(visitor_if &visitor) const override;
+
 private:
   identifier_s _name;
   type_info_s _type;
@@ -208,6 +228,8 @@ public:
   const identifier_s &name() const { return _name; }
   const type_info_s &type() const { return _type; }
   const base_c *value() const { return _value.get(); }
+
+  void accept(visitor_if &visitor) const override;
 
 private:
   identifier_s _name;
@@ -230,6 +252,8 @@ public:
     return _else_block ? _else_block->get() : nullptr;
   }
 
+  void accept(visitor_if &visitor) const override;
+
 private:
   base_ptr _condition;
   base_ptr _then_block;
@@ -245,6 +269,8 @@ public:
 
   const base_c *condition() const { return _condition.get(); }
   const base_c *body() const { return _body.get(); }
+
+  void accept(visitor_if &visitor) const override;
 
 private:
   base_ptr _condition;
@@ -268,6 +294,8 @@ public:
   const base_c *post() const { return _post ? _post->get() : nullptr; }
   const base_c *body() const { return _body.get(); }
 
+  void accept(visitor_if &visitor) const override;
+
 private:
   std::optional<base_ptr> _init;
   std::optional<base_ptr> _condition;
@@ -287,6 +315,8 @@ public:
     return _expression ? _expression->get() : nullptr;
   }
 
+  void accept(visitor_if &visitor) const override;
+
 private:
   std::optional<base_ptr> _expression;
 };
@@ -295,6 +325,8 @@ class break_c : public base_c {
 public:
   break_c() = delete;
   break_c(std::size_t source_index) : base_c(keywords_e::BREAK, source_index) {}
+
+  void accept(visitor_if &visitor) const override;
 };
 
 class continue_c : public base_c {
@@ -302,6 +334,8 @@ public:
   continue_c() = delete;
   continue_c(std::size_t source_index)
       : base_c(keywords_e::CONTINUE, source_index) {}
+
+  void accept(visitor_if &visitor) const override;
 };
 
 enum class binary_op_e {
@@ -337,6 +371,8 @@ public:
   const base_c *left() const { return _left.get(); }
   const base_c *right() const { return _right.get(); }
 
+  void accept(visitor_if &visitor) const override;
+
 private:
   binary_op_e _op;
   base_ptr _left;
@@ -355,6 +391,8 @@ public:
   unary_op_e op() const { return _op; }
   const base_c *operand() const { return _operand.get(); }
 
+  void accept(visitor_if &visitor) const override;
+
 private:
   unary_op_e _op;
   base_ptr _operand;
@@ -371,6 +409,8 @@ public:
   const base_c *callee() const { return _callee.get(); }
   const std::vector<base_ptr> &arguments() const { return _arguments; }
 
+  void accept(visitor_if &visitor) const override;
+
 private:
   base_ptr _callee;
   std::vector<base_ptr> _arguments;
@@ -386,6 +426,8 @@ public:
   const base_c *object() const { return _object.get(); }
   const base_c *index() const { return _index.get(); }
 
+  void accept(visitor_if &visitor) const override;
+
 private:
   base_ptr _object;
   base_ptr _index;
@@ -400,6 +442,8 @@ public:
 
   const base_c *object() const { return _object.get(); }
   const identifier_s &field() const { return _field; }
+
+  void accept(visitor_if &visitor) const override;
 
 private:
   base_ptr _object;
@@ -418,6 +462,8 @@ public:
   literal_type_e type() const { return _type; }
   const std::string &value() const { return _value; }
 
+  void accept(visitor_if &visitor) const override;
+
 private:
   literal_type_e _type;
   std::string _value;
@@ -430,6 +476,8 @@ public:
       : base_c(keywords_e::UNKNOWN_KEYWORD, source_index), _id(std::move(id)) {}
 
   const identifier_s &id() const { return _id; }
+
+  void accept(visitor_if &visitor) const override;
 
 private:
   identifier_s _id;
@@ -445,6 +493,8 @@ public:
   const base_c *target() const { return _target.get(); }
   const base_c *value() const { return _value.get(); }
 
+  void accept(visitor_if &visitor) const override;
+
 private:
   base_ptr _target;
   base_ptr _value;
@@ -459,6 +509,8 @@ public:
 
   const std::vector<base_ptr> &statements() const { return _statements; }
 
+  void accept(visitor_if &visitor) const override;
+
 private:
   std::vector<base_ptr> _statements;
 };
@@ -471,6 +523,8 @@ public:
         _elements(std::move(elements)) {}
 
   const std::vector<base_ptr> &elements() const { return _elements; }
+
+  void accept(visitor_if &visitor) const override;
 
 private:
   std::vector<base_ptr> _elements;
@@ -498,6 +552,8 @@ public:
   const std::vector<field_initializer_s> &field_initializers() const {
     return _field_initializers;
   }
+
+  void accept(visitor_if &visitor) const override;
 
 private:
   identifier_s _struct_name;
