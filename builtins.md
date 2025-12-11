@@ -29,7 +29,7 @@ Allocates memory on the heap for a single value of the specified type.
 ```truk
 var ptr: *i32 = alloc(@i32);
 *ptr = 42;
-free(@i32, ptr);
+free(ptr);
 ```
 
 **Complex types:**
@@ -37,12 +37,11 @@ free(@i32, ptr);
 var ptr_to_ptr: **i32 = alloc(@*i32);
 ```
 
-### `free(@type, ptr: *T) -> void`
+### `free(ptr: *T) -> void`
 
 Frees memory previously allocated with `alloc`.
 
 **Parameters:**
-- `@type`: Type parameter specifying the type (must match the type used in `alloc`)
 - `ptr`: Pointer to the memory to free
 
 **Returns:** void
@@ -50,7 +49,7 @@ Frees memory previously allocated with `alloc`.
 **Example:**
 ```truk
 var ptr: *i32 = alloc(@i32);
-free(@i32, ptr);
+free(ptr);
 ```
 
 **Note:** Calling `free` on already-freed memory or non-heap memory results in undefined behavior.
@@ -70,7 +69,7 @@ Allocates a dynamic array (slice) on the heap.
 var count: u64 = 100;
 var arr: []i32 = alloc_array(@i32, count);
 arr[0] = 42;
-free_array(@i32, arr);
+free_array(arr);
 ```
 
 **Complex element types:**
@@ -79,12 +78,11 @@ var count: u64 = 10;
 var arr: [][5]i32 = alloc_array(@[5]i32, count);
 ```
 
-### `free_array(@type, arr: []T) -> void`
+### `free_array(arr: []T) -> void`
 
 Frees memory previously allocated with `alloc_array`.
 
 **Parameters:**
-- `@type`: Type parameter specifying the element type (must match the type used in `alloc_array`)
 - `arr`: Array to free
 
 **Returns:** void
@@ -93,17 +91,16 @@ Frees memory previously allocated with `alloc_array`.
 ```truk
 var count: u64 = 100;
 var arr: []i32 = alloc_array(@i32, count);
-free_array(@i32, arr);
+free_array(arr);
 ```
 
 ## Array Operations
 
-### `len(@type, arr: []T) -> u64`
+### `len(arr: []T) -> u64`
 
 Returns the length of an unsized array (slice).
 
 **Parameters:**
-- `@type`: Type parameter specifying the element type
 - `arr`: Array to get the length of
 
 **Returns:** Number of elements in the array as `u64`
@@ -112,7 +109,7 @@ Returns the length of an unsized array (slice).
 ```truk
 var count: u64 = 100;
 var arr: []i32 = alloc_array(@i32, count);
-var size: u64 = len(@i32, arr);
+var size: u64 = len(arr);
 ```
 
 **Note:** `len` only works with unsized arrays (`[]T`). Sized arrays (`[N]T`) have a compile-time known size.

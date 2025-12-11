@@ -72,7 +72,7 @@ TEST(BuiltinTests, FreeAcceptsPointer) {
   std::string code = R"(
     fn test() : void {
       var ptr: *i32 = alloc(@i32);
-      free(@i32, ptr);
+      free(ptr);
     }
   )";
 
@@ -85,7 +85,7 @@ TEST(BuiltinTests, FreeArrayAcceptsSlice) {
     fn test() : void {
       var count: u64 = 10;
       var arr: []i32 = alloc_array(@i32, count);
-      free_array(@i32, arr);
+      free_array(arr);
     }
   )";
 
@@ -98,7 +98,7 @@ TEST(BuiltinTests, LenReturnsU64) {
     fn test() : void {
       var count: u64 = 10;
       var arr: []i32 = alloc_array(@i32, count);
-      var size: u64 = len(@i32, arr);
+      var size: u64 = len(arr);
     }
   )";
 
@@ -171,7 +171,7 @@ TEST(BuiltinTests, FreeRequiresPointerArgument) {
   std::string code = R"(
     fn test() : void {
       var x: i32 = 5;
-      free(@i32, x);
+      free(x);
     }
   )";
 
@@ -184,7 +184,7 @@ TEST(BuiltinTests, LenRequiresSliceArgument) {
   std::string code = R"(
     fn test() : void {
       var arr: [5]i32 = [1, 2, 3, 4, 5];
-      var size: u64 = len(@i32, arr);
+      var size: u64 = len(arr);
     }
   )";
 
@@ -241,10 +241,10 @@ TEST(BuiltinTests, MultipleBuiltinCalls) {
       var ptr: *i32 = alloc(@i32);
       var count: u64 = 10;
       var arr: []i32 = alloc_array(@i32, count);
-      var size: u64 = len(@i32, arr);
+      var size: u64 = len(arr);
       var type_size: u64 = sizeof(@i32);
-      free_array(@i32, arr);
-      free(@i32, ptr);
+      free_array(arr);
+      free(ptr);
     }
   )";
 
@@ -266,7 +266,7 @@ TEST(BuiltinTests, AllocInExpression) {
 TEST(BuiltinTests, LenInExpression) {
   std::string code = R"(
     fn get_size(arr: []i32) : u64 {
-      return len(@i32, arr);
+      return len(arr);
     }
   )";
 

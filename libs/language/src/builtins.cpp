@@ -59,7 +59,8 @@ static type_ptr build_alloc_signature(const type_c *type_param) {
 static type_ptr build_free_signature(const type_c *type_param) {
   std::vector<type_ptr> params;
 
-  auto ptr_type = std::make_unique<pointer_type_c>(0, clone_type(type_param));
+  auto void_type = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
+  auto ptr_type = std::make_unique<pointer_type_c>(0, std::move(void_type));
   params.push_back(std::move(ptr_type));
 
   auto return_type =
@@ -86,9 +87,9 @@ static type_ptr build_alloc_array_signature(const type_c *type_param) {
 static type_ptr build_free_array_signature(const type_c *type_param) {
   std::vector<type_ptr> params;
 
-  auto element = clone_type(type_param);
+  auto void_type = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
   auto array_param =
-      std::make_unique<array_type_c>(0, std::move(element), std::nullopt);
+      std::make_unique<array_type_c>(0, std::move(void_type), std::nullopt);
   params.push_back(std::move(array_param));
 
   auto return_type =
@@ -101,9 +102,9 @@ static type_ptr build_free_array_signature(const type_c *type_param) {
 static type_ptr build_len_signature(const type_c *type_param) {
   std::vector<type_ptr> params;
 
-  auto element = clone_type(type_param);
+  auto void_type = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
   auto array_param =
-      std::make_unique<array_type_c>(0, std::move(element), std::nullopt);
+      std::make_unique<array_type_c>(0, std::move(void_type), std::nullopt);
   params.push_back(std::move(array_param));
 
   auto return_type = std::make_unique<primitive_type_c>(keywords_e::U64, 0);
@@ -138,12 +139,12 @@ static type_ptr build_panic_signature(const type_c *type_param) {
 
 static std::vector<builtin_signature_s> builtin_registry = {
     {"alloc", builtin_kind_e::ALLOC, true, {}, build_alloc_signature},
-    {"free", builtin_kind_e::FREE, true, {"ptr"}, build_free_signature},
+    {"free", builtin_kind_e::FREE, false, {"ptr"}, build_free_signature},
     {"alloc_array", builtin_kind_e::ALLOC_ARRAY, true, {"count"},
      build_alloc_array_signature},
-    {"free_array", builtin_kind_e::FREE_ARRAY, true, {"arr"},
+    {"free_array", builtin_kind_e::FREE_ARRAY, false, {"arr"},
      build_free_array_signature},
-    {"len", builtin_kind_e::LEN, true, {"arr"}, build_len_signature},
+    {"len", builtin_kind_e::LEN, false, {"arr"}, build_len_signature},
     {"sizeof", builtin_kind_e::SIZEOF, true, {}, build_sizeof_signature},
     {"panic", builtin_kind_e::PANIC, false, {"message"},
      build_panic_signature}};

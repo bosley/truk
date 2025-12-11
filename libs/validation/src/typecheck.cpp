@@ -367,8 +367,24 @@ void type_checker_c::validate_builtin_call(const call_c &node,
       continue;
     }
 
-    if (_current_expression_type &&
-        !types_equal(_current_expression_type.get(), expected_type.get())) {
+    bool type_matches = false;
+    if (_current_expression_type) {
+      if (types_equal(_current_expression_type.get(), expected_type.get())) {
+        type_matches = true;
+      } else if (expected_type->kind == type_kind_e::POINTER && 
+                 expected_type->name == "void" &&
+                 _current_expression_type->kind == type_kind_e::POINTER) {
+        type_matches = true;
+      } else if (expected_type->kind == type_kind_e::ARRAY && 
+                 expected_type->element_type &&
+                 expected_type->element_type->name == "void" &&
+                 _current_expression_type->kind == type_kind_e::ARRAY &&
+                 expected_type->array_size == _current_expression_type->array_size) {
+        type_matches = true;
+      }
+    }
+
+    if (_current_expression_type && !type_matches) {
       report_error("Argument type mismatch in builtin '" + builtin->name + "'",
                    node.source_index());
     }
