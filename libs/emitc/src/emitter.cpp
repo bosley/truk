@@ -1,7 +1,7 @@
-#include "../include/emitter.hpp"
-#include "../include/cdef.hpp"
 #include <language/builtins.hpp>
 #include <language/keywords.hpp>
+#include <truk/emitc/cdef.hpp>
+#include <truk/emitc/emitter.hpp>
 
 namespace truk::emitc {
 

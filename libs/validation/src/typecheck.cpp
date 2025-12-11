@@ -1,6 +1,6 @@
-#include "../include/typecheck.hpp"
 #include <sstream>
 #include <truk/ingestion/parser.hpp>
+#include <truk/validation/typecheck.hpp>
 
 namespace truk::validation {
 

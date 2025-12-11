@@ -1,6 +1,6 @@
-#include "../include/typecheck.hpp"
 #include <cstring>
 #include <truk/ingestion/parser.hpp>
+#include <truk/validation/typecheck.hpp>
 
 // clang-format off
 #include <CppUTest/CommandLineTestRunner.h>

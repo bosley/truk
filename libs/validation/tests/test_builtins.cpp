@@ -1,6 +1,6 @@
-#include "../include/typecheck.hpp"
 #include <cstring>
 #include <truk/ingestion/parser.hpp>
+#include <truk/validation/typecheck.hpp>
 
 #include <CppUTest/CommandLineTestRunner.h>
 #include <CppUTest/TestHarness.h>

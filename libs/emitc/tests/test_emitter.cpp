@@ -1,5 +1,5 @@
-#include "../include/emitter.hpp"
 #include <cstring>
+#include <truk/emitc/emitter.hpp>
 #include <truk/ingestion/parser.hpp>
 
 #include <CppUTest/CommandLineTestRunner.h>

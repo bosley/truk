@@ -1,11 +1,12 @@
 #include "truk/core/core.hpp"
 #include <cstring>
-#include <emitter.hpp>
 #include <fmt/core.h>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <truk/emitc/emitter.hpp>
 #include <truk/ingestion/parser.hpp>
+#include <truk/validation/typecheck.hpp>
 
 int main(int argc, char **argv) {
   if (argc < 2) {
@@ -39,6 +40,19 @@ int main(int argc, char **argv) {
 
   if (!parse_result.success) {
     fmt::print(stderr, "Error: Parse failed\n");
+    return 1;
+  }
+
+  truk::validation::type_checker_c type_checker;
+  for (auto &decl : parse_result.declarations) {
+    type_checker.check(decl.get());
+  }
+
+  if (type_checker.has_errors()) {
+    fmt::print(stderr, "Error: Type check failed\n");
+    for (const auto &err : type_checker.errors()) {
+      fmt::print(stderr, "  {}\n", err);
+    }
     return 1;
   }
 
