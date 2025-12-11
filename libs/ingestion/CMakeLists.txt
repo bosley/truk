@@ -1,5 +1,6 @@
 add_library(ingestion STATIC
-    src/ingestion.cpp
+    src/tokenize.cpp
+    src/parser.cpp
 )
 
 add_subdirectory(tests)

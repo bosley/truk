@@ -1,5 +1,6 @@
 // clang-format off
-#include <truk/ingestion/ingestion.hpp>
+#include <truk/ingestion/tokenize.hpp>
+#include <truk/ingestion/parser.hpp>
 #include <CppUTest/CommandLineTestRunner.h>
 #include <CppUTest/TestHarness.h>
 // clang-format on
