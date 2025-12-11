@@ -1,6 +1,6 @@
 #include "../include/typecheck.hpp"
-#include <truk/ingestion/parser.hpp>
 #include <cstring>
+#include <truk/ingestion/parser.hpp>
 
 // clang-format off
 #include <CppUTest/CommandLineTestRunner.h>
@@ -10,9 +10,7 @@
 TEST_GROUP(TypeCheckPrimitiveTests) {
   truk::validation::type_checker_c *checker;
 
-  void setup() override {
-    checker = new truk::validation::type_checker_c();
-  }
+  void setup() override { checker = new truk::validation::type_checker_c(); }
 
   void teardown() override { delete checker; }
 
@@ -88,9 +86,7 @@ TEST(TypeCheckPrimitiveTests, ArrayTypes) {
 TEST_GROUP(TypeCheckDeclarationTests) {
   truk::validation::type_checker_c *checker;
 
-  void setup() override {
-    checker = new truk::validation::type_checker_c();
-  }
+  void setup() override { checker = new truk::validation::type_checker_c(); }
 
   void teardown() override { delete checker; }
 
@@ -191,9 +187,7 @@ TEST(TypeCheckDeclarationTests, StructWithPointerFields) {
 TEST_GROUP(TypeCheckExpressionTests) {
   truk::validation::type_checker_c *checker;
 
-  void setup() override {
-    checker = new truk::validation::type_checker_c();
-  }
+  void setup() override { checker = new truk::validation::type_checker_c(); }
 
   void teardown() override { delete checker; }
 
@@ -314,9 +308,7 @@ TEST(TypeCheckExpressionTests, Assignment) {
 TEST_GROUP(TypeCheckControlFlowTests) {
   truk::validation::type_checker_c *checker;
 
-  void setup() override {
-    checker = new truk::validation::type_checker_c();
-  }
+  void setup() override { checker = new truk::validation::type_checker_c(); }
 
   void teardown() override { delete checker; }
 
@@ -460,9 +452,7 @@ TEST(TypeCheckControlFlowTests, ReturnVoid) {
 TEST_GROUP(TypeCheckComplexTests) {
   truk::validation::type_checker_c *checker;
 
-  void setup() override {
-    checker = new truk::validation::type_checker_c();
-  }
+  void setup() override { checker = new truk::validation::type_checker_c(); }
 
   void teardown() override { delete checker; }
 
@@ -614,9 +604,7 @@ TEST(TypeCheckComplexTests, ComplexExpression) {
 TEST_GROUP(TypeCheckErrorTests) {
   truk::validation::type_checker_c *checker;
 
-  void setup() override {
-    checker = new truk::validation::type_checker_c();
-  }
+  void setup() override { checker = new truk::validation::type_checker_c(); }
 
   void teardown() override { delete checker; }
 

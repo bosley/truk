@@ -160,7 +160,7 @@ private:
   bool is_integer_type(const type_entry_s *type);
   bool is_boolean_type(const type_entry_s *type);
   bool is_compatible_for_assignment(const type_entry_s *target,
-                                     const type_entry_s *source);
+                                    const type_entry_s *source);
 
   void report_error(const std::string &message, std::size_t source_index);
 };

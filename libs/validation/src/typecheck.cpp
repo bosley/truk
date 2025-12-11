@@ -68,15 +68,16 @@ type_checker_c::resolve_type(const type_info_s &type_info) {
   }
 
   auto resolved = std::make_unique<type_entry_s>(*base_type);
-  
+
   if (type_info.array_size.has_value()) {
     auto element_type = std::make_unique<type_entry_s>(*base_type);
     element_type->pointer_depth = type_info.pointer_depth;
     if (type_info.pointer_depth > 0) {
       element_type->kind = type_kind_e::POINTER;
     }
-    
-    resolved = std::make_unique<type_entry_s>(type_kind_e::ARRAY, base_type->name);
+
+    resolved =
+        std::make_unique<type_entry_s>(type_kind_e::ARRAY, base_type->name);
     resolved->element_type = std::move(element_type);
     resolved->array_size = type_info.array_size;
   } else if (type_info.pointer_depth > 0) {
@@ -163,7 +164,7 @@ bool type_checker_c::is_boolean_type(const type_entry_s *type) {
 }
 
 bool type_checker_c::is_compatible_for_assignment(const type_entry_s *target,
-                                                   const type_entry_s *source) {
+                                                  const type_entry_s *source) {
   if (types_equal(target, source)) {
     return true;
   }
@@ -172,7 +173,8 @@ bool type_checker_c::is_compatible_for_assignment(const type_entry_s *target,
     return true;
   }
 
-  if (target->kind == type_kind_e::POINTER && source->kind == type_kind_e::POINTER) {
+  if (target->kind == type_kind_e::POINTER &&
+      source->kind == type_kind_e::POINTER) {
     if (source->name == "void") {
       return true;
     }
@@ -348,7 +350,7 @@ void type_checker_c::visit(const struct_c &node) {
                    field.type.source_index);
       continue;
     }
-    
+
     auto field_type = resolve_type(field.type);
     if (!field_type) {
       report_error("Failed to resolve field type: " + field.type.name,
@@ -378,7 +380,8 @@ void type_checker_c::visit(const var_c &node) {
     node.initializer()->accept(*this);
 
     if (_current_expression_type &&
-        !is_compatible_for_assignment(var_type.get(), _current_expression_type.get())) {
+        !is_compatible_for_assignment(var_type.get(),
+                                      _current_expression_type.get())) {
       report_error("Type mismatch in variable initialization",
                    node.source_index());
     }
@@ -400,7 +403,8 @@ void type_checker_c::visit(const const_c &node) {
     node.value()->accept(*this);
 
     if (_current_expression_type &&
-        !is_compatible_for_assignment(const_type.get(), _current_expression_type.get())) {
+        !is_compatible_for_assignment(const_type.get(),
+                                      _current_expression_type.get())) {
       report_error("Type mismatch in constant initialization",
                    node.source_index());
     }
