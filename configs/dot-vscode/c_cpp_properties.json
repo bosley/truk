@@ -5,6 +5,10 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/libs/core/include",
+                "${workspaceFolder}/libs/emitc/include",
+                "${workspaceFolder}/libs/ingestion/include",
+                "${workspaceFolder}/libs/validation/include",
+                "${workspaceFolder}/libs/language/include",
                 "${workspaceFolder}/cmake",
                 "${workspaceFolder}/build/_deps/cpputest-src/include",
                 "${workspaceFolder}/build/_deps/cpputest-build/include",
