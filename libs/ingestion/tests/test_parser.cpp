@@ -89,7 +89,7 @@ TEST(ParserFunctionDeclarations, FunctionWithSingleParameter) {
   const auto &param = fn->params()[0];
   STRCMP_EQUAL("x", param.name.name.c_str());
   STRCMP_EQUAL("i32", param.type.name.c_str());
-  CHECK_FALSE(param.type.is_pointer);
+  CHECK_EQUAL(0, param.type.pointer_depth);
   CHECK_FALSE(param.type.array_size.has_value());
 }
 
@@ -127,7 +127,7 @@ TEST(ParserFunctionDeclarations, FunctionWithPrimitiveReturnType) {
 
   STRCMP_EQUAL("get_value", fn->name().name.c_str());
   STRCMP_EQUAL("i64", fn->return_type().name.c_str());
-  CHECK_FALSE(fn->return_type().is_pointer);
+  CHECK_EQUAL(0, fn->return_type().pointer_depth);
 }
 
 TEST(ParserFunctionDeclarations, FunctionWithPointerReturnType) {
@@ -141,7 +141,7 @@ TEST(ParserFunctionDeclarations, FunctionWithPointerReturnType) {
 
   STRCMP_EQUAL("get_ptr", fn->name().name.c_str());
   STRCMP_EQUAL("i32", fn->return_type().name.c_str());
-  CHECK_TRUE(fn->return_type().is_pointer);
+  CHECK_EQUAL(1, fn->return_type().pointer_depth);
 }
 
 TEST(ParserFunctionDeclarations, FunctionWithArrayReturnType) {
@@ -184,7 +184,7 @@ TEST(ParserFunctionDeclarations, FunctionWithPointerParameter) {
   CHECK_EQUAL(1, fn->params().size());
   STRCMP_EQUAL("ptr", fn->params()[0].name.name.c_str());
   STRCMP_EQUAL("i32", fn->params()[0].type.name.c_str());
-  CHECK_TRUE(fn->params()[0].type.is_pointer);
+  CHECK_EQUAL(1, fn->params()[0].type.pointer_depth);
 }
 
 TEST(ParserFunctionDeclarations, FunctionWithArrayParameter) {
@@ -356,7 +356,7 @@ TEST(ParserStructDeclarations, StructWithSingleField) {
   const auto &field = struct_decl->fields()[0];
   STRCMP_EQUAL("x", field.name.name.c_str());
   STRCMP_EQUAL("i32", field.type.name.c_str());
-  CHECK_FALSE(field.type.is_pointer);
+  CHECK_EQUAL(0, field.type.pointer_depth);
   CHECK_FALSE(field.type.array_size.has_value());
 }
 
@@ -399,7 +399,7 @@ TEST(ParserStructDeclarations, StructWithPointerField) {
   const auto &field = struct_decl->fields()[0];
   STRCMP_EQUAL("next", field.name.name.c_str());
   STRCMP_EQUAL("Node", field.type.name.c_str());
-  CHECK_TRUE(field.type.is_pointer);
+  CHECK_EQUAL(1, field.type.pointer_depth);
 }
 
 TEST(ParserStructDeclarations, StructWithArrayField) {
@@ -459,11 +459,11 @@ TEST(ParserStructDeclarations, StructWithMixedFieldTypes) {
 
   STRCMP_EQUAL("id", struct_decl->fields()[0].name.name.c_str());
   STRCMP_EQUAL("i32", struct_decl->fields()[0].type.name.c_str());
-  CHECK_FALSE(struct_decl->fields()[0].type.is_pointer);
+  CHECK_EQUAL(0, struct_decl->fields()[0].type.pointer_depth);
 
   STRCMP_EQUAL("name", struct_decl->fields()[1].name.name.c_str());
   STRCMP_EQUAL("u8", struct_decl->fields()[1].type.name.c_str());
-  CHECK_TRUE(struct_decl->fields()[1].type.is_pointer);
+  CHECK_EQUAL(1, struct_decl->fields()[1].type.pointer_depth);
 
   STRCMP_EQUAL("values", struct_decl->fields()[2].name.name.c_str());
   STRCMP_EQUAL("f32", struct_decl->fields()[2].type.name.c_str());
@@ -472,7 +472,7 @@ TEST(ParserStructDeclarations, StructWithMixedFieldTypes) {
 
   STRCMP_EQUAL("next", struct_decl->fields()[3].name.name.c_str());
   STRCMP_EQUAL("Mixed", struct_decl->fields()[3].type.name.c_str());
-  CHECK_TRUE(struct_decl->fields()[3].type.is_pointer);
+  CHECK_EQUAL(1, struct_decl->fields()[3].type.pointer_depth);
 }
 
 TEST(ParserStructDeclarations, ErrorMissingStructName) {
@@ -555,7 +555,7 @@ TEST(ParserVariableDeclarations, VarWithPointerType) {
   CHECK_TRUE(var_decl != nullptr);
   STRCMP_EQUAL("ptr", var_decl->name().name.c_str());
   STRCMP_EQUAL("i32", var_decl->type().name.c_str());
-  CHECK_TRUE(var_decl->type().is_pointer);
+  CHECK_EQUAL(1, var_decl->type().pointer_depth);
 }
 
 TEST(ParserVariableDeclarations, VarWithArrayType) {
@@ -672,7 +672,7 @@ TEST(ParserConstantDeclarations, ConstWithPointerType) {
   CHECK_TRUE(const_decl != nullptr);
   STRCMP_EQUAL("ptr", const_decl->name().name.c_str());
   STRCMP_EQUAL("i32", const_decl->type().name.c_str());
-  CHECK_TRUE(const_decl->type().is_pointer);
+  CHECK_EQUAL(1, const_decl->type().pointer_depth);
 }
 
 TEST(ParserConstantDeclarations, ConstWithArrayType) {
@@ -782,10 +782,10 @@ TEST(ParserTypeSystem, SinglePointerType) {
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("i32", fn->params()[0].type.name.c_str());
-  CHECK_TRUE(fn->params()[0].type.is_pointer);
+  CHECK_EQUAL(1, fn->params()[0].type.pointer_depth);
 
   STRCMP_EQUAL("i32", fn->return_type().name.c_str());
-  CHECK_TRUE(fn->return_type().is_pointer);
+  CHECK_EQUAL(1, fn->return_type().pointer_depth);
 }
 
 TEST(ParserTypeSystem, MultiLevelPointerType) {
@@ -798,10 +798,10 @@ TEST(ParserTypeSystem, MultiLevelPointerType) {
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("i32", fn->params()[0].type.name.c_str());
-  CHECK_TRUE(fn->params()[0].type.is_pointer);
+  CHECK_EQUAL(2, fn->params()[0].type.pointer_depth);
 
   STRCMP_EQUAL("i32", fn->return_type().name.c_str());
-  CHECK_TRUE(fn->return_type().is_pointer);
+  CHECK_EQUAL(2, fn->return_type().pointer_depth);
 }
 
 TEST(ParserTypeSystem, SizedArrayType) {
@@ -850,7 +850,7 @@ TEST(ParserTypeSystem, ArrayOfPointers) {
   STRCMP_EQUAL("i32", fn->params()[0].type.name.c_str());
   CHECK_TRUE(fn->params()[0].type.array_size.has_value());
   CHECK_EQUAL(10, fn->params()[0].type.array_size.value());
-  CHECK_TRUE(fn->params()[0].type.is_pointer);
+  CHECK_EQUAL(1, fn->params()[0].type.pointer_depth);
 }
 
 TEST(ParserTypeSystem, PointerToArray) {
@@ -863,7 +863,7 @@ TEST(ParserTypeSystem, PointerToArray) {
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("i32", fn->params()[0].type.name.c_str());
-  CHECK_TRUE(fn->params()[0].type.is_pointer);
+  CHECK_EQUAL(1, fn->params()[0].type.pointer_depth);
 }
 
 TEST(ParserTypeSystem, NamedCustomType) {
@@ -876,10 +876,10 @@ TEST(ParserTypeSystem, NamedCustomType) {
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("Point", fn->params()[0].type.name.c_str());
-  CHECK_FALSE(fn->params()[0].type.is_pointer);
+  CHECK_EQUAL(0, fn->params()[0].type.pointer_depth);
 
   STRCMP_EQUAL("Point", fn->return_type().name.c_str());
-  CHECK_FALSE(fn->return_type().is_pointer);
+  CHECK_EQUAL(0, fn->return_type().pointer_depth);
 }
 
 TEST(ParserTypeSystem, PointerToCustomType) {
@@ -892,10 +892,10 @@ TEST(ParserTypeSystem, PointerToCustomType) {
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("Point", fn->params()[0].type.name.c_str());
-  CHECK_TRUE(fn->params()[0].type.is_pointer);
+  CHECK_EQUAL(1, fn->params()[0].type.pointer_depth);
 
   STRCMP_EQUAL("Point", fn->return_type().name.c_str());
-  CHECK_TRUE(fn->return_type().is_pointer);
+  CHECK_EQUAL(1, fn->return_type().pointer_depth);
 }
 
 TEST(ParserTypeSystem, ArrayOfCustomType) {
@@ -1722,6 +1722,43 @@ TEST(ParserExpressions, CompoundAssignmentModulo) {
   CHECK_TRUE(assign->value() != nullptr);
 }
 
+TEST(ParserExpressions, CompoundAssignmentDereference) {
+  const char *source = "fn test() { *ptr += 5; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *assign =
+      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(assign != nullptr);
+  CHECK_TRUE(assign->target() != nullptr);
+  CHECK_TRUE(assign->value() != nullptr);
+
+  auto *target_deref =
+      dynamic_cast<const nodes::unary_op_c *>(assign->target());
+  CHECK_TRUE(target_deref != nullptr);
+  CHECK_TRUE(target_deref->op() == nodes::unary_op_e::DEREF);
+}
+
+TEST(ParserExpressions, CompoundAssignmentComplexLvalue) {
+  const char *source = "fn test() { *arr[i] += 1; }";
+  parse_result_wrapper_s wrapper(source);
+
+  CHECK_TRUE(wrapper.result.success);
+
+  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *assign =
+      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+
+  CHECK_TRUE(assign != nullptr);
+  CHECK_TRUE(assign->target() != nullptr);
+  CHECK_TRUE(assign->value() != nullptr);
+}
+
 TEST(ParserExpressions, OperatorPrecedenceArithmetic) {
   const char *source = "fn test() { return a + b * c; }";
   parse_result_wrapper_s wrapper(source);
@@ -2332,10 +2369,11 @@ TEST(ParserLiterals, ArrayLiteralEmpty) {
   auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
   auto *return_stmt =
       dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *block = dynamic_cast<const nodes::block_c *>(return_stmt->expression());
+  auto *array_lit =
+      dynamic_cast<const nodes::array_literal_c *>(return_stmt->expression());
 
-  CHECK_TRUE(block != nullptr);
-  CHECK_EQUAL(0, block->statements().size());
+  CHECK_TRUE(array_lit != nullptr);
+  CHECK_EQUAL(0, array_lit->elements().size());
 }
 
 TEST(ParserLiterals, ArrayLiteralWithElements) {
@@ -2348,10 +2386,11 @@ TEST(ParserLiterals, ArrayLiteralWithElements) {
   auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
   auto *return_stmt =
       dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *block = dynamic_cast<const nodes::block_c *>(return_stmt->expression());
+  auto *array_lit =
+      dynamic_cast<const nodes::array_literal_c *>(return_stmt->expression());
 
-  CHECK_TRUE(block != nullptr);
-  CHECK_EQUAL(3, block->statements().size());
+  CHECK_TRUE(array_lit != nullptr);
+  CHECK_EQUAL(3, array_lit->elements().size());
 }
 
 TEST(ParserLiterals, ArrayLiteralNested) {
@@ -2364,11 +2403,11 @@ TEST(ParserLiterals, ArrayLiteralNested) {
   auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
   auto *return_stmt =
       dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *outer_block =
-      dynamic_cast<const nodes::block_c *>(return_stmt->expression());
+  auto *outer_array =
+      dynamic_cast<const nodes::array_literal_c *>(return_stmt->expression());
 
-  CHECK_TRUE(outer_block != nullptr);
-  CHECK_EQUAL(2, outer_block->statements().size());
+  CHECK_TRUE(outer_array != nullptr);
+  CHECK_EQUAL(2, outer_array->elements().size());
 }
 
 TEST(ParserLiterals, StructLiteralEmpty) {
@@ -2381,10 +2420,12 @@ TEST(ParserLiterals, StructLiteralEmpty) {
   auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
   auto *return_stmt =
       dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *call = dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+  auto *struct_lit =
+      dynamic_cast<const nodes::struct_literal_c *>(return_stmt->expression());
 
-  CHECK_TRUE(call != nullptr);
-  CHECK_EQUAL(1, call->arguments().size());
+  CHECK_TRUE(struct_lit != nullptr);
+  STRCMP_EQUAL("Point", struct_lit->struct_name().name.c_str());
+  CHECK_EQUAL(0, struct_lit->field_initializers().size());
 }
 
 TEST(ParserLiterals, StructLiteralWithFields) {
@@ -2397,15 +2438,16 @@ TEST(ParserLiterals, StructLiteralWithFields) {
   auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
   auto *return_stmt =
       dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *call = dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+  auto *struct_lit =
+      dynamic_cast<const nodes::struct_literal_c *>(return_stmt->expression());
 
-  CHECK_TRUE(call != nullptr);
-  CHECK_EQUAL(1, call->arguments().size());
-
-  auto *block =
-      dynamic_cast<const nodes::block_c *>(call->arguments()[0].get());
-  CHECK_TRUE(block != nullptr);
-  CHECK_EQUAL(2, block->statements().size());
+  CHECK_TRUE(struct_lit != nullptr);
+  STRCMP_EQUAL("Point", struct_lit->struct_name().name.c_str());
+  CHECK_EQUAL(2, struct_lit->field_initializers().size());
+  STRCMP_EQUAL("x",
+               struct_lit->field_initializers()[0].field_name.name.c_str());
+  STRCMP_EQUAL("y",
+               struct_lit->field_initializers()[1].field_name.name.c_str());
 }
 
 TEST(ParserLiterals, StructLiteralNested) {
@@ -2418,10 +2460,11 @@ TEST(ParserLiterals, StructLiteralNested) {
   auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
   auto *return_stmt =
       dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *outer_call =
-      dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+  auto *outer_struct =
+      dynamic_cast<const nodes::struct_literal_c *>(return_stmt->expression());
 
-  CHECK_TRUE(outer_call != nullptr);
+  CHECK_TRUE(outer_struct != nullptr);
+  STRCMP_EQUAL("Rect", outer_struct->struct_name().name.c_str());
 }
 
 TEST(ParserLiterals, ErrorUnterminatedString) {

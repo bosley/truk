@@ -38,7 +38,7 @@ struct identifier_s {
 struct type_info_s {
   std::string name;
   std::size_t source_index;
-  bool is_pointer{false};
+  std::size_t pointer_depth{0};
   std::optional<std::size_t> array_size;
 
   type_info_s() = delete;
@@ -234,18 +234,6 @@ private:
   base_ptr _condition;
   base_ptr _then_block;
   std::optional<base_ptr> _else_block;
-};
-
-class else_c : public base_c {
-public:
-  else_c() = delete;
-  else_c(std::size_t source_index, base_ptr block)
-      : base_c(keywords_e::ELSE, source_index), _block(std::move(block)) {}
-
-  const base_c *block() const { return _block.get(); }
-
-private:
-  base_ptr _block;
 };
 
 class while_c : public base_c {
@@ -473,6 +461,47 @@ public:
 
 private:
   std::vector<base_ptr> _statements;
+};
+
+class array_literal_c : public base_c {
+public:
+  array_literal_c() = delete;
+  array_literal_c(std::size_t source_index, std::vector<base_ptr> elements)
+      : base_c(keywords_e::UNKNOWN_KEYWORD, source_index),
+        _elements(std::move(elements)) {}
+
+  const std::vector<base_ptr> &elements() const { return _elements; }
+
+private:
+  std::vector<base_ptr> _elements;
+};
+
+struct field_initializer_s {
+  identifier_s field_name;
+  base_ptr value;
+
+  field_initializer_s() = delete;
+  field_initializer_s(identifier_s name, base_ptr val)
+      : field_name(std::move(name)), value(std::move(val)) {}
+};
+
+class struct_literal_c : public base_c {
+public:
+  struct_literal_c() = delete;
+  struct_literal_c(std::size_t source_index, identifier_s struct_name,
+                   std::vector<field_initializer_s> field_initializers)
+      : base_c(keywords_e::UNKNOWN_KEYWORD, source_index),
+        _struct_name(std::move(struct_name)),
+        _field_initializers(std::move(field_initializers)) {}
+
+  const identifier_s &struct_name() const { return _struct_name; }
+  const std::vector<field_initializer_s> &field_initializers() const {
+    return _field_initializers;
+  }
+
+private:
+  identifier_s _struct_name;
+  std::vector<field_initializer_s> _field_initializers;
 };
 
 } // namespace truk::language::nodes

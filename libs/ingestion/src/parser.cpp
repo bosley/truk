@@ -40,6 +40,11 @@ parse_result_s parser_c::parse() {
     result.error_message = e.what();
     result.error_line = e.line();
     result.error_column = e.column();
+  } catch (const std::exception &e) {
+    result.success = false;
+    result.error_message = std::string("Unexpected error: ") + e.what();
+    result.error_line = 0;
+    result.error_column = 0;
   }
   return result;
 }
@@ -247,6 +252,14 @@ language::nodes::base_ptr parser_c::parse_const_decl() {
       std::move(value));
 }
 
+std::size_t count_pointer_depth(const language::nodes::base_c *type_node) {
+  if (auto *pointer =
+          dynamic_cast<const language::nodes::pointer_type_c *>(type_node)) {
+    return 1 + count_pointer_depth(pointer->pointee_type());
+  }
+  return 0;
+}
+
 std::string extract_base_type_name(const language::nodes::base_c *type_node) {
   if (auto *primitive =
           dynamic_cast<const language::nodes::primitive_type_c *>(type_node)) {
@@ -286,20 +299,13 @@ void extract_type_info(const language::nodes::base_c *type_node,
   } else if (auto *pointer =
                  dynamic_cast<const language::nodes::pointer_type_c *>(
                      type_node)) {
-    type_info.is_pointer = true;
+    type_info.pointer_depth = count_pointer_depth(pointer);
     type_info.name = extract_base_type_name(pointer->pointee_type());
   } else if (auto *array = dynamic_cast<const language::nodes::array_type_c *>(
                  type_node)) {
     type_info.array_size = array->size();
-
-    if (auto *element_pointer =
-            dynamic_cast<const language::nodes::pointer_type_c *>(
-                array->element_type())) {
-      type_info.is_pointer = true;
-      type_info.name = extract_base_type_name(element_pointer->pointee_type());
-    } else {
-      type_info.name = extract_base_type_name(array->element_type());
-    }
+    type_info.pointer_depth = count_pointer_depth(array->element_type());
+    type_info.name = extract_base_type_name(array->element_type());
   }
 }
 
@@ -372,7 +378,15 @@ language::nodes::type_ptr parser_c::parse_array_type() {
     if (auto *literal =
             dynamic_cast<language::nodes::literal_c *>(size_expr.get())) {
       if (literal->type() == language::nodes::literal_type_e::INTEGER) {
-        size = std::stoull(literal->value());
+        try {
+          size = std::stoull(literal->value(), nullptr, 0);
+        } catch (const std::invalid_argument &) {
+          throw parse_error("Invalid array size literal",
+                            literal->source_index(), bracket_token.column);
+        } catch (const std::out_of_range &) {
+          throw parse_error("Array size literal out of range",
+                            literal->source_index(), bracket_token.column);
+        }
       }
     }
   }
@@ -615,6 +629,16 @@ clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
         member->source_index(), std::move(cloned_object),
         language::nodes::identifier_s(member->field().name,
                                       member->field().source_index));
+  }
+
+  if (auto *unary = dynamic_cast<const language::nodes::unary_op_c *>(expr)) {
+    if (unary->op() == language::nodes::unary_op_e::DEREF) {
+      auto cloned_operand =
+          clone_expr_for_compound_assignment(unary->operand());
+      return std::make_unique<language::nodes::unary_op_c>(
+          unary->source_index(), language::nodes::unary_op_e::DEREF,
+          std::move(cloned_operand));
+    }
   }
 
   return nullptr;
@@ -1077,8 +1101,8 @@ language::nodes::base_ptr parser_c::parse_array_literal() {
 
   consume(token_type_e::RIGHT_BRACKET, "Expected ']' after array elements");
 
-  return std::make_unique<language::nodes::block_c>(bracket_token.source_index,
-                                                    std::move(elements));
+  return std::make_unique<language::nodes::array_literal_c>(
+      bracket_token.source_index, std::move(elements));
 }
 
 language::nodes::base_ptr parser_c::parse_struct_literal() {
@@ -1089,7 +1113,7 @@ language::nodes::base_ptr parser_c::parse_struct_literal() {
   consume(token_type_e::LEFT_BRACE,
           "Expected '{' after struct name in literal");
 
-  std::vector<language::nodes::base_ptr> field_inits;
+  std::vector<language::nodes::field_initializer_s> field_inits;
   if (!check(token_type_e::RIGHT_BRACE)) {
     const auto &field_name_token = consume_identifier("Expected field name");
     consume(token_type_e::COLON, "Expected ':' after field name");
@@ -1097,11 +1121,8 @@ language::nodes::base_ptr parser_c::parse_struct_literal() {
 
     language::nodes::identifier_s field_name(field_name_token.lexeme,
                                              field_name_token.source_index);
-    auto field_id = std::make_unique<language::nodes::identifier_c>(
-        field_name_token.source_index, std::move(field_name));
-    auto assignment = std::make_unique<language::nodes::assignment_c>(
-        field_name_token.source_index, std::move(field_id), std::move(value));
-    field_inits.push_back(std::move(assignment));
+    field_inits.push_back(language::nodes::field_initializer_s(
+        std::move(field_name), std::move(value)));
 
     while (match(token_type_e::COMMA)) {
       if (check(token_type_e::RIGHT_BRACE)) {
@@ -1112,27 +1133,16 @@ language::nodes::base_ptr parser_c::parse_struct_literal() {
       auto val = parse_expression();
 
       language::nodes::identifier_s fn(fn_token.lexeme, fn_token.source_index);
-      auto fid = std::make_unique<language::nodes::identifier_c>(
-          fn_token.source_index, std::move(fn));
-      auto assign = std::make_unique<language::nodes::assignment_c>(
-          fn_token.source_index, std::move(fid), std::move(val));
-      field_inits.push_back(std::move(assign));
+      field_inits.push_back(
+          language::nodes::field_initializer_s(std::move(fn), std::move(val)));
     }
   }
 
   consume(token_type_e::RIGHT_BRACE,
           "Expected '}' after struct literal fields");
 
-  auto struct_id = std::make_unique<language::nodes::identifier_c>(
-      name_token.source_index, std::move(struct_name));
-  auto block = std::make_unique<language::nodes::block_c>(
-      name_token.source_index, std::move(field_inits));
-
-  std::vector<language::nodes::base_ptr> args;
-  args.push_back(std::move(block));
-
-  return std::make_unique<language::nodes::call_c>(
-      name_token.source_index, std::move(struct_id), std::move(args));
+  return std::make_unique<language::nodes::struct_literal_c>(
+      name_token.source_index, std::move(struct_name), std::move(field_inits));
 }
 
 } // namespace truk::ingestion
