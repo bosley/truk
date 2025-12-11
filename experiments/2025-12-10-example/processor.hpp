@@ -23,12 +23,7 @@ enum class INT_REG {
   ELEVEN
 };
 
-enum class REAL_REG {
-  ZERO = 0,
-  ONE,
-  TWO,
-  THREE
-};
+enum class REAL_REG { ZERO = 0, ONE, TWO, THREE };
 
 class processor_c {
 public:
