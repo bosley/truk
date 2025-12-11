@@ -123,17 +123,17 @@ void emitter_c::ensure_slice_typedef(const type_c *element_type) {
   if (_slice_types_emitted.find(slice_name) == _slice_types_emitted.end()) {
     _slice_types_emitted.insert(slice_name);
     std::string elem_type_for_sizeof = emit_type_for_sizeof(element_type);
-    
+
     if (auto arr = dynamic_cast<const array_type_c *>(element_type)) {
       if (arr->size().has_value()) {
         std::string base_type = emit_type(arr->element_type());
         size_t size = arr->size().value();
-        _header << "typedef struct {\n  " << base_type << " (*data)[" << size 
+        _header << "typedef struct {\n  " << base_type << " (*data)[" << size
                 << "];\n  u64 len;\n} " << slice_name << ";\n\n";
         return;
       }
     }
-    
+
     _header << cdef::emit_slice_typedef(elem_type_for_sizeof, slice_name);
   }
 }
@@ -552,7 +552,8 @@ void emitter_c::visit(const call_c &node) {
         if (node.arguments().size() >= 2) {
           if (auto type_param = dynamic_cast<const type_param_c *>(
                   node.arguments()[0].get())) {
-            std::string elem_type_for_sizeof = emit_type_for_sizeof(type_param->type());
+            std::string elem_type_for_sizeof =
+                emit_type_for_sizeof(type_param->type());
             ensure_slice_typedef(type_param->type());
 
             std::stringstream count_stream;
@@ -562,9 +563,10 @@ void emitter_c::visit(const call_c &node) {
             std::swap(count_stream, _current_expr);
 
             std::string slice_type = get_slice_type_name(type_param->type());
-            
+
             std::string cast_type;
-            if (auto arr = dynamic_cast<const array_type_c *>(type_param->type())) {
+            if (auto arr =
+                    dynamic_cast<const array_type_c *>(type_param->type())) {
               if (arr->size().has_value()) {
                 std::string base_type = emit_type(arr->element_type());
                 size_t size = arr->size().value();
@@ -575,10 +577,11 @@ void emitter_c::visit(const call_c &node) {
             } else {
               cast_type = elem_type_for_sizeof + "*";
             }
-            
+
             _current_expr << "(" << slice_type << "){(" << cast_type
-                          << ")malloc(sizeof(" << elem_type_for_sizeof << ") * ("
-                          << count_expr << ")), (" << count_expr << ")}";
+                          << ")malloc(sizeof(" << elem_type_for_sizeof
+                          << ") * (" << count_expr << ")), (" << count_expr
+                          << ")}";
             return;
           }
         }
@@ -635,7 +638,7 @@ void emitter_c::visit(const call_c &node) {
           std::swap(arg_stream, _current_expr);
           _current_expr << "TRUK_PANIC((" << arg << ").data, (" << arg
                         << ").len)";
-          
+
           if (!_in_expression) {
             _functions << cdef::indent(_indent_level) << _current_expr.str()
                        << ";\n";
@@ -685,7 +688,8 @@ void emitter_c::visit(const index_c &node) {
   if (auto ident = dynamic_cast<const identifier_c *>(node.object())) {
     is_slice = is_variable_slice(ident->id().name);
   } else if (auto inner_idx = dynamic_cast<const index_c *>(node.object())) {
-    if (auto inner_ident = dynamic_cast<const identifier_c *>(inner_idx->object())) {
+    if (auto inner_ident =
+            dynamic_cast<const identifier_c *>(inner_idx->object())) {
       if (is_variable_slice(inner_ident->id().name)) {
         is_slice = false;
       } else {
