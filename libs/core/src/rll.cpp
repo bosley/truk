@@ -4,7 +4,7 @@
 
 namespace truk::core::rll {
 
-rll_wrapper_c::rll_wrapper_c() : lib_(new ::rll::shared_library()) {}
+rll_wrapper_c::rll_wrapper_c() : lib_(new ::rll::shared_library_c()) {}
 
 rll_wrapper_c::~rll_wrapper_c() = default;
 
@@ -47,7 +47,7 @@ void *rll_wrapper_c::get_symbol(const std::string &symbol) {
 const std::string &rll_wrapper_c::get_path() const { return lib_->get_path(); }
 
 std::string rll_wrapper_c::get_platform_suffix() {
-  return ::rll::shared_library::get_platform_suffix();
+  return ::rll::shared_library_c::get_platform_suffix();
 }
 
 } // namespace truk::core::rll

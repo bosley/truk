@@ -1,17 +1,17 @@
 #ifndef RLL_PLATFORM_INCLUDED
 #define RLL_PLATFORM_INCLUDED
 
-std::mutex shared_library::_mutex;
+std::mutex shared_library_c::_mutex;
 
-shared_library::shared_library(){
+shared_library_c::shared_library_c(){
 	lib_handle = nullptr;
 }
 
-shared_library::~shared_library(){
+shared_library_c::~shared_library_c(){
 	unload();
 }
 
-void shared_library::load(const std::string& path, int flags){
+void shared_library_c::load(const std::string& path, int flags){
 	std::lock_guard<std::mutex> lock(_mutex);
 
 	if(lib_handle != nullptr){ 
@@ -28,11 +28,11 @@ void shared_library::load(const std::string& path, int flags){
 	lib_path = path;
 }
 
-void shared_library::load(const std::string& path, loader_flags flags){
+void shared_library_c::load(const std::string& path, loader_flags flags){
 	load(path, flags.get_unix_flags());
 }
 
-void shared_library::unload(){
+void shared_library_c::unload(){
 	std::lock_guard<std::mutex> lock(_mutex);
 
 	if(lib_handle != nullptr){
@@ -44,12 +44,12 @@ void shared_library::unload(){
 }
 
 
-bool shared_library::is_loaded(){
+bool shared_library_c::is_loaded(){
 	return lib_handle != nullptr;
 }
 
 
-void * shared_library::get_symbol(const std::string& name){
+void * shared_library_c::get_symbol(const std::string& name){
 	std::lock_guard<std::mutex> lock(_mutex);
 
 	if(lib_handle != nullptr){
@@ -68,7 +68,7 @@ void * shared_library::get_symbol(const std::string& name){
 	}
 }
 
-void * shared_library::get_symbol_fast(const std::string& name) noexcept {
+void * shared_library_c::get_symbol_fast(const std::string& name) noexcept {
 	std::lock_guard<std::mutex> lock(_mutex);
 
 	if(lib_handle != nullptr){
@@ -79,15 +79,15 @@ void * shared_library::get_symbol_fast(const std::string& name) noexcept {
 }
 
 
-const std::string& shared_library::get_path(){
+const std::string& shared_library_c::get_path(){
 	return lib_path;
 }
 
-void * shared_library::get_platform_handle(){
+void * shared_library_c::get_platform_handle(){
 	return lib_handle;
 }
 
-std::string shared_library::get_platform_suffix(){
+std::string shared_library_c::get_platform_suffix(){
 	#if defined(__APPLE__)
 		return ".dylib";
 	#elif defined(__CYGWIN__)

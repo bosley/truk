@@ -6,7 +6,7 @@
 #include <string>
 
 namespace rll {
-class shared_library;
+class shared_library_c;
 }
 
 namespace truk::core::rll {
@@ -54,7 +54,7 @@ public:
   [[nodiscard]] static std::string get_platform_suffix();
 
 private:
-  std::unique_ptr<::rll::shared_library> lib_;
+  std::unique_ptr<::rll::shared_library_c> lib_;
 };
 
 } // namespace truk::core::rll

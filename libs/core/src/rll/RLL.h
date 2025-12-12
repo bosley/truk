@@ -88,17 +88,17 @@ class loader_flags {
 };
 
 
-class shared_library {
+class shared_library_c {
 	private:
-		shared_library(const shared_library&);
-		shared_library& operator=(const shared_library&);
+		shared_library_c(const shared_library_c&);
+		shared_library_c& operator=(const shared_library_c&);
 		std::string lib_path;
 		void * lib_handle;
 		static std::mutex _mutex;
 		void load(const std::string& path, int flags);
 	public:
-		shared_library();
-		virtual ~shared_library();
+		shared_library_c();
+		virtual ~shared_library_c();
 
 		void load(const std::string& path){ load(path, loader_flags()); }
 
@@ -155,7 +155,7 @@ RLL_DEFINE_EXCEPTION_W_METADATA(symbol_not_found, std::string, symbol_name, retu
 
 RLL_DEFINE_EXCEPTION_W_METADATA(library_already_loaded, std::string, library_path, return library_path.c_str();)
 
-RLL_DEFINE_EXCEPTION(library_not_loaded, return "A shared_library has not been loaded with content before use.";)
+RLL_DEFINE_EXCEPTION(library_not_loaded, return "A shared_library_c has not been loaded with content before use.";)
 
 RLL_DEFINE_EXCEPTION_W_METADATA(library_loading_error, std::string, loading_error, return (loading_error != "" ? loading_error.c_str() : "Unknown Error.");)
 }
