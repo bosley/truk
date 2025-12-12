@@ -15,13 +15,19 @@ enum class builtin_kind_e {
   FREE_ARRAY,
   LEN,
   SIZEOF,
-  PANIC
+  PANIC,
+  PRINTF,
+  VA_ARG_I32,
+  VA_ARG_I64,
+  VA_ARG_F64,
+  VA_ARG_PTR
 };
 
 struct builtin_signature_s {
   std::string name;
   builtin_kind_e kind;
   bool takes_type_param;
+  bool is_variadic;
   std::vector<std::string> param_names;
   std::function<nodes::type_ptr(const nodes::type_c *)> build_signature;
 };

@@ -1,0 +1,12 @@
+struct Container {
+  value: i32,
+  data: [3]i32
+}
+
+fn main() : i32 {
+  var container: Container = Container{
+    value: 42,
+    data: [10, 20, 30]
+  };
+  return 0;
+}

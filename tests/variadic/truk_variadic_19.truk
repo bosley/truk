@@ -1,0 +1,14 @@
+fn sum_via_ptrs(count: i32, ...ptrs) : i32 {
+  var p1: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var p2: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var v1: i32 = *p1;
+  var v2: i32 = *p2;
+  printf("v1=%d v2=%d\n", v1, v2);
+  return v1 + v2;
+}
+
+fn main() : i32 {
+  var a: i32 = 10;
+  var b: i32 = 9;
+  return sum_via_ptrs(2, &a, &b);
+}

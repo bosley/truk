@@ -1,0 +1,15 @@
+fn test_i8() : i32 {
+  var count: u64 = 10;
+  var arr: []i8 = alloc_array(@i8, count);
+  if len(arr) < 5 {
+    var msg_count: u64 = 1;
+    var msg: []u8 = alloc_array(@u8, msg_count);
+    panic(msg);
+  }
+  free_array(arr);
+  return 0;
+}
+
+fn main() : i32 {
+  return test_i8();
+}

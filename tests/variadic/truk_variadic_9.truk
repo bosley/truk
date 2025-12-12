@@ -1,0 +1,21 @@
+fn conditional_f64(threshold: f64, ...values) : i32 {
+  var x: f64 = __TRUK_VA_ARG_F64();
+  var y: f64 = __TRUK_VA_ARG_F64();
+  printf("threshold=%f x=%f y=%f\n", threshold, x, y);
+  
+  var sum: f64 = 0.0;
+  if x > threshold {
+    printf("Adding x\n");
+    sum = sum + x;
+  }
+  if y > threshold {
+    printf("Adding y\n");
+    sum = sum + y;
+  }
+  printf("Sum: %f\n", sum);
+  return sum as i32;
+}
+
+fn main() : i32 {
+  return conditional_f64(2.0, 5.0, 4.0);
+}

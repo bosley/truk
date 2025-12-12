@@ -1,0 +1,18 @@
+fn difference_chain(count: i32, ...values) : i32 {
+  var result: i64 = __TRUK_VA_ARG_I64();
+  printf("Starting value: %lld\n", result);
+  
+  var i: i32 = 1;
+  while i < count {
+    var val: i64 = __TRUK_VA_ARG_I64();
+    printf("Subtracting %lld\n", val);
+    result = result - val;
+    i = i + 1;
+  }
+  printf("Final result: %lld\n", result);
+  return result as i32;
+}
+
+fn main() : i32 {
+  return difference_chain(4, 200, 30, 40, 10);
+}

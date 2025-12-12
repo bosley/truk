@@ -1,0 +1,12 @@
+fn sum_f64(count: i32, ...nums) : i32 {
+  var a: f64 = __TRUK_VA_ARG_F64();
+  var b: f64 = __TRUK_VA_ARG_F64();
+  printf("a=%f b=%f\n", a, b);
+  var sum: f64 = a + b;
+  printf("Sum: %f\n", sum);
+  return sum as i32;
+}
+
+fn main() : i32 {
+  return sum_f64(2, 3.5, 2.5);
+}

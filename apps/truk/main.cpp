@@ -40,6 +40,11 @@ int main(int argc, char **argv) {
 
   if (!parse_result.success) {
     fmt::print(stderr, "Error: Parse failed\n");
+    if (!parse_result.error_message.empty()) {
+      fmt::print(stderr, "  {}\n", parse_result.error_message);
+      fmt::print(stderr, "  at line {}, column {}\n", parse_result.error_line,
+                 parse_result.error_column);
+    }
     return 1;
   }
 
@@ -57,6 +62,12 @@ int main(int argc, char **argv) {
   }
 
   truk::emitc::emitter_c emitter;
+
+  for (auto &decl : parse_result.declarations) {
+    emitter.collect_declarations(decl.get());
+  }
+  emitter.emit_forward_declarations();
+
   for (auto &decl : parse_result.declarations) {
     emitter.emit(decl.get());
   }

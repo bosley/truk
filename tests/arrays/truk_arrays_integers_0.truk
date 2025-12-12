@@ -1,0 +1,93 @@
+fn main() : i32 {
+  var arr_i8: [5]i8;
+  arr_i8[0] = 10;
+  arr_i8[1] = -20;
+  arr_i8[4] = 127;
+  
+  var arr_i16: [5]i16;
+  arr_i16[0] = 1000;
+  arr_i16[1] = -2000;
+  arr_i16[4] = 32000;
+  
+  var arr_i32: [5]i32;
+  arr_i32[0] = 100000;
+  arr_i32[1] = -200000;
+  arr_i32[4] = 2000000;
+  
+  var arr_i64: [5]i64;
+  arr_i64[0] = 1000000000;
+  arr_i64[1] = -2000000000;
+  arr_i64[4] = 9000000000;
+  
+  var arr_u8: [5]u8;
+  arr_u8[0] = 10;
+  arr_u8[1] = 20;
+  arr_u8[4] = 255;
+  
+  var arr_u16: [5]u16;
+  arr_u16[0] = 1000;
+  arr_u16[1] = 2000;
+  arr_u16[4] = 65000;
+  
+  var arr_u32: [5]u32;
+  arr_u32[0] = 100000;
+  arr_u32[1] = 200000;
+  arr_u32[4] = 4000000000;
+  
+  var arr_u64: [5]u64;
+  arr_u64[0] = 1000000000;
+  arr_u64[1] = 2000000000;
+  arr_u64[4] = 18000000000;
+  
+  var count: u64 = 5;
+  
+  var dyn_i8: []i8 = alloc_array(@i8, count);
+  dyn_i8[0] = 10;
+  dyn_i8[1] = -20;
+  dyn_i8[4] = 127;
+  free_array(dyn_i8);
+  
+  var dyn_i16: []i16 = alloc_array(@i16, count);
+  dyn_i16[0] = 1000;
+  dyn_i16[1] = -2000;
+  dyn_i16[4] = 32000;
+  free_array(dyn_i16);
+  
+  var dyn_i32: []i32 = alloc_array(@i32, count);
+  dyn_i32[0] = 100000;
+  dyn_i32[1] = -200000;
+  dyn_i32[4] = 2000000;
+  free_array(dyn_i32);
+  
+  var dyn_i64: []i64 = alloc_array(@i64, count);
+  dyn_i64[0] = 1000000000;
+  dyn_i64[1] = -2000000000;
+  dyn_i64[4] = 9000000000;
+  free_array(dyn_i64);
+  
+  var dyn_u8: []u8 = alloc_array(@u8, count);
+  dyn_u8[0] = 10;
+  dyn_u8[1] = 20;
+  dyn_u8[4] = 255;
+  free_array(dyn_u8);
+  
+  var dyn_u16: []u16 = alloc_array(@u16, count);
+  dyn_u16[0] = 1000;
+  dyn_u16[1] = 2000;
+  dyn_u16[4] = 65000;
+  free_array(dyn_u16);
+  
+  var dyn_u32: []u32 = alloc_array(@u32, count);
+  dyn_u32[0] = 100000;
+  dyn_u32[1] = 200000;
+  dyn_u32[4] = 4000000000;
+  free_array(dyn_u32);
+  
+  var dyn_u64: []u64 = alloc_array(@u64, count);
+  dyn_u64[0] = 1000000000;
+  dyn_u64[1] = 2000000000;
+  dyn_u64[4] = 18000000000;
+  free_array(dyn_u64);
+  
+  return 0;
+}

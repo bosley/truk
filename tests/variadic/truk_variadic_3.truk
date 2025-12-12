@@ -1,0 +1,9 @@
+fn get_first(x: i32, ...args) : i32 {
+  var val: i32 = __TRUK_VA_ARG_I32();
+  printf("First variadic arg: %d\n", val);
+  return val;
+}
+
+fn main() : i32 {
+  return get_first(99, 3, 7, 11);
+}

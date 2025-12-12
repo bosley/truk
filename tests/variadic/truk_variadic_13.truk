@@ -1,0 +1,21 @@
+fn range_f64(lower: f64, upper: f64, ...values) : i32 {
+  var val: f64 = __TRUK_VA_ARG_F64();
+  printf("Checking if %f is in range [%f, %f]\n", val, lower, upper);
+  
+  if val < lower {
+    printf("Below range\n");
+    return lower as i32;
+  } else {
+    if val > upper {
+      printf("Above range\n");
+      return upper as i32;
+    } else {
+      printf("In range\n");
+      return val as i32;
+    }
+  }
+}
+
+fn main() : i32 {
+  return range_f64(10.0, 20.0, 13.5);
+}

@@ -1,0 +1,11 @@
+fn sum_three(count: i32, ...nums) : i32 {
+  var a: i32 = __TRUK_VA_ARG_I32();
+  var b: i32 = __TRUK_VA_ARG_I32();
+  var c: i32 = __TRUK_VA_ARG_I32();
+  printf("a=%d b=%d c=%d\n", a, b, c);
+  return a + b + c;
+}
+
+fn main() : i32 {
+  return sum_three(3, 2, 3, 5);
+}

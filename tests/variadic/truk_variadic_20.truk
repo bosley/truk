@@ -1,0 +1,16 @@
+fn max_i64(count: i32, ...nums) : i32 {
+  var a: i64 = __TRUK_VA_ARG_I64();
+  var b: i64 = __TRUK_VA_ARG_I64();
+  printf("Comparing a=%lld b=%lld\n", a, b);
+  if a > b {
+    printf("a is larger\n");
+    return a as i32;
+  } else {
+    printf("b is larger or equal\n");
+    return b as i32;
+  }
+}
+
+fn main() : i32 {
+  return max_i64(2, 12, 20);
+}

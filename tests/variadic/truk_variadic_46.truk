@@ -1,0 +1,21 @@
+fn mixed_selective(selector: i32, ...values) : i32 {
+  if selector == 1 {
+    var a: i32 = __TRUK_VA_ARG_I32();
+    printf("Selector 1: a(i32)=%d\n", a);
+    return a;
+  } else {
+    if selector == 2 {
+      var b: i64 = __TRUK_VA_ARG_I64();
+      printf("Selector 2: b(i64)=%lld\n", b);
+      return b as i32;
+    } else {
+      var c: f64 = __TRUK_VA_ARG_F64();
+      printf("Selector 3: c(f64)=%f\n", c);
+      return c as i32;
+    }
+  }
+}
+
+fn main() : i32 {
+  return mixed_selective(1, 46);
+}

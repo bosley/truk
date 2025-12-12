@@ -1,0 +1,20 @@
+fn min_f64(count: i32, ...nums) : i32 {
+  var a: f64 = __TRUK_VA_ARG_F64();
+  var b: f64 = __TRUK_VA_ARG_F64();
+  var c: f64 = __TRUK_VA_ARG_F64();
+  printf("Finding min of a=%f b=%f c=%f\n", a, b, c);
+  
+  var min: f64 = a;
+  if b < min {
+    min = b;
+  }
+  if c < min {
+    min = c;
+  }
+  printf("Minimum: %f\n", min);
+  return min as i32;
+}
+
+fn main() : i32 {
+  return min_f64(3, 15.5, 12.3, 20.7);
+}

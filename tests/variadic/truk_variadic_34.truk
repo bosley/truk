@@ -1,0 +1,10 @@
+fn mixed_i32_f64(count: i32, ...values) : i32 {
+  var a: i32 = __TRUK_VA_ARG_I32();
+  var b: f64 = __TRUK_VA_ARG_F64();
+  printf("a(i32)=%d b(f64)=%f\n", a, b);
+  return a + b as i32;
+}
+
+fn main() : i32 {
+  return mixed_i32_f64(2, 20, 14.0);
+}

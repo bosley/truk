@@ -1,0 +1,5 @@
+fn main() : i32 {
+  var arr: [5]i8;
+  arr[0] = 10;
+  return 0;
+}

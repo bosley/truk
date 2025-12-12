@@ -1,0 +1,18 @@
+fn difference_f64(count: i32, ...values) : i32 {
+  var result: f64 = __TRUK_VA_ARG_F64();
+  printf("Starting value: %f\n", result);
+  
+  var i: i32 = 1;
+  while i < count {
+    var val: f64 = __TRUK_VA_ARG_F64();
+    printf("Subtracting %f\n", val);
+    result = result - val;
+    i = i + 1;
+  }
+  printf("Final result: %f\n", result);
+  return result as i32;
+}
+
+fn main() : i32 {
+  return difference_f64(3, 30.0, 8.0, 6.0);
+}

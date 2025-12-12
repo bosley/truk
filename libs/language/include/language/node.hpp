@@ -52,10 +52,11 @@ using type_ptr = std::unique_ptr<type_c>;
 struct parameter_s {
   identifier_s name;
   type_ptr type;
+  bool is_variadic{false};
 
   parameter_s() = delete;
-  parameter_s(identifier_s n, type_ptr t)
-      : name(std::move(n)), type(std::move(t)) {}
+  parameter_s(identifier_s n, type_ptr t, bool variadic = false)
+      : name(std::move(n)), type(std::move(t)), is_variadic(variadic) {}
 };
 
 struct struct_field_s {
@@ -128,19 +129,21 @@ class function_type_c : public type_c {
 public:
   function_type_c() = delete;
   function_type_c(std::size_t source_index, std::vector<type_ptr> param_types,
-                  type_ptr return_type)
+                  type_ptr return_type, bool has_variadic = false)
       : type_c(keywords_e::UNKNOWN_KEYWORD, source_index),
         _param_types(std::move(param_types)),
-        _return_type(std::move(return_type)) {}
+        _return_type(std::move(return_type)), _has_variadic(has_variadic) {}
 
   const std::vector<type_ptr> &param_types() const { return _param_types; }
   const type_c *return_type() const { return _return_type.get(); }
+  bool has_variadic() const { return _has_variadic; }
 
   void accept(visitor_if &visitor) const override;
 
 private:
   std::vector<type_ptr> _param_types;
   type_ptr _return_type;
+  bool _has_variadic{false};
 };
 
 class fn_c : public base_c {

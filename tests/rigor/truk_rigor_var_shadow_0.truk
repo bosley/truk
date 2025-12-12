@@ -1,0 +1,10 @@
+fn main() : i32 {
+  var x: i32 = 10;
+  if x > 5 {
+    var msg_count: u64 = 1;
+  }
+  if x < 20 {
+    var msg_count: u64 = 2;
+  }
+  return 0;
+}

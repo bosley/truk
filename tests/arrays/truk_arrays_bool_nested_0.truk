@@ -1,0 +1,25 @@
+fn main() : i32 {
+  var arr_bool: [3][4]bool;
+  arr_bool[0][0] = true;
+  arr_bool[0][1] = false;
+  arr_bool[0][3] = true;
+  arr_bool[1][2] = false;
+  arr_bool[2][1] = true;
+  arr_bool[2][3] = false;
+  
+  var count: u64 = 3;
+  
+  var dyn_bool: [][5]bool = alloc_array(@[5]bool, count);
+  dyn_bool[0][0] = true;
+  dyn_bool[0][4] = false;
+  dyn_bool[1][2] = true;
+  dyn_bool[2][3] = false;
+  free_array(dyn_bool);
+  
+  var arr_3d_bool: [2][3][4]bool;
+  arr_3d_bool[0][0][0] = true;
+  arr_3d_bool[0][1][2] = false;
+  arr_3d_bool[1][2][3] = true;
+  
+  return 0;
+}

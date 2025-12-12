@@ -1,0 +1,21 @@
+fn average_via_ptr(count: i32, ...ptrs) : i32 {
+  var sum: i32 = 0;
+  var i: i32 = 0;
+  while i < count {
+    var ptr: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+    var val: i32 = *ptr;
+    printf("Value[%d] = %d\n", i, val);
+    sum = sum + val;
+    i = i + 1;
+  }
+  var avg: i32 = sum / count;
+  printf("Sum=%d Count=%d Average=%d\n", sum, count, avg);
+  return avg;
+}
+
+fn main() : i32 {
+  var a: i32 = 30;
+  var b: i32 = 40;
+  var c: i32 = 26;
+  return average_via_ptr(3, &a, &b, &c);
+}

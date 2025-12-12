@@ -1,0 +1,21 @@
+fn range_check(lower: i32, upper: i32, ...values) : i32 {
+  var val: i64 = __TRUK_VA_ARG_I64();
+  printf("Checking if %lld is in range [%d, %d]\n", val, lower, upper);
+  
+  if val < lower as i64 {
+    printf("Below range\n");
+    return lower;
+  } else {
+    if val > upper as i64 {
+      printf("Above range\n");
+      return upper;
+    } else {
+      printf("In range\n");
+      return val as i32;
+    }
+  }
+}
+
+fn main() : i32 {
+  return range_check(50, 100, 70);
+}

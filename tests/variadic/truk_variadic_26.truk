@@ -1,0 +1,16 @@
+fn product_via_ptr(count: i32, ...ptrs) : i32 {
+  var p1: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var p2: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var v1: i32 = *p1;
+  var v2: i32 = *p2;
+  printf("v1=%d v2=%d\n", v1, v2);
+  var product: i32 = v1 * v2;
+  printf("Product: %d\n", product);
+  return product;
+}
+
+fn main() : i32 {
+  var x: i32 = 2;
+  var y: i32 = 13;
+  return product_via_ptr(2, &x, &y);
+}

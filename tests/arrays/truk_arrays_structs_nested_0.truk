@@ -1,0 +1,53 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+struct Vec3 {
+  x: f64,
+  y: f64,
+  z: f64
+}
+
+fn main() : i32 {
+  var arr_2d_point: [2][3]Point;
+  arr_2d_point[0][0] = Point{x: 1, y: 2};
+  arr_2d_point[0][1] = Point{x: 3, y: 4};
+  arr_2d_point[0][2] = Point{x: 5, y: 6};
+  arr_2d_point[1][0] = Point{x: 7, y: 8};
+  arr_2d_point[1][2] = Point{x: 11, y: 12};
+  
+  var arr_2d_vec3: [3][2]Vec3;
+  arr_2d_vec3[0][0] = Vec3{x: 1.0, y: 2.0, z: 3.0};
+  arr_2d_vec3[0][1] = Vec3{x: 4.0, y: 5.0, z: 6.0};
+  arr_2d_vec3[1][0] = Vec3{x: 7.0, y: 8.0, z: 9.0};
+  arr_2d_vec3[2][1] = Vec3{x: 10.0, y: 11.0, z: 12.0};
+  
+  var count: u64 = 2;
+  
+  var dyn_2d_point: [][3]Point = alloc_array(@[3]Point, count);
+  dyn_2d_point[0][0] = Point{x: 100, y: 200};
+  dyn_2d_point[0][2] = Point{x: 300, y: 400};
+  dyn_2d_point[1][1] = Point{x: 500, y: 600};
+  free_array(dyn_2d_point);
+  
+  var dyn_2d_vec3: [][2]Vec3 = alloc_array(@[2]Vec3, count);
+  dyn_2d_vec3[0][0] = Vec3{x: 1.5, y: 2.5, z: 3.5};
+  dyn_2d_vec3[0][1] = Vec3{x: 4.5, y: 5.5, z: 6.5};
+  dyn_2d_vec3[1][0] = Vec3{x: 7.5, y: 8.5, z: 9.5};
+  free_array(dyn_2d_vec3);
+  
+  var arr_3d_point: [2][2][2]Point;
+  arr_3d_point[0][0][0] = Point{x: 1, y: 1};
+  arr_3d_point[0][1][1] = Point{x: 2, y: 2};
+  arr_3d_point[1][0][1] = Point{x: 3, y: 3};
+  arr_3d_point[1][1][0] = Point{x: 4, y: 4};
+  
+  var dyn_3d_point: [][2][3]Point = alloc_array(@[2][3]Point, count);
+  dyn_3d_point[0][0][0] = Point{x: 10, y: 20};
+  dyn_3d_point[0][1][2] = Point{x: 30, y: 40};
+  dyn_3d_point[1][1][1] = Point{x: 50, y: 60};
+  free_array(dyn_3d_point);
+  
+  return 0;
+}

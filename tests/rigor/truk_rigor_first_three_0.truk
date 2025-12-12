@@ -1,0 +1,55 @@
+fn test_i8() : i32 {
+  var ptr: *i8 = alloc(@i8);
+  *ptr = 42;
+  free(ptr);
+  
+  var arr: [5]i8;
+  arr[0] = 10;
+  
+  var count: u64 = 10;
+  var darr: []i8 = alloc_array(@i8, count);
+  darr[5] = 100;
+  free_array(darr);
+  
+  return 0;
+}
+
+fn test_i16() : i32 {
+  var ptr: *i16 = alloc(@i16);
+  *ptr = 1000;
+  free(ptr);
+  
+  var arr: [5]i16;
+  arr[0] = 100;
+  
+  var count: u64 = 10;
+  var darr: []i16 = alloc_array(@i16, count);
+  darr[5] = 5000;
+  free_array(darr);
+  
+  return 0;
+}
+
+fn test_i32() : i32 {
+  var ptr: *i32 = alloc(@i32);
+  *ptr = 100000;
+  free(ptr);
+  
+  var arr: [5]i32;
+  arr[0] = 1000;
+  
+  var count: u64 = 10;
+  var darr: []i32 = alloc_array(@i32, count);
+  darr[5] = 50000;
+  free_array(darr);
+  
+  return 0;
+}
+
+fn main() : i32 {
+  var result: i32 = 0;
+  result = test_i8();
+  result = test_i16();
+  result = test_i32();
+  return 0;
+}

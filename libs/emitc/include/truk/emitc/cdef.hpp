@@ -12,6 +12,7 @@ inline std::string emit_program_header() {
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 typedef int8_t i8;
 typedef int16_t i16;

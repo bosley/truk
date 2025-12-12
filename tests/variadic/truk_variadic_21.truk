@@ -1,0 +1,21 @@
+fn conditional_ptr(flag: i32, ...ptrs) : i32 {
+  var p1: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var p2: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var v1: i32 = *p1;
+  var v2: i32 = *p2;
+  printf("flag=%d v1=%d v2=%d\n", flag, v1, v2);
+  
+  if flag > 0 {
+    printf("Returning v1\n");
+    return v1;
+  } else {
+    printf("Returning v2\n");
+    return v2;
+  }
+}
+
+fn main() : i32 {
+  var x: i32 = 21;
+  var y: i32 = 10;
+  return conditional_ptr(1, &x, &y);
+}

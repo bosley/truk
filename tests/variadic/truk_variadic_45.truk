@@ -1,0 +1,13 @@
+fn mixed_with_ptr(count: i32, ...values) : i32 {
+  var a: i32 = __TRUK_VA_ARG_I32();
+  var ptr: *i32 = __TRUK_VA_ARG_PTR() as *i32;
+  var b: f64 = __TRUK_VA_ARG_F64();
+  var pval: i32 = *ptr;
+  printf("a(i32)=%d pval=%d b(f64)=%f\n", a, pval, b);
+  return a + pval + b as i32;
+}
+
+fn main() : i32 {
+  var x: i32 = 20;
+  return mixed_with_ptr(3, 10, &x, 15.0);
+}

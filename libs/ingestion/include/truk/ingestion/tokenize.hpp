@@ -50,6 +50,7 @@ enum class token_type_e {
   SEMICOLON,
   COLON,
   DOT,
+  DOT_DOT_DOT,
   AT,
   END_OF_FILE,
   UNKNOWN
