@@ -266,7 +266,7 @@ TEST(MemoryTests, PushContextThrowsOnOverflow) {
     for (std::size_t i = 0; i < truk::core::DEFAULT_CONTEXT_COUNT + 10; ++i) {
       mem->push_ctx();
     }
-  } catch (const truk::core::context_overflow_error &e) {
+  } catch (const truk::core::memory_exception_c &e) {
     exception_thrown = true;
     CHECK_TRUE(e.what() != nullptr);
   }

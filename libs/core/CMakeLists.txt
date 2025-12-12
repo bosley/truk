@@ -8,6 +8,8 @@ truk_add_library(
         include/truk/core/memory.hpp
         include/truk/core/environment.hpp
         include/truk/core/resource.hpp
+        include/truk/core/exceptions.hpp
+        include/truk/core/host.hpp
     DEPENDENCIES
         fmt::fmt
 )
