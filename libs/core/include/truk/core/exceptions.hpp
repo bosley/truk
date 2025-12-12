@@ -54,4 +54,10 @@ public:
       : truk_exception_c("environment", error_code, message) {}
 };
 
+class rll_exception_c : public truk_exception_c {
+public:
+  rll_exception_c(int error_code, const std::string &message)
+      : truk_exception_c("rll", error_code, message) {}
+};
+
 } // namespace truk::core

@@ -15,4 +15,6 @@ target_link_libraries(truk_emitc PUBLIC
 
 target_compile_features(truk_emitc PRIVATE cxx_std_20)
 
-add_subdirectory(tests)
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
