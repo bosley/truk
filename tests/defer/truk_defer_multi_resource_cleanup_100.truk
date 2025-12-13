@@ -1,0 +1,41 @@
+var ptr1: *i32 = nil;
+var ptr2: *i32 = nil;
+
+fn allocate_resources() : void {
+  ptr1 = alloc(@i32);
+  *ptr1 = 50;
+  ptr2 = alloc(@i32);
+  *ptr2 = 50;
+}
+
+fn process_with_cleanup() : i32 {
+  var sum: i32 = *ptr1 + *ptr2;
+  defer {
+    free(ptr2);
+    ptr2 = nil;
+  }
+  defer {
+    free(ptr1);
+    ptr1 = nil;
+  }
+  return sum;
+}
+
+fn verify_cleanup() : i32 {
+  if ptr1 == nil {
+    if ptr2 == nil {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+fn main() : i32 {
+  allocate_resources();
+  var sum: i32 = process_with_cleanup();
+  var cleaned: i32 = verify_cleanup();
+  if cleaned == 1 {
+    return sum;
+  }
+  return 0;
+}

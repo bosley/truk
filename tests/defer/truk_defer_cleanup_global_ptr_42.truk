@@ -1,0 +1,32 @@
+var global_ptr: *i32 = nil;
+
+fn allocate_resource() : void {
+  global_ptr = alloc(@i32);
+  *global_ptr = 42;
+}
+
+fn use_and_cleanup() : i32 {
+  var value: i32 = *global_ptr;
+  defer {
+    free(global_ptr);
+    global_ptr = nil;
+  }
+  return value;
+}
+
+fn check_freed() : i32 {
+  if global_ptr == nil {
+    return 1;
+  }
+  return 0;
+}
+
+fn main() : i32 {
+  allocate_resource();
+  var value: i32 = use_and_cleanup();
+  var is_freed: i32 = check_freed();
+  if is_freed == 1 {
+    return value;
+  }
+  return 0;
+}
