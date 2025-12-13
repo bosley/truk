@@ -5,12 +5,30 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <exception>
 #include <memory>
 #include <new>
+#include <sstream>
+#include <string>
 #include <type_traits>
 #include <vector>
 
 namespace truk::aether {
+
+class aether_bounds_exception_c : public std::exception {
+private:
+  std::string _message;
+
+public:
+  aether_bounds_exception_c(std::size_t index, std::size_t length) {
+    std::ostringstream oss;
+    oss << "Array index out of bounds: index " << index << " >= length "
+        << length;
+    _message = oss.str();
+  }
+
+  const char *what() const noexcept override { return _message.c_str(); }
+};
 
 template <typename T>
 concept numeric = std::integral<T> || std::floating_point<T>;
@@ -227,10 +245,93 @@ public:
   }
 };
 
-class i8_c : public integer_base_if<std::uint8_t> {
+class string_c : public dynamic_base_if {
+public:
+  string_c() : dynamic_base_if(dynamic_t()) { ensure_null_terminated(); }
+
+  explicit string_c(const char *str)
+      : dynamic_base_if(
+            dynamic_t(reinterpret_cast<const std::uint8_t *>(str),
+                      str ? std::strlen(str) : 0)) {
+    ensure_null_terminated();
+  }
+
+  explicit string_c(const std::string &str)
+      : dynamic_base_if(dynamic_t(
+            reinterpret_cast<const std::uint8_t *>(str.data()), str.size())) {
+    ensure_null_terminated();
+  }
+
+  explicit string_c(std::vector<std::uint8_t> bytes)
+      : dynamic_base_if(dynamic_t(std::move(bytes))) {
+    ensure_null_terminated();
+  }
+
+  const char *c_str() const noexcept {
+    return reinterpret_cast<const char *>(get_bytes().data());
+  }
+
+  std::string to_string() const {
+    const auto &bytes = get_bytes();
+    if (bytes.empty() || bytes.back() != 0) {
+      return std::string();
+    }
+    return std::string(reinterpret_cast<const char *>(bytes.data()),
+                       bytes.size() - 1);
+  }
+
+  std::size_t string_length() const noexcept {
+    std::size_t size = byte_size();
+    return size > 0 ? size - 1 : 0;
+  }
+
+  void append(const char *str) {
+    if (!str)
+      return;
+    remove_null_terminator();
+    std::size_t len = std::strlen(str);
+    const std::uint8_t *bytes = reinterpret_cast<const std::uint8_t *>(str);
+    for (std::size_t i = 0; i < len; ++i) {
+      this->data_ref().append_byte(bytes[i]);
+    }
+    ensure_null_terminated();
+  }
+
+  void append(const std::string &str) {
+    remove_null_terminator();
+    const std::uint8_t *bytes =
+        reinterpret_cast<const std::uint8_t *>(str.data());
+    for (std::size_t i = 0; i < str.size(); ++i) {
+      this->data_ref().append_byte(bytes[i]);
+    }
+    ensure_null_terminated();
+  }
+
+  void clear() {
+    this->data_ref().clear();
+    ensure_null_terminated();
+  }
+
+private:
+  void ensure_null_terminated() {
+    auto &bytes = this->data_ref().bytes;
+    if (bytes.empty() || bytes.back() != 0) {
+      bytes.push_back(0);
+    }
+  }
+
+  void remove_null_terminator() {
+    auto &bytes = this->data_ref().bytes;
+    if (!bytes.empty() && bytes.back() == 0) {
+      bytes.pop_back();
+    }
+  }
+};
+
+class i8_c : public integer_base_if<std::int8_t> {
 public:
   i8_c() = delete;
-  constexpr i8_c(std::uint8_t value) : integer_base_if<std::uint8_t>(value) {}
+  constexpr i8_c(std::int8_t value) : integer_base_if<std::int8_t>(value) {}
   constexpr ~i8_c() = default;
 
   constexpr i8_c operator+(const i8_c &other) const noexcept {
@@ -309,11 +410,93 @@ public:
   }
 };
 
-class i16_c : public integer_base_if<std::uint16_t> {
+class u8_c : public integer_base_if<std::uint8_t> {
+public:
+  u8_c() = delete;
+  constexpr u8_c(std::uint8_t value) : integer_base_if<std::uint8_t>(value) {}
+  constexpr ~u8_c() = default;
+
+  constexpr u8_c operator+(const u8_c &other) const noexcept {
+    return u8_c(data() + other.data());
+  }
+  constexpr u8_c operator-(const u8_c &other) const noexcept {
+    return u8_c(data() - other.data());
+  }
+  constexpr u8_c operator*(const u8_c &other) const noexcept {
+    return u8_c(data() * other.data());
+  }
+  constexpr u8_c operator/(const u8_c &other) const noexcept {
+    return u8_c(data() / other.data());
+  }
+  constexpr u8_c operator%(const u8_c &other) const noexcept {
+    return u8_c(data() % other.data());
+  }
+
+  constexpr u8_c &operator+=(const u8_c &other) noexcept {
+    set_data(data() + other.data());
+    return *this;
+  }
+  constexpr u8_c &operator-=(const u8_c &other) noexcept {
+    set_data(data() - other.data());
+    return *this;
+  }
+  constexpr u8_c &operator*=(const u8_c &other) noexcept {
+    set_data(data() * other.data());
+    return *this;
+  }
+  constexpr u8_c &operator/=(const u8_c &other) noexcept {
+    set_data(data() / other.data());
+    return *this;
+  }
+  constexpr u8_c &operator%=(const u8_c &other) noexcept {
+    set_data(data() % other.data());
+    return *this;
+  }
+
+  constexpr bool operator==(const u8_c &other) const noexcept {
+    return data() == other.data();
+  }
+  constexpr bool operator!=(const u8_c &other) const noexcept {
+    return data() != other.data();
+  }
+  constexpr bool operator<(const u8_c &other) const noexcept {
+    return data() < other.data();
+  }
+  constexpr bool operator<=(const u8_c &other) const noexcept {
+    return data() <= other.data();
+  }
+  constexpr bool operator>(const u8_c &other) const noexcept {
+    return data() > other.data();
+  }
+  constexpr bool operator>=(const u8_c &other) const noexcept {
+    return data() >= other.data();
+  }
+
+  constexpr u8_c &operator++() noexcept {
+    set_data(data() + 1);
+    return *this;
+  }
+  constexpr u8_c operator++(int) noexcept {
+    u8_c tmp(*this);
+    ++(*this);
+    return tmp;
+  }
+  constexpr u8_c &operator--() noexcept {
+    set_data(data() - 1);
+    return *this;
+  }
+  constexpr u8_c operator--(int) noexcept {
+    u8_c tmp(*this);
+    --(*this);
+    return tmp;
+  }
+};
+
+class i16_c : public integer_base_if<std::int16_t> {
 public:
   i16_c() = delete;
-  constexpr i16_c(std::uint16_t value)
-      : integer_base_if<std::uint16_t>(value) {}
+  constexpr i16_c(std::int16_t value)
+      : integer_base_if<std::int16_t>(value) {}
   constexpr ~i16_c() = default;
 
   constexpr i16_c operator+(const i16_c &other) const noexcept {
@@ -392,11 +575,94 @@ public:
   }
 };
 
-class i32_c : public integer_base_if<std::uint32_t> {
+class u16_c : public integer_base_if<std::uint16_t> {
+public:
+  u16_c() = delete;
+  constexpr u16_c(std::uint16_t value)
+      : integer_base_if<std::uint16_t>(value) {}
+  constexpr ~u16_c() = default;
+
+  constexpr u16_c operator+(const u16_c &other) const noexcept {
+    return u16_c(data() + other.data());
+  }
+  constexpr u16_c operator-(const u16_c &other) const noexcept {
+    return u16_c(data() - other.data());
+  }
+  constexpr u16_c operator*(const u16_c &other) const noexcept {
+    return u16_c(data() * other.data());
+  }
+  constexpr u16_c operator/(const u16_c &other) const noexcept {
+    return u16_c(data() / other.data());
+  }
+  constexpr u16_c operator%(const u16_c &other) const noexcept {
+    return u16_c(data() % other.data());
+  }
+
+  constexpr u16_c &operator+=(const u16_c &other) noexcept {
+    set_data(data() + other.data());
+    return *this;
+  }
+  constexpr u16_c &operator-=(const u16_c &other) noexcept {
+    set_data(data() - other.data());
+    return *this;
+  }
+  constexpr u16_c &operator*=(const u16_c &other) noexcept {
+    set_data(data() * other.data());
+    return *this;
+  }
+  constexpr u16_c &operator/=(const u16_c &other) noexcept {
+    set_data(data() / other.data());
+    return *this;
+  }
+  constexpr u16_c &operator%=(const u16_c &other) noexcept {
+    set_data(data() % other.data());
+    return *this;
+  }
+
+  constexpr bool operator==(const u16_c &other) const noexcept {
+    return data() == other.data();
+  }
+  constexpr bool operator!=(const u16_c &other) const noexcept {
+    return data() != other.data();
+  }
+  constexpr bool operator<(const u16_c &other) const noexcept {
+    return data() < other.data();
+  }
+  constexpr bool operator<=(const u16_c &other) const noexcept {
+    return data() <= other.data();
+  }
+  constexpr bool operator>(const u16_c &other) const noexcept {
+    return data() > other.data();
+  }
+  constexpr bool operator>=(const u16_c &other) const noexcept {
+    return data() >= other.data();
+  }
+
+  constexpr u16_c &operator++() noexcept {
+    set_data(data() + 1);
+    return *this;
+  }
+  constexpr u16_c operator++(int) noexcept {
+    u16_c tmp(*this);
+    ++(*this);
+    return tmp;
+  }
+  constexpr u16_c &operator--() noexcept {
+    set_data(data() - 1);
+    return *this;
+  }
+  constexpr u16_c operator--(int) noexcept {
+    u16_c tmp(*this);
+    --(*this);
+    return tmp;
+  }
+};
+
+class i32_c : public integer_base_if<std::int32_t> {
 public:
   i32_c() = delete;
-  constexpr i32_c(std::uint32_t value)
-      : integer_base_if<std::uint32_t>(value) {}
+  constexpr i32_c(std::int32_t value)
+      : integer_base_if<std::int32_t>(value) {}
   constexpr ~i32_c() = default;
 
   constexpr i32_c operator+(const i32_c &other) const noexcept {
@@ -475,11 +741,94 @@ public:
   }
 };
 
-class i64_c : public integer_base_if<std::uint64_t> {
+class u32_c : public integer_base_if<std::uint32_t> {
+public:
+  u32_c() = delete;
+  constexpr u32_c(std::uint32_t value)
+      : integer_base_if<std::uint32_t>(value) {}
+  constexpr ~u32_c() = default;
+
+  constexpr u32_c operator+(const u32_c &other) const noexcept {
+    return u32_c(data() + other.data());
+  }
+  constexpr u32_c operator-(const u32_c &other) const noexcept {
+    return u32_c(data() - other.data());
+  }
+  constexpr u32_c operator*(const u32_c &other) const noexcept {
+    return u32_c(data() * other.data());
+  }
+  constexpr u32_c operator/(const u32_c &other) const noexcept {
+    return u32_c(data() / other.data());
+  }
+  constexpr u32_c operator%(const u32_c &other) const noexcept {
+    return u32_c(data() % other.data());
+  }
+
+  constexpr u32_c &operator+=(const u32_c &other) noexcept {
+    set_data(data() + other.data());
+    return *this;
+  }
+  constexpr u32_c &operator-=(const u32_c &other) noexcept {
+    set_data(data() - other.data());
+    return *this;
+  }
+  constexpr u32_c &operator*=(const u32_c &other) noexcept {
+    set_data(data() * other.data());
+    return *this;
+  }
+  constexpr u32_c &operator/=(const u32_c &other) noexcept {
+    set_data(data() / other.data());
+    return *this;
+  }
+  constexpr u32_c &operator%=(const u32_c &other) noexcept {
+    set_data(data() % other.data());
+    return *this;
+  }
+
+  constexpr bool operator==(const u32_c &other) const noexcept {
+    return data() == other.data();
+  }
+  constexpr bool operator!=(const u32_c &other) const noexcept {
+    return data() != other.data();
+  }
+  constexpr bool operator<(const u32_c &other) const noexcept {
+    return data() < other.data();
+  }
+  constexpr bool operator<=(const u32_c &other) const noexcept {
+    return data() <= other.data();
+  }
+  constexpr bool operator>(const u32_c &other) const noexcept {
+    return data() > other.data();
+  }
+  constexpr bool operator>=(const u32_c &other) const noexcept {
+    return data() >= other.data();
+  }
+
+  constexpr u32_c &operator++() noexcept {
+    set_data(data() + 1);
+    return *this;
+  }
+  constexpr u32_c operator++(int) noexcept {
+    u32_c tmp(*this);
+    ++(*this);
+    return tmp;
+  }
+  constexpr u32_c &operator--() noexcept {
+    set_data(data() - 1);
+    return *this;
+  }
+  constexpr u32_c operator--(int) noexcept {
+    u32_c tmp(*this);
+    --(*this);
+    return tmp;
+  }
+};
+
+class i64_c : public integer_base_if<std::int64_t> {
 public:
   i64_c() = delete;
-  constexpr i64_c(std::uint64_t value)
-      : integer_base_if<std::uint64_t>(value) {}
+  constexpr i64_c(std::int64_t value)
+      : integer_base_if<std::int64_t>(value) {}
   constexpr ~i64_c() = default;
 
   constexpr i64_c operator+(const i64_c &other) const noexcept {
@@ -553,6 +902,89 @@ public:
   }
   constexpr i64_c operator--(int) noexcept {
     i64_c tmp(*this);
+    --(*this);
+    return tmp;
+  }
+};
+
+class u64_c : public integer_base_if<std::uint64_t> {
+public:
+  u64_c() = delete;
+  constexpr u64_c(std::uint64_t value)
+      : integer_base_if<std::uint64_t>(value) {}
+  constexpr ~u64_c() = default;
+
+  constexpr u64_c operator+(const u64_c &other) const noexcept {
+    return u64_c(data() + other.data());
+  }
+  constexpr u64_c operator-(const u64_c &other) const noexcept {
+    return u64_c(data() - other.data());
+  }
+  constexpr u64_c operator*(const u64_c &other) const noexcept {
+    return u64_c(data() * other.data());
+  }
+  constexpr u64_c operator/(const u64_c &other) const noexcept {
+    return u64_c(data() / other.data());
+  }
+  constexpr u64_c operator%(const u64_c &other) const noexcept {
+    return u64_c(data() % other.data());
+  }
+
+  constexpr u64_c &operator+=(const u64_c &other) noexcept {
+    set_data(data() + other.data());
+    return *this;
+  }
+  constexpr u64_c &operator-=(const u64_c &other) noexcept {
+    set_data(data() - other.data());
+    return *this;
+  }
+  constexpr u64_c &operator*=(const u64_c &other) noexcept {
+    set_data(data() * other.data());
+    return *this;
+  }
+  constexpr u64_c &operator/=(const u64_c &other) noexcept {
+    set_data(data() / other.data());
+    return *this;
+  }
+  constexpr u64_c &operator%=(const u64_c &other) noexcept {
+    set_data(data() % other.data());
+    return *this;
+  }
+
+  constexpr bool operator==(const u64_c &other) const noexcept {
+    return data() == other.data();
+  }
+  constexpr bool operator!=(const u64_c &other) const noexcept {
+    return data() != other.data();
+  }
+  constexpr bool operator<(const u64_c &other) const noexcept {
+    return data() < other.data();
+  }
+  constexpr bool operator<=(const u64_c &other) const noexcept {
+    return data() <= other.data();
+  }
+  constexpr bool operator>(const u64_c &other) const noexcept {
+    return data() > other.data();
+  }
+  constexpr bool operator>=(const u64_c &other) const noexcept {
+    return data() >= other.data();
+  }
+
+  constexpr u64_c &operator++() noexcept {
+    set_data(data() + 1);
+    return *this;
+  }
+  constexpr u64_c operator++(int) noexcept {
+    u64_c tmp(*this);
+    ++(*this);
+    return tmp;
+  }
+  constexpr u64_c &operator--() noexcept {
+    set_data(data() - 1);
+    return *this;
+  }
+  constexpr u64_c operator--(int) noexcept {
+    u64_c tmp(*this);
     --(*this);
     return tmp;
   }
@@ -782,7 +1214,11 @@ public:
 };
 
 template <typename T>
-concept array_element = (std::derived_from<T, numeric_if<std::uint8_t>> ||
+concept array_element = (std::derived_from<T, numeric_if<std::int8_t>> ||
+                         std::derived_from<T, numeric_if<std::int16_t>> ||
+                         std::derived_from<T, numeric_if<std::int32_t>> ||
+                         std::derived_from<T, numeric_if<std::int64_t>> ||
+                         std::derived_from<T, numeric_if<std::uint8_t>> ||
                          std::derived_from<T, numeric_if<std::uint16_t>> ||
                          std::derived_from<T, numeric_if<std::uint32_t>> ||
                          std::derived_from<T, numeric_if<std::uint64_t>> ||
@@ -791,7 +1227,8 @@ concept array_element = (std::derived_from<T, numeric_if<std::uint8_t>> ||
                          std::derived_from<T, numeric_if<bool>>);
 
 template <typename T>
-  requires(array_element<T> || std::derived_from<T, struct_if>)
+  requires(array_element<T> || std::derived_from<T, struct_if> ||
+           std::derived_from<T, dynamic_if>)
 class array_c {
 private:
   using storage_t = std::aligned_storage_t<sizeof(T), alignof(T)>;
@@ -801,7 +1238,8 @@ private:
 
 public:
   explicit array_c(std::size_t length) : _length(length) {
-    if constexpr (std::derived_from<T, struct_if>) {
+    if constexpr (std::derived_from<T, struct_if> ||
+                  std::derived_from<T, dynamic_if>) {
       _elements.reserve(length);
       for (std::size_t i = 0; i < length; ++i) {
         _elements.push_back(std::make_unique<T>());
@@ -819,7 +1257,8 @@ public:
   }
 
   ~array_c() {
-    if constexpr (!std::derived_from<T, struct_if>) {
+    if constexpr (!std::derived_from<T, struct_if> &&
+                  !std::derived_from<T, dynamic_if>) {
       for (std::size_t i = 0; i < _length; ++i) {
         std::destroy_at(std::launder(reinterpret_cast<T *>(&_storage[i])));
       }
@@ -832,7 +1271,8 @@ public:
   array_c &operator=(array_c &&) = delete;
 
   T &operator[](std::size_t idx) {
-    if constexpr (std::derived_from<T, struct_if>) {
+    if constexpr (std::derived_from<T, struct_if> ||
+                  std::derived_from<T, dynamic_if>) {
       return *_elements[idx];
     } else {
       return *std::launder(reinterpret_cast<T *>(&_storage[idx]));
@@ -840,11 +1280,26 @@ public:
   }
 
   const T &operator[](std::size_t idx) const {
-    if constexpr (std::derived_from<T, struct_if>) {
+    if constexpr (std::derived_from<T, struct_if> ||
+                  std::derived_from<T, dynamic_if>) {
       return *_elements[idx];
     } else {
       return *std::launder(reinterpret_cast<const T *>(&_storage[idx]));
     }
+  }
+
+  T &at(std::size_t idx) {
+    if (idx >= _length) {
+      throw aether_bounds_exception_c(idx, _length);
+    }
+    return (*this)[idx];
+  }
+
+  const T &at(std::size_t idx) const {
+    if (idx >= _length) {
+      throw aether_bounds_exception_c(idx, _length);
+    }
+    return (*this)[idx];
   }
 
   std::size_t length() const noexcept { return _length; }

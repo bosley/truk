@@ -37,3 +37,19 @@ truk_add_test(
     DEPENDENCIES
         truk_aether
 )
+
+truk_add_test(
+    NAME test_bounds
+    SOURCES
+        test_bounds.cpp
+    DEPENDENCIES
+        truk_aether
+)
+
+truk_add_test(
+    NAME test_string
+    SOURCES
+        test_string.cpp
+    DEPENDENCIES
+        truk_aether
+)

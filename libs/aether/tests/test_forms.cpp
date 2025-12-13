@@ -20,7 +20,27 @@ TEST(BasicMonadTests, CanConstructI32) {
 }
 
 TEST(BasicMonadTests, CanConstructI64) {
-  truk::aether::i64_c val(10000000000ULL);
+  truk::aether::i64_c val(10000000000LL);
+  CHECK_EQUAL(10000000000LL, val.value());
+}
+
+TEST(BasicMonadTests, CanConstructU8) {
+  truk::aether::u8_c val(200);
+  CHECK_EQUAL(200, val.value());
+}
+
+TEST(BasicMonadTests, CanConstructU16) {
+  truk::aether::u16_c val(50000);
+  CHECK_EQUAL(50000, val.value());
+}
+
+TEST(BasicMonadTests, CanConstructU32) {
+  truk::aether::u32_c val(3000000000U);
+  CHECK_EQUAL(3000000000U, val.value());
+}
+
+TEST(BasicMonadTests, CanConstructU64) {
+  truk::aether::u64_c val(10000000000ULL);
   CHECK_EQUAL(10000000000ULL, val.value());
 }
 
@@ -37,6 +57,23 @@ TEST(BasicMonadTests, CanConstructR64) {
 TEST(BasicMonadTests, I8Arithmetic) {
   truk::aether::i8_c a(10);
   truk::aether::i8_c b(5);
+
+  auto sum = a + b;
+  CHECK_EQUAL(15, sum.value());
+
+  auto diff = a - b;
+  CHECK_EQUAL(5, diff.value());
+
+  auto prod = a * b;
+  CHECK_EQUAL(50, prod.value());
+
+  auto quot = a / b;
+  CHECK_EQUAL(2, quot.value());
+}
+
+TEST(BasicMonadTests, U8Arithmetic) {
+  truk::aether::u8_c a(10);
+  truk::aether::u8_c b(5);
 
   auto sum = a + b;
   CHECK_EQUAL(15, sum.value());
