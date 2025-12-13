@@ -1,0 +1,5 @@
+fn main() : i32 {
+  var upper: i32 = 0xAA;
+  var lower: i32 = 0xaa;
+  return upper;
+}

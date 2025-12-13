@@ -862,7 +862,25 @@ void emitter_c::visit(const member_access_c &node) {
 
 void emitter_c::visit(const literal_c &node) {
   switch (node.type()) {
-  case literal_type_e::INTEGER:
+  case literal_type_e::INTEGER: {
+    const std::string &val = node.value();
+    if (val.size() >= 2 && val[0] == '0' && val[1] == 'b') {
+      unsigned long long result = 0;
+      for (size_t i = 2; i < val.size(); ++i) {
+        result = (result << 1) | (val[i] - '0');
+      }
+      _current_expr << result;
+    } else if (val.size() >= 2 && val[0] == '0' && val[1] == 'o') {
+      unsigned long long result = 0;
+      for (size_t i = 2; i < val.size(); ++i) {
+        result = (result << 3) | (val[i] - '0');
+      }
+      _current_expr << result;
+    } else {
+      _current_expr << val;
+    }
+    break;
+  }
   case literal_type_e::FLOAT:
     _current_expr << node.value();
     break;

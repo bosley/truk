@@ -1,0 +1,4 @@
+fn main() : i32 {
+  var arr: [3]i32 = [0xAA, 0b1010, 0o77];
+  return arr[0];
+}
