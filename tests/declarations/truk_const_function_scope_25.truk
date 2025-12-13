@@ -1,0 +1,10 @@
+const global: i32 = 10;
+
+fn helper() : i32 {
+  const local: i32 = 15;
+  return local;
+}
+
+fn main() : i32 {
+  return global + helper();
+}

@@ -1,0 +1,6 @@
+fn main() : i32 {
+  const a: i32 = 10;
+  const b: i32 = 15;
+  const c: i32 = 5;
+  return a + b + c;
+}

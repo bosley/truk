@@ -1,0 +1,8 @@
+fn main() : i32 {
+  var x: i16 = 10;
+  var result: i16 = ~x;
+  var as_u16: u16 = result as u16;
+  var mod: u16 = 256;
+  var remainder: u16 = as_u16 % mod;
+  return remainder as i32;
+}

@@ -1,0 +1,5 @@
+fn main() : i32 {
+  var x: i64 = -101;
+  var result: i64 = ~x;
+  return result as i32;
+}

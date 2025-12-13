@@ -1,0 +1,4 @@
+fn main() : i32 {
+  const x: u32 = 75;
+  return x as i32;
+}

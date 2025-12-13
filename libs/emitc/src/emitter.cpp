@@ -337,6 +337,10 @@ void emitter_c::visit(const struct_c &node) {
 }
 
 void emitter_c::visit(const var_c &node) {
+  if (_collecting_declarations && _indent_level == 0) {
+    return;
+  }
+
   register_variable_type(node.name().name, node.type());
 
   std::string type_str = emit_type(node.type());
@@ -373,6 +377,10 @@ void emitter_c::visit(const var_c &node) {
 }
 
 void emitter_c::visit(const const_c &node) {
+  if (_collecting_declarations && _indent_level == 0) {
+    return;
+  }
+
   register_variable_type(node.name().name, node.type());
 
   std::string type_str = emit_type(node.type());

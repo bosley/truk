@@ -1,0 +1,12 @@
+fn main() : i32 {
+  var a: u8 = 0xF0;
+  var b: u8 = 0x0F;
+  var c: u8 = 0xAA;
+  var mask: u8 = 0xF0;
+  var nota: u8 = ~a;
+  var notc: u8 = ~c;
+  var left: u8 = nota & b;
+  var right: u8 = notc & mask;
+  var result: u8 = left | right;
+  return result as i32;
+}

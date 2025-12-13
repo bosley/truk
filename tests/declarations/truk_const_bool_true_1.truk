@@ -1,0 +1,7 @@
+fn main() : i32 {
+  const x: bool = true;
+  if x {
+    return 1;
+  }
+  return 0;
+}

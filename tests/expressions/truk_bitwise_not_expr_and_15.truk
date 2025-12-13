@@ -1,0 +1,6 @@
+fn main() : i32 {
+  var x: u8 = 0xF0;
+  var y: u8 = 0xFF;
+  var result: u8 = ~x & y;
+  return result as i32;
+}

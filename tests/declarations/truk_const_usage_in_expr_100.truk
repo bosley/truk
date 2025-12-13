@@ -1,0 +1,11 @@
+const multiplier: i32 = 10;
+
+fn compute(x: i32) : i32 {
+  return x * multiplier;
+}
+
+fn main() : i32 {
+  const value: i32 = 5;
+  const doubled: i32 = value * 2;
+  return compute(doubled);
+}

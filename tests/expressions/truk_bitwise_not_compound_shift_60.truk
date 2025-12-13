@@ -1,0 +1,7 @@
+fn main() : i32 {
+  var x: u8 = 0x0F;
+  var notx: u8 = ~x;
+  var shift: u8 = 2;
+  var result: u8 = notx >> shift;
+  return result as i32;
+}

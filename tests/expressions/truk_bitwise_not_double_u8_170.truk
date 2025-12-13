@@ -1,0 +1,5 @@
+fn main() : i32 {
+  var x: u8 = 170;
+  var result: u8 = ~~x;
+  return result as i32;
+}
