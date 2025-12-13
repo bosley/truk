@@ -250,9 +250,8 @@ public:
   string_c() : dynamic_base_if(dynamic_t()) { ensure_null_terminated(); }
 
   explicit string_c(const char *str)
-      : dynamic_base_if(
-            dynamic_t(reinterpret_cast<const std::uint8_t *>(str),
-                      str ? std::strlen(str) : 0)) {
+      : dynamic_base_if(dynamic_t(reinterpret_cast<const std::uint8_t *>(str),
+                                  str ? std::strlen(str) : 0)) {
     ensure_null_terminated();
   }
 
@@ -495,8 +494,7 @@ public:
 class i16_c : public integer_base_if<std::int16_t> {
 public:
   i16_c() = delete;
-  constexpr i16_c(std::int16_t value)
-      : integer_base_if<std::int16_t>(value) {}
+  constexpr i16_c(std::int16_t value) : integer_base_if<std::int16_t>(value) {}
   constexpr ~i16_c() = default;
 
   constexpr i16_c operator+(const i16_c &other) const noexcept {
@@ -661,8 +659,7 @@ public:
 class i32_c : public integer_base_if<std::int32_t> {
 public:
   i32_c() = delete;
-  constexpr i32_c(std::int32_t value)
-      : integer_base_if<std::int32_t>(value) {}
+  constexpr i32_c(std::int32_t value) : integer_base_if<std::int32_t>(value) {}
   constexpr ~i32_c() = default;
 
   constexpr i32_c operator+(const i32_c &other) const noexcept {
@@ -827,8 +824,7 @@ public:
 class i64_c : public integer_base_if<std::int64_t> {
 public:
   i64_c() = delete;
-  constexpr i64_c(std::int64_t value)
-      : integer_base_if<std::int64_t>(value) {}
+  constexpr i64_c(std::int64_t value) : integer_base_if<std::int64_t>(value) {}
   constexpr ~i64_c() = default;
 
   constexpr i64_c operator+(const i64_c &other) const noexcept {

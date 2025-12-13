@@ -6,15 +6,17 @@ namespace truk::common {
 
 void print_usage(const char *program_name) {
   fmt::print(stderr, "Usage:\n");
-  fmt::print(stderr, "  {} <file.truk> [-o output] [-I path]... [-L path]... "
-                     "[-l lib]... [-rpath path]...\n",
+  fmt::print(stderr,
+             "  {} <file.truk> [-o output] [-I path]... [-L path]... "
+             "[-l lib]... [-rpath path]...\n",
              program_name);
   fmt::print(stderr, "    Compile Truk source to executable (default)\n\n");
   fmt::print(stderr, "  {} toc <file.truk> -o output.c [-I path]...\n",
              program_name);
   fmt::print(stderr, "    Compile Truk source to C\n\n");
-  fmt::print(stderr, "  {} tcc <file.c> -o output [-I path]... [-L path]... "
-                     "[-l lib]... [-rpath path]...\n",
+  fmt::print(stderr,
+             "  {} tcc <file.c> -o output [-I path]... [-L path]... "
+             "[-l lib]... [-rpath path]...\n",
              program_name);
   fmt::print(stderr, "    Compile C source to executable using TCC\n\n");
   fmt::print(stderr, "Options:\n");

@@ -33,7 +33,7 @@ void tcc_compiler_c::set_output_type(int type) {
 }
 
 compile_result_s tcc_compiler_c::compile_file(const std::string &input_file,
-                                               const std::string &output_file) {
+                                              const std::string &output_file) {
   compile_result_s result;
   result.success = false;
 

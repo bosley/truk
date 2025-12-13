@@ -33,7 +33,7 @@ public:
   void set_output_type(int type);
 
   compile_result_s compile_file(const std::string &input_file,
-                                 const std::string &output_file);
+                                const std::string &output_file);
 
 private:
   void *m_state;
