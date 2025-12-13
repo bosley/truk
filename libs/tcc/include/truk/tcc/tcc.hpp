@@ -18,6 +18,12 @@ struct compile_result_s {
   std::string error_message;
 };
 
+struct run_result_s {
+  bool success;
+  int exit_code;
+  std::string error_message;
+};
+
 class tcc_compiler_c {
 public:
   tcc_compiler_c();
@@ -34,6 +40,9 @@ public:
 
   compile_result_s compile_file(const std::string &input_file,
                                 const std::string &output_file);
+
+  run_result_s compile_and_run(const std::string &c_source, int argc,
+                               char **argv);
 
 private:
   void *m_state;

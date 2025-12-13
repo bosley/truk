@@ -1,4 +1,5 @@
 #include "commands/compile.hpp"
+#include "commands/run.hpp"
 #include "commands/tcc.hpp"
 #include "commands/toc.hpp"
 #include "common/args.hpp"
@@ -13,6 +14,10 @@ int main(int argc, char **argv) {
     return truk::commands::tcc({args.input_file, args.output_file,
                                 args.include_paths, args.library_paths,
                                 args.libraries, args.rpaths});
+  } else if (args.command == "run") {
+    return truk::commands::run({args.input_file, args.include_paths,
+                                args.library_paths, args.libraries, args.rpaths,
+                                argc, argv});
   } else {
     return truk::commands::compile({args.input_file, args.output_file,
                                     args.include_paths, args.library_paths,

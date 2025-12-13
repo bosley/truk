@@ -11,6 +11,12 @@ void print_usage(const char *program_name) {
              "[-l lib]... [-rpath path]...\n",
              program_name);
   fmt::print(stderr, "    Compile Truk source to executable (default)\n\n");
+  fmt::print(stderr,
+             "  {} run <file.truk> [-I path]... [-L path]... "
+             "[-l lib]... [-rpath path]... [-- args...]\n",
+             program_name);
+  fmt::print(stderr, "    Run Truk source directly (JIT mode, no output "
+                     "file)\n\n");
   fmt::print(stderr, "  {} toc <file.truk> -o output.c [-I path]...\n",
              program_name);
   fmt::print(stderr, "    Compile Truk source to C\n\n");
@@ -26,6 +32,8 @@ void print_usage(const char *program_name) {
   fmt::print(stderr, "  -l <name>   Link library (multiple allowed)\n");
   fmt::print(stderr, "  -rpath <p>  Runtime library search path (multiple "
                      "allowed)\n");
+  fmt::print(stderr, "  --          Separator for program arguments (run "
+                     "command only)\n");
 }
 
 parsed_args_s parse_args(int argc, char **argv) {
@@ -38,7 +46,8 @@ parsed_args_s parse_args(int argc, char **argv) {
 
   int idx = 1;
 
-  if (std::strcmp(argv[1], "toc") == 0 || std::strcmp(argv[1], "tcc") == 0) {
+  if (std::strcmp(argv[1], "toc") == 0 || std::strcmp(argv[1], "tcc") == 0 ||
+      std::strcmp(argv[1], "run") == 0) {
     args.command = argv[1];
     idx = 2;
   }
@@ -51,7 +60,9 @@ parsed_args_s parse_args(int argc, char **argv) {
   args.input_file = argv[idx++];
 
   while (idx < argc) {
-    if (std::strcmp(argv[idx], "-o") == 0 && idx + 1 < argc) {
+    if (std::strcmp(argv[idx], "--") == 0) {
+      break;
+    } else if (std::strcmp(argv[idx], "-o") == 0 && idx + 1 < argc) {
       args.output_file = argv[idx + 1];
       idx += 2;
     } else if (std::strcmp(argv[idx], "-I") == 0 && idx + 1 < argc) {

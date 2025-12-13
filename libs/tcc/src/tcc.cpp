@@ -53,4 +53,24 @@ compile_result_s tcc_compiler_c::compile_file(const std::string &input_file,
   return result;
 }
 
+run_result_s tcc_compiler_c::compile_and_run(const std::string &c_source,
+                                             int argc, char **argv) {
+  run_result_s result;
+  result.success = false;
+  result.exit_code = -1;
+
+  TCCState *state = static_cast<TCCState *>(m_state);
+
+  tcc_set_output_type(state, TCC_OUTPUT_MEMORY);
+
+  if (tcc_compile_string(state, c_source.c_str()) < 0) {
+    result.error_message = "Failed to compile C source";
+    return result;
+  }
+
+  result.exit_code = tcc_run(state, argc, argv);
+  result.success = true;
+  return result;
+}
+
 } // namespace truk::tcc
