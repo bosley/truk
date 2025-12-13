@@ -101,10 +101,9 @@ private:
   bool _collecting_declarations{false};
   std::string _current_function_name;
   const truk::language::nodes::type_c *_current_function_return_type{nullptr};
-  std::vector<std::vector<const truk::language::nodes::defer_c *>>
-      _scope_defer_stack;
+  std::vector<const truk::language::nodes::defer_c *> _function_defers;
 
-  void emit_defers_for_current_scope(bool clear = false);
+  void emit_function_defers();
 };
 
 } // namespace truk::emitc

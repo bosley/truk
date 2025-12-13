@@ -4,10 +4,7 @@ fn main() : i32 {
   defer {
     x = x + 20;
   }
-  {
-    defer x = x + 2;
-    x = x + 1;
-  }
-  defer x = x + 9;
+  x = x + 1;
+  defer x = x + 11;
   return x;
 }

@@ -277,6 +277,10 @@ void emitter_c::visit(const fn_c &node) {
 
   _functions << ") ";
 
+  _current_function_name = node.name().name;
+  _current_function_return_type = node.return_type();
+  _function_defers.clear();
+
   if (node.body()) {
     if (has_variadic) {
       _functions << "{\n";
@@ -294,6 +298,8 @@ void emitter_c::visit(const fn_c &node) {
         }
       }
 
+      emit_function_defers();
+
       _functions << cdef::indent(_indent_level) << "va_end(__truk_va_args);\n";
       _indent_level--;
       _functions << "}\n";
@@ -303,6 +309,9 @@ void emitter_c::visit(const fn_c &node) {
   }
 
   _functions << "\n\n";
+  
+  _function_defers.clear();
+  _current_function_name = "";
 }
 
 void emitter_c::visit(const struct_c &node) {
@@ -504,7 +513,7 @@ void emitter_c::visit(const for_c &node) {
 }
 
 void emitter_c::visit(const return_c &node) {
-  emit_defers_for_current_scope(true);
+  emit_function_defers();
 
   _functions << cdef::indent(_indent_level) << "return";
 
@@ -530,8 +539,8 @@ void emitter_c::visit(const continue_c &node) {
 }
 
 void emitter_c::visit(const defer_c &node) {
-  if (!_scope_defer_stack.empty() && node.deferred_code()) {
-    _scope_defer_stack.back().push_back(&node);
+  if (node.deferred_code()) {
+    _function_defers.push_back(&node);
   }
 }
 
@@ -985,8 +994,6 @@ void emitter_c::visit(const assignment_c &node) {
 }
 
 void emitter_c::visit(const block_c &node) {
-  _scope_defer_stack.push_back({});
-
   _functions << "{\n";
   _indent_level++;
 
@@ -994,12 +1001,12 @@ void emitter_c::visit(const block_c &node) {
     stmt->accept(*this);
   }
 
-  emit_defers_for_current_scope();
+  if (_current_function_name.empty()) {
+    emit_function_defers();
+  }
 
   _indent_level--;
   _functions << cdef::indent(_indent_level) << "}";
-
-  _scope_defer_stack.pop_back();
 }
 
 void emitter_c::visit(const array_literal_c &node) {
@@ -1030,62 +1037,27 @@ void emitter_c::visit(const struct_literal_c &node) {
 
 void emitter_c::visit(const type_param_c &node) {}
 
-void emitter_c::emit_defers_for_current_scope(bool clear) {
-  if (_scope_defer_stack.empty()) {
-    return;
-  }
-
-  if (clear) {
-    for (auto scope_it = _scope_defer_stack.rbegin(); scope_it != _scope_defer_stack.rend(); ++scope_it) {
-      auto &defers = *scope_it;
-      for (auto it = defers.rbegin(); it != defers.rend(); ++it) {
-        const auto *defer_node = *it;
-        if (defer_node->deferred_code()) {
-          if (auto block = dynamic_cast<const block_c *>(defer_node->deferred_code())) {
-            _functions << "{\n";
-            _indent_level++;
-            for (const auto &stmt : block->statements()) {
-              stmt->accept(*this);
-            }
-            _indent_level--;
-            _functions << cdef::indent(_indent_level) << "}\n";
-          } else {
-            _functions << cdef::indent(_indent_level);
-            _in_expression = true;
-            defer_node->deferred_code()->accept(*this);
-            _in_expression = false;
-            _functions << _current_expr.str();
-            _current_expr.str("");
-            _current_expr.clear();
-            _functions << ";\n";
-          }
+void emitter_c::emit_function_defers() {
+  for (auto it = _function_defers.rbegin(); it != _function_defers.rend(); ++it) {
+    const auto *defer_node = *it;
+    if (defer_node->deferred_code()) {
+      if (auto block = dynamic_cast<const block_c *>(defer_node->deferred_code())) {
+        _functions << "{\n";
+        _indent_level++;
+        for (const auto &stmt : block->statements()) {
+          stmt->accept(*this);
         }
-      }
-      defers.clear();
-    }
-  } else {
-    auto &defers = _scope_defer_stack.back();
-    for (auto it = defers.rbegin(); it != defers.rend(); ++it) {
-      const auto *defer_node = *it;
-      if (defer_node->deferred_code()) {
-        if (auto block = dynamic_cast<const block_c *>(defer_node->deferred_code())) {
-          _functions << "{\n";
-          _indent_level++;
-          for (const auto &stmt : block->statements()) {
-            stmt->accept(*this);
-          }
-          _indent_level--;
-          _functions << cdef::indent(_indent_level) << "}\n";
-        } else {
-          _functions << cdef::indent(_indent_level);
-          _in_expression = true;
-          defer_node->deferred_code()->accept(*this);
-          _in_expression = false;
-          _functions << _current_expr.str();
-          _current_expr.str("");
-          _current_expr.clear();
-          _functions << ";\n";
-        }
+        _indent_level--;
+        _functions << cdef::indent(_indent_level) << "}\n";
+      } else {
+        _functions << cdef::indent(_indent_level);
+        _in_expression = true;
+        defer_node->deferred_code()->accept(*this);
+        _in_expression = false;
+        _functions << _current_expr.str();
+        _current_expr.str("");
+        _current_expr.clear();
+        _functions << ";\n";
       }
     }
   }

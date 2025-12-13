@@ -2,9 +2,9 @@
 
 ## Overview
 
-The `defer` statement schedules code to execute at the end of the current scope. Deferred code executes in Last-In-First-Out (LIFO) order, meaning the last defer registered is the first to execute.
+The `defer` statement schedules code to execute when the current **function** exits. Deferred code executes in Last-In-First-Out (LIFO) order, meaning the last defer registered is the first to execute.
 
-Defer is useful for cleanup operations, ensuring resources are released, or performing final computations before a scope exits.
+Defer is useful for cleanup operations, ensuring resources are released, or performing final computations before a function returns.
 
 ## Syntax
 
@@ -30,19 +30,27 @@ defer_stmt ::= "defer" (expression ";" | block)
 
 ## Execution Model
 
-### Scope-Based Execution
+### Function-Scope Execution
 
-Defers execute at the end of their containing scope. A scope can be:
-- A function body
-- An anonymous block `{ }`
-- A loop body
-- An if/else block
+**Defers execute ONLY when exiting the function**, not at block or loop scope exits. All defers registered anywhere in the function will execute when the function returns, regardless of where they were declared.
 
-When a scope exits (normally or via `return`), all defers registered in that scope execute before control leaves the scope.
+```truk
+fn main() : i32 {
+  var x: i32 = 0;
+  defer x = x + 1;
+  {
+    defer x = x + 2;  // Still executes at function exit
+    x = x + 10;
+  }
+  return x;  // Defers execute here: x=10, then x=12, then x=13
+}
+```
+
+Returns `13`. Both defers execute at function exit in LIFO order, even though one was declared in a nested block.
 
 ### LIFO Ordering
 
-Multiple defers in the same scope execute in reverse order of registration:
+Multiple defers in the same function execute in reverse order of registration:
 
 ```truk
 fn main() : i32 {
@@ -109,68 +117,11 @@ fn main() : i32 {
 
 Returns `10`. The defer block executes both statements before the return.
 
-## Interaction with Scopes
-
-### Anonymous Blocks
-
-Each anonymous block has its own defer scope:
-
-```truk
-fn main() : i32 {
-  var x: i32 = 0;
-  {
-    defer x = x + 3;
-    x = x + 2;
-  }
-  defer x = x + 3;
-  return x;
-}
-```
-
-Execution order:
-1. `x = 0`
-2. Enter anonymous block
-3. `x = x + 2` → `x = 2`
-4. Exit block: defer executes `x = x + 3` → `x = 5`
-5. Register outer defer: `x = x + 3`
-6. Exit function: defer executes `x = x + 3` → `x = 8`
-7. Return `8`
-
-### Nested Scopes
-
-Defers in nested scopes execute when their respective scope exits:
-
-```truk
-fn main() : i32 {
-  var x: i32 = 0;
-  defer x = x + 10;
-  {
-    defer x = x + 5;
-    x = x + 1;
-  }
-  defer x = x + 9;
-  return x;
-}
-```
-
-Execution order:
-1. `x = 0`
-2. Register outer defer: `x = x + 10`
-3. Enter anonymous block
-4. Register inner defer: `x = x + 5`
-5. `x = x + 1` → `x = 1`
-6. Exit block: inner defer executes `x = x + 5` → `x = 6`
-7. Register outer defer: `x = x + 9`
-8. Exit function: defers execute in reverse
-   - `x = x + 9` → `x = 15`
-   - `x = x + 10` → `x = 25`
-9. Return `25`
-
 ## Interaction with Control Flow
 
 ### Return Statements
 
-Defers execute at the end of their containing scope, right before the scope exits:
+Defers execute immediately before any return statement:
 
 ```truk
 fn main() : i32 {
@@ -184,10 +135,10 @@ The defer modifies `x` before the return, so the function returns `3`, not `0`.
 
 ### Early Returns
 
-When a `return` statement executes, ALL defers from ALL enclosing scopes execute before the function returns:
+When a `return` statement executes anywhere in the function, ALL defers execute before the function returns:
 
 ```truk
-fn example() : i32 {
+fn main() : i32 {
   var x: i32 = 0;
   defer x = x + 5;
   
@@ -199,53 +150,94 @@ fn example() : i32 {
 }
 ```
 
-Returns `5`. Even though the return is inside the if block, the defer from the function scope executes before returning.
+Returns `5`. Even though the return is inside the if block, all function-level defers execute before returning.
 
-This works for deeply nested returns as well:
+### Multiple Early Returns
+
+All defers execute regardless of which return path is taken:
 
 ```truk
-fn nested_example() : i32 {
+fn main() : i32 {
   var x: i32 = 0;
   defer x = x + 100;
-  {
-    defer x = x + 10;
-    if true {
-      defer x = x + 1;
-      return x;
-    }
+  defer x = x + 10;
+  defer x = x + 1;
+  
+  if condition1 {
+    return x;  // Defers execute: x=1, x=11, x=111
   }
-  return x;
+  
+  if condition2 {
+    return x;  // Defers execute: x=1, x=11, x=111
+  }
+  
+  return x;    // Defers execute: x=1, x=11, x=111
 }
 ```
 
-Returns `111`. All three defers execute in LIFO order: `x + 1` (innermost), then `x + 10`, then `x + 100`.
+All three defers execute in LIFO order before ANY return, ensuring consistent cleanup.
 
 ### Loops
 
-In loops, defers execute at the end of each iteration (since the loop body is a scope):
+Defers in loops are registered during code generation (compile time), not during execution (runtime). A defer statement in a loop body is only registered ONCE:
 
 ```truk
 fn main() : i32 {
   var x: i32 = 0;
   var i: i32 = 0;
   while i < 5 {
-    defer x = x + 1;
+    defer x = x + 1;  // Registered ONCE at compile time
     i = i + 1;
   }
-  return x;
+  return x;  // One defer executes: x becomes 1
 }
 ```
 
-Returns `5`. The defer executes once per iteration, at the end of each loop iteration.
+Returns `1`. The defer statement is visited once during code generation, so only one defer is registered, which executes once at function exit.
+
+**Important**: Defer registration happens at compile time (when the code is generated), not at runtime (when the loop executes). The defer statement itself is not executed multiple times just because it's in a loop.
+
+### Break and Continue
+
+Break and continue statements do NOT trigger defer execution. Defers only execute at function exit:
+
+```truk
+fn main() : i32 {
+  var x: i32 = 0;
+  defer x = x + 100;
+  var i: i32 = 0;
+  while i < 10 {
+    x = x + 1;
+    i = i + 1;
+    if i == 5 {
+      break;  // Defer does NOT execute here
+    }
+  }
+  return x;  // Defer executes here: x=5, then x=105
+}
+```
+
+Returns `105`. The defer executes at function exit, not when the break occurs.
 
 ## Restrictions
 
 Deferred code cannot contain control flow statements:
 - No `return` statements
-- No `break` statements
+- No `break` statements  
 - No `continue` statements
 
 These restrictions ensure defers are used for cleanup and finalization, not for altering control flow.
+
+Attempting to use control flow in a defer will result in a compile-time error:
+
+```truk
+fn main() : i32 {
+  defer {
+    return 5;  // ERROR: Defer cannot contain return statements
+  }
+  return 0;
+}
+```
 
 ## Best Practices
 
@@ -259,14 +251,18 @@ fn process_file(filename: *i8) : i32 {
   defer close_file(file);
   
   if !validate_file(file) {
-    return -1;
+    return -1;  // File closed before return
   }
   
-  return process_data(file);
+  if !process_data(file) {
+    return -2;  // File closed before return
+  }
+  
+  return 0;  // File closed before return
 }
 ```
 
-The file will be closed whether the function returns early (`-1`) or normally. The defer executes before both return paths.
+The file will be closed before ANY return path, ensuring no resource leaks.
 
 ### Keep Defers Simple
 
@@ -274,17 +270,116 @@ Defers should be simple, focused operations. Complex logic in defers can make co
 
 ### Order Matters
 
-Remember that defers execute in LIFO order. If order matters for your cleanup operations, register them in reverse order of desired execution.
+Remember that defers execute in LIFO order. If order matters for your cleanup operations, register them in reverse order of desired execution:
 
-### Scope Awareness
+```truk
+fn main() : i32 {
+  defer close_connection();  // Executes LAST
+  defer flush_buffer();      // Executes SECOND
+  defer stop_timer();        // Executes FIRST
+  
+  // ... function body ...
+  
+  return 0;
+}
+```
 
-Be aware of which scope your defer is in. Defers in inner scopes execute before defers in outer scopes.
+Execution order: `stop_timer()`, then `flush_buffer()`, then `close_connection()`.
+
+### Defer Registration is Dynamic
+
+Defers are registered during execution, so conditional registration is possible:
+
+```truk
+fn main() : i32 {
+  var x: i32 = 0;
+  
+  if condition {
+    defer x = x + 10;  // Only registered if condition is true
+  }
+  
+  defer x = x + 1;  // Always registered
+  
+  return x;
+}
+```
+
+If `condition` is true, two defers execute. If false, only one defer executes.
+
+### Defers Don't Execute on Panic
+
+If the program panics (via `panic()` builtin), defers do NOT execute. Panics immediately terminate the program.
+
+## Common Patterns
+
+### Multiple Resource Cleanup
+
+```truk
+fn process() : i32 {
+  var file1: *File = open_file("data.txt");
+  defer close_file(file1);
+  
+  var file2: *File = open_file("output.txt");
+  defer close_file(file2);
+  
+  var buffer: []u8 = alloc_array(@u8, 1024);
+  defer free_array(buffer);
+  
+  // Process files...
+  
+  return 0;  // All resources cleaned up automatically
+}
+```
+
+### Accumulator Pattern
+
+```truk
+fn calculate() : i32 {
+  var result: i32 = 0;
+  defer result = result * 2;
+  defer result = result + 10;
+  
+  result = 5;
+  
+  return result;  // Returns 30: (5+10)*2
+}
+```
+
+### Conditional Cleanup
+
+```truk
+fn conditional_process(needs_cleanup: bool) : i32 {
+  var resource: *Resource = nil;
+  
+  if needs_cleanup {
+    resource = acquire_resource();
+    defer release_resource(resource);
+  }
+  
+  // ... processing ...
+  
+  return 0;  // Resource released only if acquired
+}
+```
 
 ## Summary
 
-- Defer schedules code to execute at scope exit
+- Defer schedules code to execute at **function exit** (not block or loop exit)
 - Defers execute in LIFO (Last-In-First-Out) order
-- Each scope has its own defer stack
-- Defers execute before return statements
-- Defers cannot contain control flow statements
+- All defers execute before ANY return statement
+- Defers do NOT execute on break, continue, or panic
+- Defers cannot contain control flow statements (return, break, continue)
 - Use defer for cleanup and finalization operations
+- Defer registration is dynamic (happens during execution)
+
+## Comparison with Other Languages
+
+**Go**: Defer executes at function exit (same as Truk)
+
+**C++**: Destructors execute at scope exit (different from Truk - Truk is function-scope only)
+
+**Rust**: Drop executes at scope exit (different from Truk - Truk is function-scope only)
+
+**Zig**: Defer executes at scope exit (different from Truk - Truk is function-scope only)
+
+Truk's defer is simpler and more predictable: it ALWAYS executes at function exit, never at intermediate scope exits.
