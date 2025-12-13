@@ -1,0 +1,16 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+fn main() : i32 {
+  var ptr: *Point = alloc(@Point);
+  (*ptr).x = 5;
+  free(ptr);
+  ptr = nil;
+  
+  if ptr == nil {
+    return 5;
+  }
+  return 0;
+}

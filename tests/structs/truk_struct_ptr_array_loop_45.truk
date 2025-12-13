@@ -1,0 +1,33 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+fn main() : i32 {
+  var count: u64 = 3;
+  var arr: []*Point = alloc_array(@*Point, count);
+  
+  arr[0] = alloc(@Point);
+  (*arr[0]).x = 10;
+  (*arr[0]).y = 5;
+  
+  arr[1] = alloc(@Point);
+  (*arr[1]).x = 20;
+  (*arr[1]).y = 10;
+  
+  arr[2] = alloc(@Point);
+  (*arr[2]).x = 15;
+  (*arr[2]).y = 0;
+  
+  var sum: i32 = 0;
+  var i: u64 = 0;
+  for i = 0; i < count; i += 1 as u64 {
+    sum += (*arr[i]).x;
+  }
+  
+  free(arr[0]);
+  free(arr[1]);
+  free(arr[2]);
+  free_array(arr);
+  return sum;
+}

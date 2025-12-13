@@ -1,0 +1,13 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+fn main() : i32 {
+  var ptr: *Point = alloc(@Point);
+  (*ptr).x = 42;
+  (*ptr).y = 10;
+  var result: i32 = (*ptr).x;
+  free(ptr);
+  return result;
+}

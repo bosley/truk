@@ -1,0 +1,25 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+struct Container {
+  ptr: *Point,
+  value: i32
+}
+
+fn main() : i32 {
+  var point_ptr: *Point = alloc(@Point);
+  (*point_ptr).x = 50;
+  (*point_ptr).y = 16;
+  
+  var container_ptr: *Container = alloc(@Container);
+  (*container_ptr).ptr = point_ptr;
+  (*container_ptr).value = 0;
+  
+  var result: i32 = (*(*container_ptr).ptr).x + (*(*container_ptr).ptr).y;
+  
+  free(container_ptr);
+  free(point_ptr);
+  return result;
+}

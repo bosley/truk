@@ -1,0 +1,29 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+fn main() : i32 {
+  var count: u64 = 5;
+  var arr: []*Point = alloc_array(@*Point, count);
+  
+  arr[0] = alloc(@Point);
+  arr[1] = nil;
+  arr[2] = alloc(@Point);
+  arr[3] = nil;
+  arr[4] = alloc(@Point);
+  
+  var non_nil_count: i32 = 0;
+  var i: u64 = 0;
+  for i = 0; i < count; i += 1 as u64 {
+    if arr[i] != nil {
+      non_nil_count += 1;
+    }
+  }
+  
+  free(arr[0]);
+  free(arr[2]);
+  free(arr[4]);
+  free_array(arr);
+  return non_nil_count;
+}

@@ -1,0 +1,19 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+fn modify_point(ptr: *Point) : i32 {
+  (*ptr).x = 30;
+  (*ptr).y = 25;
+  return (*ptr).x + (*ptr).y;
+}
+
+fn main() : i32 {
+  var ptr: *Point = alloc(@Point);
+  (*ptr).x = 10;
+  (*ptr).y = 20;
+  var result: i32 = modify_point(ptr);
+  free(ptr);
+  return result;
+}
