@@ -51,6 +51,7 @@ statement       ::= expression_stmt
                   | return_stmt
                   | break_stmt
                   | continue_stmt
+                  | defer_stmt
                   | block
 
 expression_stmt ::= expression ";"
@@ -66,6 +67,8 @@ return_stmt     ::= "return" expression? ";"
 break_stmt      ::= "break" ";"
 
 continue_stmt   ::= "continue" ";"
+
+defer_stmt      ::= "defer" (expression ";" | block)
 
 expression      ::= assignment
 

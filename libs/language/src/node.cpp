@@ -37,6 +37,8 @@ void break_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void continue_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
+void defer_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
+
 void binary_op_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void unary_op_c::accept(visitor_if &visitor) const { visitor.visit(*this); }

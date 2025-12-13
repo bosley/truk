@@ -504,6 +504,8 @@ void emitter_c::visit(const for_c &node) {
 }
 
 void emitter_c::visit(const return_c &node) {
+  emit_defers_for_current_scope(true);
+
   _functions << cdef::indent(_indent_level) << "return";
 
   if (node.expression()) {
@@ -525,6 +527,12 @@ void emitter_c::visit(const break_c &node) {
 
 void emitter_c::visit(const continue_c &node) {
   _functions << cdef::indent(_indent_level) << "continue;\n";
+}
+
+void emitter_c::visit(const defer_c &node) {
+  if (!_scope_defer_stack.empty() && node.deferred_code()) {
+    _scope_defer_stack.back().push_back(&node);
+  }
 }
 
 void emitter_c::visit(const binary_op_c &node) {
@@ -977,6 +985,8 @@ void emitter_c::visit(const assignment_c &node) {
 }
 
 void emitter_c::visit(const block_c &node) {
+  _scope_defer_stack.push_back({});
+
   _functions << "{\n";
   _indent_level++;
 
@@ -984,8 +994,12 @@ void emitter_c::visit(const block_c &node) {
     stmt->accept(*this);
   }
 
+  emit_defers_for_current_scope();
+
   _indent_level--;
   _functions << cdef::indent(_indent_level) << "}";
+
+  _scope_defer_stack.pop_back();
 }
 
 void emitter_c::visit(const array_literal_c &node) {
@@ -1015,5 +1029,40 @@ void emitter_c::visit(const struct_literal_c &node) {
 }
 
 void emitter_c::visit(const type_param_c &node) {}
+
+void emitter_c::emit_defers_for_current_scope(bool clear) {
+  if (_scope_defer_stack.empty()) {
+    return;
+  }
+
+  auto &defers = _scope_defer_stack.back();
+  for (auto it = defers.rbegin(); it != defers.rend(); ++it) {
+    const auto *defer_node = *it;
+    if (defer_node->deferred_code()) {
+      if (auto block = dynamic_cast<const block_c *>(defer_node->deferred_code())) {
+        _functions << "{\n";
+        _indent_level++;
+        for (const auto &stmt : block->statements()) {
+          stmt->accept(*this);
+        }
+        _indent_level--;
+        _functions << cdef::indent(_indent_level) << "}\n";
+      } else {
+        _functions << cdef::indent(_indent_level);
+        _in_expression = true;
+        defer_node->deferred_code()->accept(*this);
+        _in_expression = false;
+        _functions << _current_expr.str();
+        _current_expr.str("");
+        _current_expr.clear();
+        _functions << ";\n";
+      }
+    }
+  }
+
+  if (clear) {
+    defers.clear();
+  }
+}
 
 } // namespace truk::emitc

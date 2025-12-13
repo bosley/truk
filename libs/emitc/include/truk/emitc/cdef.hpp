@@ -38,6 +38,10 @@ typedef double f64;
   } \
 } while(0)
 
+#define TRUK_DEFER_SCOPE_BEGIN() do {
+#define TRUK_DEFER_SCOPE_END(...) } while(0); __VA_ARGS__
+#define TRUK_ANONYMOUS(body) do { body } while(0)
+
 static inline void truk_bounds_check(u64 idx, u64 len) {
   if (idx >= len) {
     fprintf(stderr, "panic: index out of bounds: %llu >= %llu\n", 

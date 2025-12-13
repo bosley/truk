@@ -1,0 +1,11 @@
+fn main() : i32 {
+  var x: i32 = 0;
+  {
+    var y: i32 = 5;
+    {
+      var z: i32 = 10;
+      x = z;
+    }
+  }
+  return x;
+}
