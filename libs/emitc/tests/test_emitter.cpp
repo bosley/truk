@@ -12,14 +12,11 @@ TEST_GROUP(EmitterBasicTests) {
 
   void teardown() override { delete emitter; }
 
-  void parse_and_emit(const char *source) {
+  truk::emitc::result_c parse_and_emit(const char *source) {
     truk::ingestion::parser_c parser(source, std::strlen(source));
     auto result = parser.parse();
     CHECK_TRUE(result.success);
-    for (auto &decl : result.declarations) {
-      emitter->emit(decl.get());
-    }
-    emitter->finalize();
+    return emitter->add_declarations(result.declarations).finalize();
   }
 };
 
@@ -27,8 +24,7 @@ TEST(EmitterBasicTests, EmitterInstantiation) {
   const char *source = R"(
     var a: i32 = 42;
   )";
-  parse_and_emit(source);
-  auto result = emitter->result();
+  auto result = parse_and_emit(source);
   CHECK_FALSE(result.has_errors());
 }
 
@@ -38,8 +34,7 @@ TEST(EmitterBasicTests, EmitSimpleFunction) {
       return a + b;
     }
   )";
-  parse_and_emit(source);
-  auto result = emitter->result();
+  auto result = parse_and_emit(source);
   CHECK_FALSE(result.has_errors());
   CHECK_TRUE(result.chunks.size() > 0);
 }
@@ -51,8 +46,7 @@ TEST(EmitterBasicTests, EmitStruct) {
       y: i32
     }
   )";
-  parse_and_emit(source);
-  auto result = emitter->result();
+  auto result = parse_and_emit(source);
   CHECK_FALSE(result.has_errors());
 }
 
@@ -66,8 +60,7 @@ TEST(EmitterBasicTests, EmitIfStatement) {
       }
     }
   )";
-  parse_and_emit(source);
-  auto result = emitter->result();
+  auto result = parse_and_emit(source);
   CHECK_FALSE(result.has_errors());
 }
 
@@ -79,8 +72,7 @@ TEST(EmitterBasicTests, EmitWhileLoop) {
       }
     }
   )";
-  parse_and_emit(source);
-  auto result = emitter->result();
+  auto result = parse_and_emit(source);
   CHECK_FALSE(result.has_errors());
 }
 
@@ -101,8 +93,7 @@ TEST(EmitterBasicTests, EmitCompleteProgram) {
       return sum;
     }
   )";
-  parse_and_emit(source);
-  auto result = emitter->result();
+  auto result = parse_and_emit(source);
   CHECK_FALSE(result.has_errors());
   CHECK_TRUE(result.chunks.size() >= 3);
 }

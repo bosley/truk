@@ -12,14 +12,28 @@
 
 namespace truk::emitc {
 
+enum class emission_phase_e {
+  COLLECTION,
+  FORWARD_DECLARATION,
+  STRUCT_DEFINITION,
+  FUNCTION_DEFINITION,
+  EXPRESSION_GENERATION,
+  FINALIZATION
+};
+
+const char *emission_phase_name(emission_phase_e phase);
+
 struct error_s {
   std::string message;
   const truk::language::nodes::base_c *node;
   std::size_t source_index;
+  emission_phase_e phase;
+  std::string node_context;
 
   error_s(std::string msg, const truk::language::nodes::base_c *n,
-          std::size_t idx)
-      : message(std::move(msg)), node(n), source_index(idx) {}
+          std::size_t idx, emission_phase_e p, std::string ctx)
+      : message(std::move(msg)), node(n), source_index(idx), phase(p),
+        node_context(std::move(ctx)) {}
 };
 
 struct result_c {
@@ -34,13 +48,11 @@ public:
   emitter_c();
   ~emitter_c() override = default;
 
-  void collect_declarations(const truk::language::nodes::base_c *root);
-  void emit_forward_declarations();
-  void emit(const truk::language::nodes::base_c *root);
+  emitter_c &add_declaration(const truk::language::nodes::base_c *decl);
+  emitter_c &add_declarations(
+      const std::vector<std::unique_ptr<truk::language::nodes::base_c>> &decls);
 
-  void finalize();
-
-  result_c result() const { return _result; }
+  result_c finalize();
 
   void visit(const truk::language::nodes::primitive_type_c &node) override;
   void visit(const truk::language::nodes::named_type_c &node) override;
@@ -73,6 +85,14 @@ public:
   void visit(const truk::language::nodes::type_param_c &node) override;
 
 private:
+  void collect_declarations(const truk::language::nodes::base_c *root);
+  void emit_forward_declarations();
+  void emit(const truk::language::nodes::base_c *root);
+  void internal_finalize();
+
+  void add_error(const std::string &msg,
+                 const truk::language::nodes::base_c *node);
+
   std::string emit_type(const truk::language::nodes::type_c *type);
   std::string emit_type_for_sizeof(const truk::language::nodes::type_c *type);
   std::string
@@ -86,6 +106,7 @@ private:
                               const truk::language::nodes::type_c *type);
   bool is_variable_slice(const std::string &name);
 
+  std::vector<const truk::language::nodes::base_c *> _declarations;
   result_c _result;
   std::stringstream _current_expr;
   std::stringstream _header;
@@ -102,6 +123,8 @@ private:
   std::string _current_function_name;
   const truk::language::nodes::type_c *_current_function_return_type{nullptr};
   std::vector<const truk::language::nodes::defer_c *> _function_defers;
+  emission_phase_e _current_phase{emission_phase_e::COLLECTION};
+  std::string _current_node_context;
 
   void emit_function_defers();
 };

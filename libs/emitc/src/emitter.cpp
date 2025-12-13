@@ -8,7 +8,67 @@ namespace truk::emitc {
 using namespace truk::language;
 using namespace truk::language::nodes;
 
+const char *emission_phase_name(emission_phase_e phase) {
+  switch (phase) {
+  case emission_phase_e::COLLECTION:
+    return "collection";
+  case emission_phase_e::FORWARD_DECLARATION:
+    return "forward declaration";
+  case emission_phase_e::STRUCT_DEFINITION:
+    return "struct definition";
+  case emission_phase_e::FUNCTION_DEFINITION:
+    return "function definition";
+  case emission_phase_e::EXPRESSION_GENERATION:
+    return "expression generation";
+  case emission_phase_e::FINALIZATION:
+    return "finalization";
+  default:
+    return "unknown";
+  }
+}
+
 emitter_c::emitter_c() : _collecting_declarations(false) {}
+
+emitter_c &emitter_c::add_declaration(const base_c *decl) {
+  if (decl) {
+    _declarations.push_back(decl);
+  }
+  return *this;
+}
+
+emitter_c &
+emitter_c::add_declarations(const std::vector<std::unique_ptr<base_c>> &decls) {
+  for (const auto &decl : decls) {
+    add_declaration(decl.get());
+  }
+  return *this;
+}
+
+result_c emitter_c::finalize() {
+  _current_phase = emission_phase_e::COLLECTION;
+  for (const auto *decl : _declarations) {
+    collect_declarations(decl);
+  }
+
+  _current_phase = emission_phase_e::FORWARD_DECLARATION;
+  emit_forward_declarations();
+
+  _current_phase = emission_phase_e::FUNCTION_DEFINITION;
+  for (const auto *decl : _declarations) {
+    emit(decl);
+  }
+
+  _current_phase = emission_phase_e::FINALIZATION;
+  internal_finalize();
+
+  return _result;
+}
+
+void emitter_c::add_error(const std::string &msg, const base_c *node) {
+  std::size_t source_index = node ? node->source_index() : 0;
+  _result.errors.emplace_back(msg, node, source_index, _current_phase,
+                              _current_node_context);
+}
 
 void emitter_c::collect_declarations(const base_c *root) {
   _collecting_declarations = true;
@@ -26,7 +86,7 @@ void emitter_c::emit(const base_c *root) {
   }
 }
 
-void emitter_c::finalize() {
+void emitter_c::internal_finalize() {
   std::stringstream final_header;
   final_header << cdef::emit_program_header();
   final_header
@@ -236,6 +296,12 @@ void emitter_c::visit(const fn_c &node) {
     return;
   }
 
+  emission_phase_e saved_phase = _current_phase;
+  std::string saved_context = _current_node_context;
+
+  _current_phase = emission_phase_e::FUNCTION_DEFINITION;
+  _current_node_context = "function '" + node.name().name + "'";
+
   std::string return_type = emit_type(node.return_type());
   _functions << return_type << " " << node.name().name << "(";
 
@@ -312,6 +378,9 @@ void emitter_c::visit(const fn_c &node) {
 
   _function_defers.clear();
   _current_function_name = "";
+
+  _current_phase = saved_phase;
+  _current_node_context = saved_context;
 }
 
 void emitter_c::visit(const struct_c &node) {
@@ -319,6 +388,12 @@ void emitter_c::visit(const struct_c &node) {
     _struct_names.insert(node.name().name);
     return;
   }
+
+  emission_phase_e saved_phase = _current_phase;
+  std::string saved_context = _current_node_context;
+
+  _current_phase = emission_phase_e::STRUCT_DEFINITION;
+  _current_node_context = "struct '" + node.name().name + "'";
 
   _structs << "typedef struct " << node.name().name << " " << node.name().name
            << ";\n";
@@ -343,6 +418,9 @@ void emitter_c::visit(const struct_c &node) {
   }
 
   _structs << "};\n\n";
+
+  _current_phase = saved_phase;
+  _current_node_context = saved_context;
 }
 
 void emitter_c::visit(const var_c &node) {

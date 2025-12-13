@@ -1,6 +1,7 @@
 #include "toc.hpp"
 #include "../common/file_utils.hpp"
 #include <fmt/core.h>
+#include <truk/core/error_display.hpp>
 #include <truk/emitc/emitter.hpp>
 #include <truk/ingestion/parser.hpp>
 #include <truk/validation/typecheck.hpp>
@@ -41,23 +42,17 @@ int toc(const toc_options_s &opts) {
   }
 
   emitc::emitter_c emitter;
-
-  for (auto &decl : parse_result.declarations) {
-    emitter.collect_declarations(decl.get());
-  }
-  emitter.emit_forward_declarations();
-
-  for (auto &decl : parse_result.declarations) {
-    emitter.emit(decl.get());
-  }
-  emitter.finalize();
-
-  auto emit_result = emitter.result();
+  auto emit_result =
+      emitter.add_declarations(parse_result.declarations).finalize();
 
   if (emit_result.has_errors()) {
-    fmt::print(stderr, "Error: Emit failed\n");
+    core::error_display_c display;
     for (const auto &err : emit_result.errors) {
-      fmt::print(stderr, "  {}\n", err.message);
+      std::string enhanced_message =
+          fmt::format("{} (phase: {}, context: {})", err.message,
+                      emitc::emission_phase_name(err.phase), err.node_context);
+      display.show_error_at_index(opts.input_file, source, err.source_index,
+                                  enhanced_message);
     }
     return 1;
   }
