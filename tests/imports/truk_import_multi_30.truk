@@ -1,0 +1,6 @@
+import "multi_a.truk";
+import "multi_b.truk";
+
+fn main() : i32 {
+    return func_a() + func_b();
+}

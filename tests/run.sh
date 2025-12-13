@@ -56,7 +56,7 @@ for test_category_dir in "${TEST_DIRS[@]}" ; do
         
         test_name=$(basename "${test_file}" .truk)
         
-        expected_code=$(echo "${test_name}" | grep -oE '[0-9]+$')
+        expected_code=$(echo "${test_name}" | grep -oE '[0-9]+$' || true)
         
         if [ -z "${expected_code}" ]; then
             echo -e "${YELLOW}SKIP${NC} ${category_name}/${test_name} (no exit code in filename)"

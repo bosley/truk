@@ -1,0 +1,6 @@
+import "helpers.truk";
+
+fn main() : i32 {
+    var x: i32 = quad(12);
+    return x;
+}

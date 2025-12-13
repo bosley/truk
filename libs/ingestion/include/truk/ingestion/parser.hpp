@@ -62,6 +62,7 @@ private:
 
   std::vector<language::nodes::base_ptr> parse_program();
   language::nodes::base_ptr parse_declaration();
+  language::nodes::base_ptr parse_import_decl();
   language::nodes::base_ptr parse_fn_decl();
   language::nodes::base_ptr parse_struct_decl();
   language::nodes::base_ptr parse_var_decl();

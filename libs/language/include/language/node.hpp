@@ -600,4 +600,18 @@ private:
   std::vector<field_initializer_s> _field_initializers;
 };
 
+class import_c : public base_c {
+public:
+  import_c() = delete;
+  import_c(std::size_t source_index, std::string path)
+      : base_c(keywords_e::IMPORT, source_index), _path(std::move(path)) {}
+
+  const std::string &path() const { return _path; }
+
+  void accept(visitor_if &visitor) const override;
+
+private:
+  std::string _path;
+};
+
 } // namespace truk::language::nodes

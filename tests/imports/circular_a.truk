@@ -1,0 +1,5 @@
+import "circular_b.truk";
+
+fn func_a() : i32 {
+    return 1;
+}

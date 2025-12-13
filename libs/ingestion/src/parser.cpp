@@ -151,6 +151,9 @@ std::vector<language::nodes::base_ptr> parser_c::parse_program() {
 }
 
 language::nodes::base_ptr parser_c::parse_declaration() {
+  if (check_keyword(language::keywords_e::IMPORT)) {
+    return parse_import_decl();
+  }
   if (check_keyword(language::keywords_e::FN)) {
     return parse_fn_decl();
   }
@@ -164,8 +167,27 @@ language::nodes::base_ptr parser_c::parse_declaration() {
     return parse_const_decl();
   }
   const auto &token = peek();
-  throw parse_error("Expected declaration (fn, struct, var, or const)",
+  throw parse_error("Expected declaration (fn, struct, var, const, or import)",
                     token.line, token.column);
+}
+
+language::nodes::base_ptr parser_c::parse_import_decl() {
+  const auto &import_token = consume_keyword(language::keywords_e::IMPORT,
+                                             "Expected 'import' keyword");
+
+  const auto &path_token =
+      consume(token_type_e::STRING_LITERAL,
+              "Expected string literal path after 'import'");
+
+  consume(token_type_e::SEMICOLON, "Expected ';' after import path");
+
+  std::string path = path_token.lexeme;
+  if (path.size() >= 2 && path.front() == '"' && path.back() == '"') {
+    path = path.substr(1, path.size() - 2);
+  }
+
+  return std::make_unique<language::nodes::import_c>(import_token.source_index,
+                                                     path);
 }
 
 language::nodes::base_ptr parser_c::parse_fn_decl() {

@@ -1143,4 +1143,6 @@ void emitter_c::emit_function_defers() {
   }
 }
 
+void emitter_c::visit(const import_c &node) {}
+
 } // namespace truk::emitc

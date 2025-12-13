@@ -83,6 +83,7 @@ public:
   void visit(const truk::language::nodes::array_literal_c &node) override;
   void visit(const truk::language::nodes::struct_literal_c &node) override;
   void visit(const truk::language::nodes::type_param_c &node) override;
+  void visit(const truk::language::nodes::import_c &node) override;
 
 private:
   void collect_declarations(const truk::language::nodes::base_c *root);

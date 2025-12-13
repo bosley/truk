@@ -71,4 +71,6 @@ void struct_literal_c::accept(visitor_if &visitor) const {
 
 void type_param_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
+void import_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
+
 } // namespace truk::language::nodes

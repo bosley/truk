@@ -1260,4 +1260,6 @@ bool type_checker_c::check_no_control_flow(const base_c *node) {
   return true;
 }
 
+void type_checker_c::visit(const import_c &node) {}
+
 } // namespace truk::validation

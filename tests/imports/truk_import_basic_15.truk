@@ -1,0 +1,6 @@
+import "math.truk";
+
+fn main() : i32 {
+    var x: i32 = add(5, 10);
+    return x;
+}
