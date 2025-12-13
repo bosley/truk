@@ -1,0 +1,9 @@
+fn main() : i32 {
+  var i: i32 = 0;
+  for i = 0; ; i += 1 {
+    if i == 5 {
+      break;
+    }
+  }
+  return i;
+}

@@ -1,0 +1,10 @@
+var global: i32 = 0;
+
+fn do_nothing() : void {
+  global = global + 1;
+}
+
+fn main() : i32 {
+  do_nothing();
+  return global;
+}

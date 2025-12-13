@@ -1,0 +1,17 @@
+var global: i32 = 0;
+
+fn loop_with_break() : void {
+  var i: i32 = 0;
+  while i < 100 {
+    global = global + 1;
+    i = i + 1;
+    if i == 10 {
+      break;
+    }
+  }
+}
+
+fn main() : i32 {
+  loop_with_break();
+  return global;
+}

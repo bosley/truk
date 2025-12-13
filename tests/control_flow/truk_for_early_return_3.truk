@@ -1,0 +1,8 @@
+fn main() : i32 {
+  for var i: i32 = 0; i < 10; i += 1 {
+    if i == 3 {
+      return i;
+    }
+  }
+  return 99;
+}

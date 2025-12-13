@@ -572,9 +572,17 @@ clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
         language::nodes::identifier_s(id->id().name, id->id().source_index));
   }
 
+  if (auto *lit = dynamic_cast<const language::nodes::literal_c *>(expr)) {
+    return std::make_unique<language::nodes::literal_c>(
+        lit->source_index(), lit->type(), lit->value());
+  }
+
   if (auto *index = dynamic_cast<const language::nodes::index_c *>(expr)) {
     auto cloned_object = clone_expr_for_compound_assignment(index->object());
     auto cloned_index = clone_expr_for_compound_assignment(index->index());
+    if (!cloned_object || !cloned_index) {
+      return nullptr;
+    }
     return std::make_unique<language::nodes::index_c>(index->source_index(),
                                                       std::move(cloned_object),
                                                       std::move(cloned_index));
@@ -583,6 +591,9 @@ clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
   if (auto *member =
           dynamic_cast<const language::nodes::member_access_c *>(expr)) {
     auto cloned_object = clone_expr_for_compound_assignment(member->object());
+    if (!cloned_object) {
+      return nullptr;
+    }
     return std::make_unique<language::nodes::member_access_c>(
         member->source_index(), std::move(cloned_object),
         language::nodes::identifier_s(member->field().name,
@@ -593,10 +604,24 @@ clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
     if (unary->op() == language::nodes::unary_op_e::DEREF) {
       auto cloned_operand =
           clone_expr_for_compound_assignment(unary->operand());
+      if (!cloned_operand) {
+        return nullptr;
+      }
       return std::make_unique<language::nodes::unary_op_c>(
           unary->source_index(), language::nodes::unary_op_e::DEREF,
           std::move(cloned_operand));
     }
+  }
+
+  if (auto *binary = dynamic_cast<const language::nodes::binary_op_c *>(expr)) {
+    auto cloned_left = clone_expr_for_compound_assignment(binary->left());
+    auto cloned_right = clone_expr_for_compound_assignment(binary->right());
+    if (!cloned_left || !cloned_right) {
+      return nullptr;
+    }
+    return std::make_unique<language::nodes::binary_op_c>(
+        binary->source_index(), binary->op(), std::move(cloned_left),
+        std::move(cloned_right));
   }
 
   return nullptr;

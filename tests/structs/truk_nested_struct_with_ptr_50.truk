@@ -1,0 +1,18 @@
+struct Inner {
+  value: i32
+}
+
+struct Outer {
+  inner: Inner,
+  ptr: *i32
+}
+
+fn main() : i32 {
+  var outer: Outer;
+  outer.inner.value = 30;
+  outer.ptr = alloc(@i32);
+  *outer.ptr = 20;
+  var result: i32 = outer.inner.value + *outer.ptr;
+  free(outer.ptr);
+  return result;
+}

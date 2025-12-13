@@ -1,0 +1,20 @@
+var global: i32 = 0;
+
+fn func_a() : void {
+  global = global + 10;
+}
+
+fn func_b() : void {
+  global = global + 20;
+}
+
+fn func_c() : void {
+  global = global + 20;
+}
+
+fn main() : i32 {
+  func_a();
+  func_b();
+  func_c();
+  return global;
+}

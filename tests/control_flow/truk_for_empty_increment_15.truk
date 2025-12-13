@@ -1,0 +1,8 @@
+fn main() : i32 {
+  var sum: i32 = 0;
+  for var i: i32 = 0; i < 5; {
+    sum += i;
+    i += 1;
+  }
+  return sum + 5;
+}

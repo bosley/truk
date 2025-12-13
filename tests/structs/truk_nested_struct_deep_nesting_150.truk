@@ -1,0 +1,27 @@
+struct A {
+  val: i32
+}
+
+struct B {
+  a: A,
+  val: i32
+}
+
+struct C {
+  b: B,
+  val: i32
+}
+
+struct D {
+  c: C,
+  val: i32
+}
+
+fn main() : i32 {
+  var d: D;
+  d.c.b.a.val = 40;
+  d.c.b.val = 35;
+  d.c.val = 45;
+  d.val = 30;
+  return d.c.b.a.val + d.c.b.val + d.c.val + d.val;
+}

@@ -1,0 +1,20 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+struct Rectangle {
+  top_left: Point,
+  bottom_right: Point
+}
+
+fn main() : i32 {
+  var rect: Rectangle = Rectangle{
+    top_left: Point{x: 10, y: 50},
+    bottom_right: Point{x: 60, y: 20}
+  };
+  var width: i32 = rect.bottom_right.x - rect.top_left.x;
+  var height: i32 = rect.top_left.y - rect.bottom_right.y;
+  var area: i32 = width * height;
+  return area - 1401;
+}

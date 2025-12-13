@@ -1,0 +1,20 @@
+struct Inner {
+  x: i32,
+  y: i32
+}
+
+struct Outer {
+  inner: Inner,
+  z: i32
+}
+
+fn main() : i32 {
+  var outer: Outer;
+  outer.inner.x = 10;
+  outer.inner.y = 20;
+  outer.z = 30;
+  outer.inner.x = outer.inner.x + 5;
+  outer.inner.y = outer.inner.y * 2;
+  outer.z = outer.z - 7;
+  return outer.inner.x + outer.inner.y + outer.z;
+}

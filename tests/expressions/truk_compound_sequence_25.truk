@@ -1,0 +1,7 @@
+fn main() : i32 {
+  var x: i32 = 100;
+  x -= 20;
+  x -= 30;
+  x /= 2;
+  return x;
+}

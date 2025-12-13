@@ -1,0 +1,9 @@
+fn main() : i32 {
+  var a: bool = true;
+  var b: bool = false;
+  var c: bool = true;
+  if a && b || c && a {
+    return 1;
+  }
+  return 0;
+}

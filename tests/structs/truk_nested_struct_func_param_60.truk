@@ -1,0 +1,18 @@
+struct Inner {
+  x: i32,
+  y: i32
+}
+
+struct Outer {
+  inner: Inner,
+  z: i32
+}
+
+fn process(outer: Outer) : i32 {
+  return outer.inner.x + outer.inner.y + outer.z;
+}
+
+fn main() : i32 {
+  var outer: Outer = Outer{inner: Inner{x: 20, y: 25}, z: 15};
+  return process(outer);
+}

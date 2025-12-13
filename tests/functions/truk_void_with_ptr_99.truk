@@ -1,0 +1,12 @@
+fn modify_ptr(ptr: *i32, value: i32) : void {
+  *ptr = value;
+}
+
+fn main() : i32 {
+  var ptr: *i32 = alloc(@i32);
+  *ptr = 50;
+  modify_ptr(ptr, 99);
+  var result: i32 = *ptr;
+  free(ptr);
+  return result;
+}

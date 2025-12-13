@@ -1,0 +1,10 @@
+fn main() : i32 {
+  var count: i32 = 0;
+  for ; ; {
+    count += 1;
+    if count == 3 {
+      break;
+    }
+  }
+  return count;
+}

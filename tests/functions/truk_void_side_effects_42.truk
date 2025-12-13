@@ -1,0 +1,12 @@
+var global: i32 = 0;
+
+fn add_to_global(x: i32) : void {
+  global = global + x;
+}
+
+fn main() : i32 {
+  add_to_global(10);
+  add_to_global(20);
+  add_to_global(12);
+  return global;
+}

@@ -1,0 +1,20 @@
+struct Inner {
+  value: i32
+}
+
+struct Outer {
+  inner: Inner,
+  extra: i32
+}
+
+fn create_outer() : Outer {
+  var outer: Outer;
+  outer.inner.value = 30;
+  outer.extra = 15;
+  return outer;
+}
+
+fn main() : i32 {
+  var outer: Outer = create_outer();
+  return outer.inner.value + outer.extra;
+}

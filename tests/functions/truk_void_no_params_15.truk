@@ -1,0 +1,10 @@
+var global: i32 = 0;
+
+fn set_fifteen() : void {
+  global = 15;
+}
+
+fn main() : i32 {
+  set_fifteen();
+  return global;
+}

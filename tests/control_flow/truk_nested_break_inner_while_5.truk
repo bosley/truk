@@ -1,0 +1,16 @@
+fn main() : i32 {
+  var sum: i32 = 0;
+  var i: i32 = 0;
+  while i < 3 {
+    var j: i32 = 0;
+    while j < 10 {
+      sum += 1;
+      j += 1;
+      if j == 2 {
+        break;
+      }
+    }
+    i += 1;
+  }
+  return sum - 1;
+}

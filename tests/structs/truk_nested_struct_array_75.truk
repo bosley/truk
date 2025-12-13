@@ -1,0 +1,19 @@
+struct Inner {
+  value: i32
+}
+
+struct Outer {
+  inner: Inner,
+  extra: i32
+}
+
+fn main() : i32 {
+  var arr: [3]Outer;
+  arr[0].inner.value = 25;
+  arr[0].extra = 10;
+  arr[1].inner.value = 20;
+  arr[1].extra = 5;
+  arr[2].inner.value = 10;
+  arr[2].extra = 5;
+  return arr[0].inner.value + arr[1].inner.value + arr[2].inner.value + arr[0].extra + arr[1].extra + arr[2].extra;
+}

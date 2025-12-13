@@ -1,0 +1,14 @@
+var global: i32 = 0;
+
+fn add_in_loop(count: i32) : void {
+  var i: i32 = 0;
+  while i < count {
+    global = global + 1;
+    i = i + 1;
+  }
+}
+
+fn main() : i32 {
+  add_in_loop(55);
+  return global;
+}

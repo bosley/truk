@@ -1,0 +1,14 @@
+struct Inner {
+  x: i32,
+  y: i32
+}
+
+struct Outer {
+  inner: Inner,
+  z: i32
+}
+
+fn main() : i32 {
+  var size: u64 = sizeof(@Outer);
+  return size as i32;
+}

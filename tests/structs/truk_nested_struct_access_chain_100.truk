@@ -1,0 +1,21 @@
+struct Level1 {
+  value: i32
+}
+
+struct Level2 {
+  level1: Level1,
+  extra: i32
+}
+
+struct Level3 {
+  level2: Level2,
+  bonus: i32
+}
+
+fn main() : i32 {
+  var l3: Level3;
+  l3.level2.level1.value = 50;
+  l3.level2.extra = 30;
+  l3.bonus = 20;
+  return l3.level2.level1.value + l3.level2.extra + l3.bonus;
+}
