@@ -1,0 +1,44 @@
+{
+  "name": "truk-language",
+  "displayName": "Truk Language Support",
+  "description": "Syntax highlighting for the Truk programming language",
+  "version": "0.1.0",
+  "publisher": "truk",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bosley/truk"
+  },
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "truk",
+        "aliases": [
+          "Truk",
+          "truk"
+        ],
+        "extensions": [
+          ".truk"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icon.png",
+          "dark": "./icon.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "truk",
+        "scopeName": "source.truk",
+        "path": "./syntaxes/truk.tmLanguage.json"
+      }
+    ]
+  }
+}
