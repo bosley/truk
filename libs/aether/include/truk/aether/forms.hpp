@@ -6,11 +6,92 @@
 #include <vector>
 #include <type_traits>
 #include <concepts>
+#include <cstring>
 
 namespace truk::aether {
 
 template<typename T>
 concept numeric = std::integral<T> || std::floating_point<T>;
+
+template<numeric T>
+inline void write_little_endian(std::uint8_t* dest, T value) noexcept {
+    if constexpr (sizeof(T) == 1) {
+        std::memcpy(dest, &value, 1);
+    } else if constexpr (std::is_floating_point_v<T>) {
+        typename std::conditional<sizeof(T) == 4, std::uint32_t, std::uint64_t>::type bits;
+        std::memcpy(&bits, &value, sizeof(T));
+        for (std::size_t i = 0; i < sizeof(T); ++i) {
+            dest[i] = static_cast<std::uint8_t>((bits >> (i * 8)) & 0xFF);
+        }
+    } else {
+        for (std::size_t i = 0; i < sizeof(T); ++i) {
+            dest[i] = static_cast<std::uint8_t>((value >> (i * 8)) & 0xFF);
+        }
+    }
+}
+
+template<numeric T>
+inline void write_big_endian(std::uint8_t* dest, T value) noexcept {
+    if constexpr (sizeof(T) == 1) {
+        std::memcpy(dest, &value, 1);
+    } else if constexpr (std::is_floating_point_v<T>) {
+        typename std::conditional<sizeof(T) == 4, std::uint32_t, std::uint64_t>::type bits;
+        std::memcpy(&bits, &value, sizeof(T));
+        for (std::size_t i = 0; i < sizeof(T); ++i) {
+            dest[sizeof(T) - 1 - i] = static_cast<std::uint8_t>((bits >> (i * 8)) & 0xFF);
+        }
+    } else {
+        for (std::size_t i = 0; i < sizeof(T); ++i) {
+            dest[sizeof(T) - 1 - i] = static_cast<std::uint8_t>((value >> (i * 8)) & 0xFF);
+        }
+    }
+}
+
+template<numeric T>
+inline T read_little_endian(const std::uint8_t* src) noexcept {
+    if constexpr (sizeof(T) == 1) {
+        T result;
+        std::memcpy(&result, src, 1);
+        return result;
+    } else if constexpr (std::is_floating_point_v<T>) {
+        typename std::conditional<sizeof(T) == 4, std::uint32_t, std::uint64_t>::type bits = 0;
+        for (std::size_t i = 0; i < sizeof(T); ++i) {
+            bits |= static_cast<decltype(bits)>(src[i]) << (i * 8);
+        }
+        T result;
+        std::memcpy(&result, &bits, sizeof(T));
+        return result;
+    } else {
+        T result = 0;
+        for (std::size_t i = 0; i < sizeof(T); ++i) {
+            result |= static_cast<T>(src[i]) << (i * 8);
+        }
+        return result;
+    }
+}
+
+template<numeric T>
+inline T read_big_endian(const std::uint8_t* src) noexcept {
+    if constexpr (sizeof(T) == 1) {
+        T result;
+        std::memcpy(&result, src, 1);
+        return result;
+    } else if constexpr (std::is_floating_point_v<T>) {
+        typename std::conditional<sizeof(T) == 4, std::uint32_t, std::uint64_t>::type bits = 0;
+        for (std::size_t i = 0; i < sizeof(T); ++i) {
+            bits |= static_cast<decltype(bits)>(src[sizeof(T) - 1 - i]) << (i * 8);
+        }
+        T result;
+        std::memcpy(&result, &bits, sizeof(T));
+        return result;
+    } else {
+        T result = 0;
+        for (std::size_t i = 0; i < sizeof(T); ++i) {
+            result |= static_cast<T>(src[sizeof(T) - 1 - i]) << (i * 8);
+        }
+        return result;
+    }
+}
 
 struct dynamic_t {
     std::vector<std::uint8_t> bytes;
@@ -18,6 +99,49 @@ struct dynamic_t {
     dynamic_t() = default;
     explicit dynamic_t(std::vector<std::uint8_t> val) : bytes(std::move(val)) {}
     dynamic_t(const std::uint8_t* data, std::size_t size) : bytes(data, data + size) {}
+    
+    void append_bytes(const std::uint8_t* data, std::size_t size) {
+        bytes.insert(bytes.end(), data, data + size);
+    }
+    
+    void append_byte(std::uint8_t byte) {
+        bytes.push_back(byte);
+    }
+    
+    template<numeric T>
+    void pack(T value, bool little_endian = true) {
+        std::size_t old_size = bytes.size();
+        bytes.resize(old_size + sizeof(T));
+        if (little_endian) {
+            write_little_endian<T>(bytes.data() + old_size, value);
+        } else {
+            write_big_endian<T>(bytes.data() + old_size, value);
+        }
+    }
+    
+    template<numeric T>
+    T unpack(std::size_t offset, bool little_endian = true) const {
+        if (offset + sizeof(T) > bytes.size()) {
+            return T{};
+        }
+        if (little_endian) {
+            return read_little_endian<T>(bytes.data() + offset);
+        } else {
+            return read_big_endian<T>(bytes.data() + offset);
+        }
+    }
+    
+    std::uint8_t at(std::size_t index) const {
+        return bytes.at(index);
+    }
+    
+    std::size_t size() const noexcept {
+        return bytes.size();
+    }
+    
+    void clear() {
+        bytes.clear();
+    }
 };
 
 template<typename T>
@@ -62,6 +186,8 @@ public:
     integer_base_if() = delete;
     constexpr integer_base_if(T val) : monad_c<T>(val) {}
     constexpr ~integer_base_if() = default;
+    
+    constexpr T value() const noexcept { return this->data(); }
 };
 
 template<std::floating_point T>
@@ -70,6 +196,8 @@ public:
     real_base_if() = delete;
     constexpr real_base_if(T val) : monad_c<T>(val) {}
     constexpr ~real_base_if() = default;
+    
+    constexpr T value() const noexcept { return this->data(); }
 };
 
 class dynamic_base_if : public monad_c<dynamic_t>, public dynamic_if {
@@ -79,6 +207,24 @@ public:
     explicit dynamic_base_if(std::vector<std::uint8_t> val) : monad_c<dynamic_t>(dynamic_t(std::move(val))) {}
     dynamic_base_if(const std::uint8_t* data, std::size_t size) : monad_c<dynamic_t>(dynamic_t(data, size)) {}
     ~dynamic_base_if() = default;
+    
+    template<numeric T>
+    void pack_value(T value, bool little_endian = true) {
+        this->data_ref().pack(value, little_endian);
+    }
+    
+    template<numeric T>
+    T unpack_value(std::size_t offset, bool little_endian = true) const {
+        return this->data().unpack<T>(offset, little_endian);
+    }
+    
+    std::size_t byte_size() const noexcept {
+        return this->data().size();
+    }
+    
+    const std::vector<std::uint8_t>& get_bytes() const noexcept {
+        return this->data().bytes;
+    }
 };
 
 class i8_c : public integer_base_if<std::uint8_t> {
