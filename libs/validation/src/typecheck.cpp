@@ -764,8 +764,9 @@ void type_checker_c::visit(const return_c &node) {
     if (_current_function_return_type) {
       if (!_current_expression_type) {
         report_error("Return expression has no type", node.source_index());
-      } else if (!types_equal(_current_function_return_type.get(),
-                              _current_expression_type.get())) {
+      } else if (!is_compatible_for_assignment(
+                     _current_function_return_type.get(),
+                     _current_expression_type.get())) {
         report_error("Return type mismatch", node.source_index());
       }
     }
@@ -841,6 +842,16 @@ void type_checker_c::visit(const binary_op_c &node) {
     if (!types_equal(left_type.get(), right_type.get())) {
       if (is_numeric_type(left_type.get()) &&
           is_numeric_type(right_type.get())) {
+      } else if (left_type->kind == type_kind_e::POINTER &&
+                 right_type->kind == type_kind_e::POINTER) {
+        if (left_type->name == "void" || right_type->name == "void") {
+        } else {
+          std::string left_name = get_type_name_from_entry(left_type.get());
+          std::string right_name = get_type_name_from_entry(right_type.get());
+          report_error("Cannot compare " + left_name + " with " + right_name,
+                       node.source_index());
+          return;
+        }
       } else {
         std::string left_name = get_type_name_from_entry(left_type.get());
         std::string right_name = get_type_name_from_entry(right_type.get());
@@ -997,8 +1008,9 @@ void type_checker_c::visit(const call_c &node) {
 
     if (i < min_args) {
       if (_current_expression_type &&
-          !types_equal(_current_expression_type.get(),
-                       func_type->function_param_types[i].get())) {
+          !is_compatible_for_assignment(
+              func_type->function_param_types[i].get(),
+              _current_expression_type.get())) {
         report_error("Argument type mismatch", node.source_index());
       }
     }
@@ -1186,7 +1198,8 @@ void type_checker_c::visit(const struct_literal_c &node) {
     field_init.value->accept(*this);
 
     if (_current_expression_type &&
-        !types_equal(it->second.get(), _current_expression_type.get())) {
+        !is_compatible_for_assignment(it->second.get(),
+                                      _current_expression_type.get())) {
       report_error("Field initializer type mismatch for: " + field_name,
                    node.source_index());
     }

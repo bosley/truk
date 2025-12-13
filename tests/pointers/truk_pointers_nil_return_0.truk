@@ -1,0 +1,11 @@
+fn get_nil() : *i32 {
+  return nil;
+}
+
+fn main() : i32 {
+  var ptr: *i32 = get_nil();
+  if ptr == nil {
+    return 0;
+  }
+  return 1;
+}

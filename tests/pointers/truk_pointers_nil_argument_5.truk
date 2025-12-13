@@ -1,0 +1,10 @@
+fn check_nil(ptr: *i32) : i32 {
+  if ptr == nil {
+    return 5;
+  }
+  return 0;
+}
+
+fn main() : i32 {
+  return check_nil(nil);
+}

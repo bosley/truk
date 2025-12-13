@@ -1,0 +1,16 @@
+fn main() : i32 {
+  var ptr1: *i32 = nil;
+  var ptr2: *f64 = nil;
+  var ptr3: *i32 = nil;
+  var count: i32 = 0;
+  if ptr1 == nil {
+    count = count + 3;
+  }
+  if ptr2 == nil {
+    count = count + 2;
+  }
+  if ptr3 == nil {
+    count = count + 3;
+  }
+  return count;
+}

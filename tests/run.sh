@@ -19,11 +19,24 @@ if [ ! -f "${TRUK_BIN}" ]; then
     exit 1
 fi
 
+if [ $# -eq 1 ]; then
+    SUBDIR="$1"
+    if [ ! -d "${TEST_DIR}/${SUBDIR}" ]; then
+        echo -e "${RED}Error: subdirectory '${SUBDIR}' not found in ${TEST_DIR}${NC}"
+        exit 1
+    fi
+    TEST_DIRS=("${TEST_DIR}/${SUBDIR}/")
+    echo "Running tests in subdirectory: ${SUBDIR}"
+else
+    TEST_DIRS=("${TEST_DIR}"/*/)
+    echo "Running all tests"
+fi
+
 total_tests=0
 passed_tests=0
 failed_tests=0
 
-for test_category_dir in "${TEST_DIR}"/*/ ; do
+for test_category_dir in "${TEST_DIRS[@]}" ; do
     if [ ! -d "${test_category_dir}" ]; then
         continue
     fi

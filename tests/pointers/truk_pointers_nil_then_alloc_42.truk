@@ -1,0 +1,10 @@
+fn main() : i32 {
+  var ptr: *i32 = nil;
+  if ptr == nil {
+    ptr = alloc(@i32);
+    *ptr = 42;
+  }
+  var result: i32 = *ptr;
+  free(ptr);
+  return result;
+}

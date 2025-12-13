@@ -1,0 +1,12 @@
+struct Node {
+  value: i32,
+  next: *Node
+}
+
+fn main() : i32 {
+  var node: Node = Node{value: 10, next: nil};
+  if node.next == nil {
+    return 0;
+  }
+  return 1;
+}

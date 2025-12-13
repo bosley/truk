@@ -311,7 +311,9 @@ void emitter_c::visit(const struct_c &node) {
     return;
   }
 
-  _structs << "typedef struct {\n";
+  _structs << "typedef struct " << node.name().name << " " << node.name().name
+           << ";\n";
+  _structs << "struct " << node.name().name << " {\n";
 
   for (const auto &field : node.fields()) {
     std::string field_type = emit_type(field.type.get());
@@ -331,7 +333,7 @@ void emitter_c::visit(const struct_c &node) {
     _structs << ";\n";
   }
 
-  _structs << "} " << node.name().name << ";\n\n";
+  _structs << "};\n\n";
 }
 
 void emitter_c::visit(const var_c &node) {
