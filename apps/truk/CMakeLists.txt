@@ -1,4 +1,11 @@
-add_executable(truk main.cpp)
+add_executable(truk 
+    main.cpp
+    commands/compile.cpp
+    commands/toc.cpp
+    commands/tcc.cpp
+    common/args.cpp
+    common/file_utils.cpp
+)
 
 target_compile_options(truk PRIVATE
     -Wall
@@ -25,5 +32,6 @@ endif()
 target_link_libraries(truk PRIVATE 
     truk_emitc
     truk_validation
+    truk_tcc
     fmt::fmt
 )
