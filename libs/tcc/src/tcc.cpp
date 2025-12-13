@@ -53,6 +53,28 @@ compile_result_s tcc_compiler_c::compile_file(const std::string &input_file,
   return result;
 }
 
+compile_result_s
+tcc_compiler_c::compile_string(const std::string &c_source,
+                               const std::string &output_file) {
+  compile_result_s result;
+  result.success = false;
+
+  TCCState *state = static_cast<TCCState *>(m_state);
+
+  if (tcc_compile_string(state, c_source.c_str()) < 0) {
+    result.error_message = "Failed to compile C source";
+    return result;
+  }
+
+  if (tcc_output_file(state, output_file.c_str()) < 0) {
+    result.error_message = "Failed to write output file: " + output_file;
+    return result;
+  }
+
+  result.success = true;
+  return result;
+}
+
 run_result_s tcc_compiler_c::compile_and_run(const std::string &c_source,
                                              int argc, char **argv) {
   run_result_s result;

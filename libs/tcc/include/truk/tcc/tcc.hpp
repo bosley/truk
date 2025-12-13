@@ -41,6 +41,9 @@ public:
   compile_result_s compile_file(const std::string &input_file,
                                 const std::string &output_file);
 
+  compile_result_s compile_string(const std::string &c_source,
+                                  const std::string &output_file);
+
   run_result_s compile_and_run(const std::string &c_source, int argc,
                                char **argv);
 

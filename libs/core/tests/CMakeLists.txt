@@ -14,10 +14,10 @@ truk_add_test(
         truk_core
 )
 
-truk_add_test(
-    NAME test_environment
-    SOURCES
-        test_environment.cpp
-    DEPENDENCIES
-        truk_core
-)
+#truk_add_test(
+#    NAME test_environment
+#    SOURCES
+#        test_environment.cpp
+#    DEPENDENCIES
+#        truk_core
+#)

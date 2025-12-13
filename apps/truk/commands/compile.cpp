@@ -90,14 +90,9 @@ int compile(const compile_options_s &opts) {
     return 1;
   }
 
-  std::string temp_c_file = opts.output_file + ".tmp.c";
   std::string c_output;
   for (const auto &chunk : emit_result.chunks) {
     c_output += chunk;
-  }
-
-  if (!common::write_file(temp_c_file, c_output)) {
-    return 1;
   }
 
   truk::tcc::tcc_compiler_c compiler;
@@ -116,9 +111,7 @@ int compile(const compile_options_s &opts) {
     compiler.set_rpath(path);
   }
 
-  auto compile_result = compiler.compile_file(temp_c_file, opts.output_file);
-
-  std::remove(temp_c_file.c_str());
+  auto compile_result = compiler.compile_string(c_output, opts.output_file);
 
   if (!compile_result.success) {
     fmt::print(stderr, "Error: {}\n", compile_result.error_message);
