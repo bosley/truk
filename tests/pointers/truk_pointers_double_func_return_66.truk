@@ -1,0 +1,21 @@
+fn create_double_ptr(value: i32) : **i32 {
+  var ptr1: *i32 = alloc(@i32);
+  *ptr1 = value;
+  
+  var ptr2: **i32 = alloc(@*i32);
+  *ptr2 = ptr1;
+  
+  return ptr2;
+}
+
+fn main() : i32 {
+  var ptr: **i32 = create_double_ptr(66);
+  
+  var result: i32 = **ptr;
+  
+  var inner: *i32 = *ptr;
+  free(ptr);
+  free(inner);
+  
+  return result;
+}

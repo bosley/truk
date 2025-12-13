@@ -1,0 +1,21 @@
+fn main() : i32 {
+  var value: i32 = 50;
+  var ptr1: *i32 = alloc(@i32);
+  *ptr1 = value;
+  
+  var ptr2: **i32 = alloc(@*i32);
+  *ptr2 = ptr1;
+  
+  var ptr3: ***i32 = alloc(@**i32);
+  *ptr3 = ptr2;
+  
+  var back_to_double: **i32 = *ptr3;
+  var back_to_single: *i32 = *back_to_double;
+  var result: i32 = *back_to_single;
+  
+  free(ptr3);
+  free(ptr2);
+  free(ptr1);
+  
+  return result;
+}

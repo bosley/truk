@@ -1,0 +1,11 @@
+fn main() : i32 {
+  var size_i32: u64 = sizeof(@i32);
+  var size_ptr_i32: u64 = sizeof(@*i32);
+  var size_double_ptr_i32: u64 = sizeof(@**i32);
+  
+  if size_ptr_i32 == size_double_ptr_i32 {
+    return 8;
+  }
+  
+  return 0;
+}

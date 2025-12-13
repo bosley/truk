@@ -936,12 +936,12 @@ void type_checker_c::visit(const unary_op_c &node) {
     if (_current_expression_type->pointer_depth == 0) {
       report_error("Dereference requires pointer type", node.source_index());
     } else {
-      _current_expression_type->pointer_depth--;
-      if (_current_expression_type->pointer_depth == 0) {
-        if (_current_expression_type->pointee_type) {
-          _current_expression_type = std::make_unique<type_entry_s>(
-              *_current_expression_type->pointee_type);
-        } else {
+      if (_current_expression_type->pointee_type) {
+        _current_expression_type = std::make_unique<type_entry_s>(
+            *_current_expression_type->pointee_type);
+      } else {
+        _current_expression_type->pointer_depth--;
+        if (_current_expression_type->pointer_depth == 0) {
           auto *base_type = lookup_type(_current_expression_type->name);
           if (base_type) {
             _current_expression_type->kind = base_type->kind;

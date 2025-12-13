@@ -1,0 +1,20 @@
+fn modify_through_double_ptr(ptr: **i32, value: i32) : void {
+  **ptr = value;
+}
+
+fn main() : i32 {
+  var ptr1: *i32 = alloc(@i32);
+  *ptr1 = 10;
+  
+  var ptr2: **i32 = alloc(@*i32);
+  *ptr2 = ptr1;
+  
+  modify_through_double_ptr(ptr2, 88);
+  
+  var result: i32 = *ptr1;
+  
+  free(ptr2);
+  free(ptr1);
+  
+  return result;
+}
