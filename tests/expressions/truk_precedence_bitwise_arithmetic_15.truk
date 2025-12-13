@@ -1,4 +1,0 @@
-fn main() : i32 {
-  var result: i32 = 10 & 0xFF + 5;
-  return result;
-}

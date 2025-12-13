@@ -1,4 +1,0 @@
-fn main() : i32 {
-  var result: i32 = 8 | 4 ^ 2 & 15;
-  return result;
-}

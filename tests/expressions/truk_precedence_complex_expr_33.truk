@@ -1,7 +1,0 @@
-fn main() : i32 {
-  var a: i32 = 10;
-  var b: i32 = 5;
-  var c: i32 = 3;
-  var result: i32 = a * b + c - 2 * 4 + (6 / 2);
-  return result;
-}
