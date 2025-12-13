@@ -790,6 +790,16 @@ void type_checker_c::visit(const continue_c &node) {
   }
 }
 
+void type_checker_c::visit(const defer_c &node) {
+  if (node.deferred_code()) {
+    if (!check_no_control_flow(node.deferred_code())) {
+      report_error("Defer cannot contain return, break, or continue statements",
+                   node.source_index());
+    }
+    node.deferred_code()->accept(*this);
+  }
+}
+
 void type_checker_c::visit(const binary_op_c &node) {
   node.left()->accept(*this);
   auto left_type = std::move(_current_expression_type);
@@ -1210,6 +1220,44 @@ void type_checker_c::visit(const struct_literal_c &node) {
 
 void type_checker_c::visit(const type_param_c &node) {
   _current_expression_type.reset();
+}
+
+bool type_checker_c::check_no_control_flow(const base_c *node) {
+  if (!node) {
+    return true;
+  }
+
+  if (dynamic_cast<const return_c *>(node) ||
+      dynamic_cast<const break_c *>(node) ||
+      dynamic_cast<const continue_c *>(node)) {
+    return false;
+  }
+
+  if (auto block = dynamic_cast<const block_c *>(node)) {
+    for (const auto &stmt : block->statements()) {
+      if (!check_no_control_flow(stmt.get())) {
+        return false;
+      }
+    }
+  } else if (auto if_node = dynamic_cast<const if_c *>(node)) {
+    if (!check_no_control_flow(if_node->then_block())) {
+      return false;
+    }
+    if (if_node->else_block() &&
+        !check_no_control_flow(if_node->else_block())) {
+      return false;
+    }
+  } else if (auto while_node = dynamic_cast<const while_c *>(node)) {
+    if (!check_no_control_flow(while_node->body())) {
+      return false;
+    }
+  } else if (auto for_node = dynamic_cast<const for_c *>(node)) {
+    if (!check_no_control_flow(for_node->body())) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 } // namespace truk::validation

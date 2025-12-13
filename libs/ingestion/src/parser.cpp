@@ -425,6 +425,9 @@ language::nodes::base_ptr parser_c::parse_statement() {
   if (check_keyword(language::keywords_e::CONTINUE)) {
     return parse_continue_stmt();
   }
+  if (check_keyword(language::keywords_e::DEFER)) {
+    return parse_defer_stmt();
+  }
   if (check(token_type_e::LEFT_BRACE)) {
     return parse_block();
   }
@@ -552,6 +555,22 @@ language::nodes::base_ptr parser_c::parse_continue_stmt() {
   consume(token_type_e::SEMICOLON, "Expected ';' after continue statement");
   return std::make_unique<language::nodes::continue_c>(
       continue_token.source_index);
+}
+
+language::nodes::base_ptr parser_c::parse_defer_stmt() {
+  const auto &defer_token =
+      consume_keyword(language::keywords_e::DEFER, "Expected 'defer' keyword");
+
+  language::nodes::base_ptr deferred_code;
+  if (check(token_type_e::LEFT_BRACE)) {
+    deferred_code = parse_block();
+  } else {
+    deferred_code = parse_expression();
+    consume(token_type_e::SEMICOLON, "Expected ';' after defer expression");
+  }
+
+  return std::make_unique<language::nodes::defer_c>(defer_token.source_index,
+                                                    std::move(deferred_code));
 }
 
 language::nodes::base_ptr parser_c::parse_expression_stmt() {

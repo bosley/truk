@@ -330,6 +330,21 @@ public:
   void accept(visitor_if &visitor) const override;
 };
 
+class defer_c : public base_c {
+public:
+  defer_c() = delete;
+  defer_c(std::size_t source_index, base_ptr deferred_code)
+      : base_c(keywords_e::DEFER, source_index),
+        _deferred_code(std::move(deferred_code)) {}
+
+  const base_c *deferred_code() const { return _deferred_code.get(); }
+
+  void accept(visitor_if &visitor) const override;
+
+private:
+  base_ptr _deferred_code;
+};
+
 enum class binary_op_e {
   ADD,
   SUB,

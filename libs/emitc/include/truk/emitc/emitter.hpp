@@ -57,6 +57,7 @@ public:
   void visit(const truk::language::nodes::return_c &node) override;
   void visit(const truk::language::nodes::break_c &node) override;
   void visit(const truk::language::nodes::continue_c &node) override;
+  void visit(const truk::language::nodes::defer_c &node) override;
   void visit(const truk::language::nodes::binary_op_c &node) override;
   void visit(const truk::language::nodes::unary_op_c &node) override;
   void visit(const truk::language::nodes::cast_c &node) override;
@@ -100,6 +101,9 @@ private:
   bool _collecting_declarations{false};
   std::string _current_function_name;
   const truk::language::nodes::type_c *_current_function_return_type{nullptr};
+  std::vector<const truk::language::nodes::defer_c *> _function_defers;
+
+  void emit_function_defers();
 };
 
 } // namespace truk::emitc

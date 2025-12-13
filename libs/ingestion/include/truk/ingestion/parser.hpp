@@ -82,6 +82,7 @@ private:
   language::nodes::base_ptr parse_return_stmt();
   language::nodes::base_ptr parse_break_stmt();
   language::nodes::base_ptr parse_continue_stmt();
+  language::nodes::base_ptr parse_defer_stmt();
   language::nodes::base_ptr parse_expression_stmt();
 
   language::nodes::base_ptr parse_expression();

@@ -1,0 +1,13 @@
+fn main() : i32 {
+  var x: i32 = 0;
+  defer x = x + 100;
+  var i: i32 = 0;
+  while i < 10 {
+    i = i + 1;
+    if i == 5 {
+      continue;
+    }
+    x = x + 1;
+  }
+  return x;
+}

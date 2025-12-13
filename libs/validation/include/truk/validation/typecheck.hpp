@@ -139,6 +139,7 @@ public:
   void visit(const truk::language::nodes::return_c &node) override;
   void visit(const truk::language::nodes::break_c &node) override;
   void visit(const truk::language::nodes::continue_c &node) override;
+  void visit(const truk::language::nodes::defer_c &node) override;
   void visit(const truk::language::nodes::binary_op_c &node) override;
   void visit(const truk::language::nodes::unary_op_c &node) override;
   void visit(const truk::language::nodes::cast_c &node) override;
@@ -191,6 +192,8 @@ private:
 
   void validate_builtin_call(const truk::language::nodes::call_c &node,
                              const type_entry_s &func_type);
+
+  bool check_no_control_flow(const truk::language::nodes::base_c *node);
 
   void report_error(const std::string &message, std::size_t source_index);
 };
