@@ -1,0 +1,10 @@
+const x: i32 = 10;
+
+fn main() : i32 {
+  var result: i32 = x;
+  {
+    const x: i32 = 15;
+    result = x;
+  }
+  return result;
+}

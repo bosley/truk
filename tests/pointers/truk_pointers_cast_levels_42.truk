@@ -1,0 +1,14 @@
+fn main() : i32 {
+  var ptr1: *i32 = alloc(@i32);
+  *ptr1 = 42;
+  
+  var ptr2: **i32 = alloc(@*i32);
+  *ptr2 = ptr1;
+  
+  var single: *i32 = *ptr2;
+  var result: i32 = *single;
+  
+  free(ptr2);
+  free(ptr1);
+  return result;
+}
