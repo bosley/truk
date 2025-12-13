@@ -23,9 +23,7 @@ if(ENABLE_TSAN)
 endif()
 
 target_link_libraries(truk PRIVATE 
-    truk_core 
     truk_emitc
-    truk_ingestion
     truk_validation
     fmt::fmt
 )
