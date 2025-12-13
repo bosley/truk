@@ -1,0 +1,8 @@
+fn get_index() : i32 {
+  return 4;
+}
+
+fn main() : i32 {
+  var arr: [5]i32 = [10, 20, 30, 40, 50];
+  return arr[get_index()];
+}

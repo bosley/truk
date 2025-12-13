@@ -1,0 +1,6 @@
+fn main() : i32 {
+  var arr: [2]u32;
+  arr[0] = 20;
+  arr[1] = 30;
+  return (arr[0] + arr[1]) as i32;
+}

@@ -1,0 +1,10 @@
+fn main() : i32 {
+  var arr: [5]i32 = [5, 4, 3, 2, 1];
+  var sum: i32 = 0;
+  var i: i32 = 0;
+  while i < arr[0] {
+    sum += 2;
+    i += 1;
+  }
+  return sum;
+}

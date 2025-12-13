@@ -1,0 +1,8 @@
+fn twice(x: i32) : i32 {
+  return x * 2;
+}
+
+fn main() : i32 {
+  var arr: [3]i32 = [10, 15, 20];
+  return twice(arr[1]);
+}

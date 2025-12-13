@@ -1,0 +1,4 @@
+fn main() : i32 {
+  var arr: [3]i32 = [10, 20, 12,];
+  return arr[0] + arr[1] + arr[2];
+}
