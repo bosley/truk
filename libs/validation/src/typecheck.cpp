@@ -324,6 +324,7 @@ void type_checker_c::report_error(const std::string &message,
   std::ostringstream oss;
   oss << "[" << source_index << "] " << message;
   _errors.push_back(oss.str());
+  _detailed_errors.emplace_back(message, source_index);
 }
 
 bool type_checker_c::is_type_identifier(const identifier_c *id_node) {

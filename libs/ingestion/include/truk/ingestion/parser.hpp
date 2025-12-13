@@ -27,6 +27,8 @@ struct parse_result_s {
   std::string error_message;
   std::size_t error_line{0};
   std::size_t error_column{0};
+  const char *source_data{nullptr};
+  std::size_t source_len{0};
 };
 
 class parser_c {

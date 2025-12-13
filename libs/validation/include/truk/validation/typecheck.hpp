@@ -103,6 +103,14 @@ struct symbol_entry_s : public truk::core::memory_c<2048>::storeable_if {
   ~symbol_entry_s() override = default;
 };
 
+struct type_error_s {
+  std::string message;
+  std::size_t source_index;
+
+  type_error_s(std::string msg, std::size_t idx)
+      : message(std::move(msg)), source_index(idx) {}
+};
+
 class type_checker_c : public truk::language::nodes::visitor_if {
 public:
   type_checker_c();
@@ -111,6 +119,9 @@ public:
   void check(const truk::language::nodes::base_c *root);
 
   const std::vector<std::string> &errors() const { return _errors; }
+  const std::vector<type_error_s> &detailed_errors() const {
+    return _detailed_errors;
+  }
   bool has_errors() const { return !_errors.empty(); }
 
   void visit(const truk::language::nodes::primitive_type_c &node) override;
@@ -145,6 +156,7 @@ public:
 private:
   truk::core::memory_c<2048> _memory;
   std::vector<std::string> _errors;
+  std::vector<type_error_s> _detailed_errors;
   std::unique_ptr<type_entry_s> _current_expression_type;
   std::unique_ptr<type_entry_s> _current_function_return_type;
   bool _in_loop{false};

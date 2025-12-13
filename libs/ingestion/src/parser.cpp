@@ -32,6 +32,8 @@ std::vector<token_s> parser_c::tokenize() {
 
 parse_result_s parser_c::parse() {
   parse_result_s result;
+  result.source_data = _data;
+  result.source_len = _len;
   try {
     result.declarations = parse_program();
     result.success = true;
