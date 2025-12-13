@@ -1243,7 +1243,8 @@ bool type_checker_c::check_no_control_flow(const base_c *node) {
     if (!check_no_control_flow(if_node->then_block())) {
       return false;
     }
-    if (if_node->else_block() && !check_no_control_flow(if_node->else_block())) {
+    if (if_node->else_block() &&
+        !check_no_control_flow(if_node->else_block())) {
       return false;
     }
   } else if (auto while_node = dynamic_cast<const while_c *>(node)) {

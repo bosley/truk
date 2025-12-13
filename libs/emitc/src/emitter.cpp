@@ -309,7 +309,7 @@ void emitter_c::visit(const fn_c &node) {
   }
 
   _functions << "\n\n";
-  
+
   _function_defers.clear();
   _current_function_name = "";
 }
@@ -1038,10 +1038,12 @@ void emitter_c::visit(const struct_literal_c &node) {
 void emitter_c::visit(const type_param_c &node) {}
 
 void emitter_c::emit_function_defers() {
-  for (auto it = _function_defers.rbegin(); it != _function_defers.rend(); ++it) {
+  for (auto it = _function_defers.rbegin(); it != _function_defers.rend();
+       ++it) {
     const auto *defer_node = *it;
     if (defer_node->deferred_code()) {
-      if (auto block = dynamic_cast<const block_c *>(defer_node->deferred_code())) {
+      if (auto block =
+              dynamic_cast<const block_c *>(defer_node->deferred_code())) {
         _functions << "{\n";
         _indent_level++;
         for (const auto &stmt : block->statements()) {

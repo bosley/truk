@@ -570,7 +570,7 @@ language::nodes::base_ptr parser_c::parse_defer_stmt() {
   }
 
   return std::make_unique<language::nodes::defer_c>(defer_token.source_index,
-                                                     std::move(deferred_code));
+                                                    std::move(deferred_code));
 }
 
 language::nodes::base_ptr parser_c::parse_expression_stmt() {
