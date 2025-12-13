@@ -53,18 +53,16 @@ for test_category_dir in "${TEST_DIR}"/*/ ; do
         c_file="${TEMP_DIR}/${test_name}.c"
         bin_file="${TEMP_DIR}/${test_name}.out"
         
-        if ! "${TRUK_BIN}" "${test_file}" -o "${c_file}" > /dev/null 2>&1 ; then
-            echo -e "${RED}FAIL${NC} ${category_name}/${test_name} (truk compilation failed)"
+        if ! "${TRUK_BIN}" toc "${test_file}" -o "${c_file}" > /dev/null 2>&1 ; then
+            echo -e "${RED}FAIL${NC} ${category_name}/${test_name} (truk→C compilation failed)"
             failed_tests=$((failed_tests + 1))
             continue
         fi
         
-        if ! gcc -std=c11 -o "${bin_file}" "${c_file}" -lm > /dev/null 2>&1 ; then
-            if ! clang -std=c11 -o "${bin_file}" "${c_file}" -lm > /dev/null 2>&1 ; then
-                echo -e "${RED}FAIL${NC} ${category_name}/${test_name} (C compilation failed)"
-                failed_tests=$((failed_tests + 1))
-                continue
-            fi
+        if ! "${TRUK_BIN}" tcc "${c_file}" -o "${bin_file}" > /dev/null 2>&1 ; then
+            echo -e "${RED}FAIL${NC} ${category_name}/${test_name} (TCC C→binary compilation failed)"
+            failed_tests=$((failed_tests + 1))
+            continue
         fi
         
         set +e

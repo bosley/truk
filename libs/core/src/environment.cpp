@@ -7,8 +7,9 @@ environment_c::~environment_c() {
   std::lock_guard<std::mutex> lock(_mutex);
 }
 
-environment_c::env_mem_handle_ptr environment_c::get_memory_handle() {
-  return std::make_unique<environment_memory_handle_c>(*this, _valid);
+environment_c::env_mem_handle_ptr
+environment_c::get_memory_handle(std::size_t id) {
+  return std::make_unique<environment_memory_handle_c>(*this, _valid, id);
 }
 
 } // namespace truk::core

@@ -1,7 +1,7 @@
 #pragma once
 
+#include "exceptions.hpp"
 #include <array>
-#include <exception>
 #include <memory>
 #include <queue>
 #include <string>
@@ -12,14 +12,7 @@ namespace truk::core {
 
 static constexpr std::size_t DEFAULT_CONTEXT_COUNT = 256;
 
-//! \brief The context overflow error is one that is hit when the given
-//!        context size of a memory_c<ContextSize> is maxed-out
-class context_overflow_error : public std::exception {
-public:
-  const char *what() const noexcept override {
-    return "Maximum context depth exceeded";
-  }
-};
+enum class memory_error_e : int { CONTEXT_OVERFLOW = 1 };
 
 //! \brief The memory object allows us to manage memory via a k/v store with
 //! explicit context
@@ -63,10 +56,12 @@ public:
   }
 
   //! \brief Push a new context onto the memory stack.
-  //!        Throws context_overflow_error if the max context depth is exceeded.
+  //!        Throws memory_exception_c if the max context depth is exceeded.
   void push_ctx() {
     if (_ctx_count >= ContextCount) {
-      throw context_overflow_error();
+      throw memory_exception_c(
+          static_cast<int>(memory_error_e::CONTEXT_OVERFLOW),
+          "Maximum context depth exceeded");
     }
     void *storage_ptr = &_ctx_storage[_ctx_count - 1];
     auto *new_ctx = new (storage_ptr) context_s();

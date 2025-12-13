@@ -25,20 +25,20 @@ TEST_GROUP(EnvironmentTests) {
 TEST(EnvironmentTests, CanConstruct) { truk::core::environment_c test_env(42); }
 
 TEST(EnvironmentTests, CanCreateMemoryHandle) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
   CHECK_TRUE(handle != nullptr);
 }
 
 TEST(EnvironmentTests, MultipleHandlesFromSameEnvironment) {
-  auto handle1 = env->get_memory_handle();
-  auto handle2 = env->get_memory_handle();
+  auto handle1 = env->get_memory_handle(1);
+  auto handle2 = env->get_memory_handle(2);
 
   CHECK_TRUE(handle1 != nullptr);
   CHECK_TRUE(handle2 != nullptr);
 }
 
 TEST(EnvironmentTests, HandleOperationsAfterEnvironmentDestruction) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(100);
 
   auto item = std::make_unique<test_item>(42);
   handle->set("test_key", std::move(item));
@@ -49,11 +49,29 @@ TEST(EnvironmentTests, HandleOperationsAfterEnvironmentDestruction) {
 
   CHECK_FALSE(handle->is_set("test_key"));
 
-  auto *retrieved = handle->get("test_key");
-  CHECK_TRUE(retrieved == nullptr);
+  bool get_exception_thrown = false;
+  try {
+    handle->get("test_key");
+  } catch (const truk::core::environment_exception_c &e) {
+    get_exception_thrown = true;
+    CHECK_EQUAL(
+        static_cast<int>(truk::core::environment_error_e::INVALID_HANDLE),
+        e.get_error_code());
+  }
+  CHECK_TRUE(get_exception_thrown);
 
-  auto new_item = std::make_unique<test_item>(100);
-  handle->set("new_key", std::move(new_item));
+  bool set_exception_thrown = false;
+  try {
+    auto new_item = std::make_unique<test_item>(100);
+    handle->set("new_key", std::move(new_item));
+  } catch (const truk::core::environment_exception_c &e) {
+    set_exception_thrown = true;
+    CHECK_EQUAL(
+        static_cast<int>(truk::core::environment_error_e::INVALID_HANDLE),
+        e.get_error_code());
+  }
+  CHECK_TRUE(set_exception_thrown);
+
   CHECK_FALSE(handle->is_set("new_key"));
 
   handle->push_ctx();
@@ -63,9 +81,9 @@ TEST(EnvironmentTests, HandleOperationsAfterEnvironmentDestruction) {
 }
 
 TEST(EnvironmentTests, MultipleHandlesInvalidatedOnDestruction) {
-  auto handle1 = env->get_memory_handle();
-  auto handle2 = env->get_memory_handle();
-  auto handle3 = env->get_memory_handle();
+  auto handle1 = env->get_memory_handle(1);
+  auto handle2 = env->get_memory_handle(2);
+  auto handle3 = env->get_memory_handle(3);
 
   auto item1 = std::make_unique<test_item>(1);
   handle1->set("key1", std::move(item1));
@@ -81,11 +99,21 @@ TEST(EnvironmentTests, MultipleHandlesInvalidatedOnDestruction) {
 
   CHECK_FALSE(handle1->is_set("key1"));
   CHECK_FALSE(handle2->is_set("key2"));
-  CHECK_TRUE(handle3->get("key1") == nullptr);
+
+  bool exception_thrown = false;
+  try {
+    handle3->get("key1");
+  } catch (const truk::core::environment_exception_c &e) {
+    exception_thrown = true;
+    CHECK_EQUAL(
+        static_cast<int>(truk::core::environment_error_e::INVALID_HANDLE),
+        e.get_error_code());
+  }
+  CHECK_TRUE(exception_thrown);
 }
 
 TEST(EnvironmentTests, HandleSetAndGet) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
 
   auto item = std::make_unique<test_item>(777);
   handle->set("test_key", std::move(item));
@@ -101,18 +129,18 @@ TEST(EnvironmentTests, HandleSetAndGet) {
 }
 
 TEST(EnvironmentTests, HandleIsSetReturnsFalseForNonExistent) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
   CHECK_FALSE(handle->is_set("does_not_exist"));
 }
 
 TEST(EnvironmentTests, HandleGetReturnsNullForNonExistent) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
   auto *result = handle->get("missing");
   CHECK_TRUE(result == nullptr);
 }
 
 TEST(EnvironmentTests, HandleDrop) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
 
   auto item = std::make_unique<test_item>(55);
   handle->set("to_drop", std::move(item));
@@ -123,7 +151,7 @@ TEST(EnvironmentTests, HandleDrop) {
 }
 
 TEST(EnvironmentTests, HandlePushAndPopContext) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
 
   auto item1 = std::make_unique<test_item>(10);
   handle->set("root_key", std::move(item1));
@@ -142,7 +170,7 @@ TEST(EnvironmentTests, HandlePushAndPopContext) {
 }
 
 TEST(EnvironmentTests, HandleGetWithParentContext) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
 
   auto item = std::make_unique<test_item>(333);
   handle->set("parent_key", std::move(item));
@@ -157,7 +185,7 @@ TEST(EnvironmentTests, HandleGetWithParentContext) {
 }
 
 TEST(EnvironmentTests, HandleGetWithoutParentContext) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
 
   auto item = std::make_unique<test_item>(444);
   handle->set("parent_key", std::move(item));
@@ -169,7 +197,7 @@ TEST(EnvironmentTests, HandleGetWithoutParentContext) {
 }
 
 TEST(EnvironmentTests, HandleDeferHoist) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
 
   handle->push_ctx();
 
@@ -191,8 +219,8 @@ TEST(EnvironmentTests, ConcurrentHandleCreation) {
   std::mutex handles_mutex;
 
   for (int i = 0; i < 10; ++i) {
-    threads.emplace_back([this, &handles, &handles_mutex]() {
-      auto handle = env->get_memory_handle();
+    threads.emplace_back([this, i, &handles, &handles_mutex]() {
+      auto handle = env->get_memory_handle(i);
       std::lock_guard<std::mutex> lock(handles_mutex);
       handles.push_back(std::move(handle));
     });
@@ -213,7 +241,7 @@ TEST(EnvironmentTests, ConcurrentSetOperations) {
 
   for (int i = 0; i < 10; ++i) {
     threads.emplace_back([this, i]() {
-      auto handle = env->get_memory_handle();
+      auto handle = env->get_memory_handle(i);
       for (int j = 0; j < 100; ++j) {
         auto item = std::make_unique<test_item>(i * 100 + j);
         handle->set("key_" + std::to_string(i), std::move(item));
@@ -225,7 +253,7 @@ TEST(EnvironmentTests, ConcurrentSetOperations) {
     thread.join();
   }
 
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(100);
   for (int i = 0; i < 10; ++i) {
     CHECK_TRUE(handle->is_set("key_" + std::to_string(i)));
   }
@@ -236,8 +264,8 @@ TEST(EnvironmentTests, ConcurrentContextOperations) {
   std::atomic<int> success_count{0};
 
   for (int i = 0; i < 5; ++i) {
-    threads.emplace_back([this, &success_count]() {
-      auto handle = env->get_memory_handle();
+    threads.emplace_back([this, i, &success_count]() {
+      auto handle = env->get_memory_handle(i);
 
       handle->push_ctx();
       auto item = std::make_unique<test_item>(42);
@@ -259,7 +287,7 @@ TEST(EnvironmentTests, ConcurrentContextOperations) {
 }
 
 TEST(EnvironmentTests, ConcurrentReadOperations) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(0);
 
   for (int i = 0; i < 10; ++i) {
     auto item = std::make_unique<test_item>(i);
@@ -270,8 +298,8 @@ TEST(EnvironmentTests, ConcurrentReadOperations) {
   std::atomic<int> read_success{0};
 
   for (int i = 0; i < 20; ++i) {
-    threads.emplace_back([this, &read_success]() {
-      auto handle = env->get_memory_handle();
+    threads.emplace_back([this, i, &read_success]() {
+      auto handle = env->get_memory_handle(i + 1);
       for (int j = 0; j < 10; ++j) {
         auto *retrieved = handle->get("key_" + std::to_string(j));
         if (retrieved != nullptr) {
@@ -289,7 +317,7 @@ TEST(EnvironmentTests, ConcurrentReadOperations) {
 }
 
 TEST(EnvironmentTests, DataIntegrityAfterMultipleOperations) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
 
   auto item1 = std::make_unique<test_item>(100);
   handle->set("key1", std::move(item1));
@@ -318,7 +346,7 @@ TEST(EnvironmentTests, DataIntegrityAfterMultipleOperations) {
 }
 
 TEST(EnvironmentTests, DataIntegrityThroughContexts) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
 
   auto item1 = std::make_unique<test_item>(10);
   handle->set("level0", std::move(item1));
@@ -348,7 +376,7 @@ TEST(EnvironmentTests, DataIntegrityThroughContexts) {
 }
 
 TEST(EnvironmentTests, HoistedDataSurvivesContextPop) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
 
   handle->push_ctx();
   handle->push_ctx();
@@ -371,8 +399,8 @@ TEST(EnvironmentTests, HoistedDataSurvivesContextPop) {
 }
 
 TEST(EnvironmentTests, MultipleHandlesShareData) {
-  auto handle1 = env->get_memory_handle();
-  auto handle2 = env->get_memory_handle();
+  auto handle1 = env->get_memory_handle(1);
+  auto handle2 = env->get_memory_handle(2);
 
   auto item = std::make_unique<test_item>(777);
   handle1->set("shared_key", std::move(item));
@@ -387,7 +415,7 @@ TEST(EnvironmentTests, MultipleHandlesShareData) {
 }
 
 TEST(EnvironmentTests, OverwriteExistingKeyPreservesIntegrity) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(1);
 
   auto item1 = std::make_unique<test_item>(111);
   handle->set("key", std::move(item1));
@@ -403,8 +431,8 @@ TEST(EnvironmentTests, OverwriteExistingKeyPreservesIntegrity) {
 }
 
 TEST(EnvironmentTests, DestructorWithActiveHandles) {
-  auto handle1 = env->get_memory_handle();
-  auto handle2 = env->get_memory_handle();
+  auto handle1 = env->get_memory_handle(1);
+  auto handle2 = env->get_memory_handle(2);
 
   auto item1 = std::make_unique<test_item>(11);
   handle1->set("key1", std::move(item1));
@@ -423,7 +451,7 @@ TEST(EnvironmentTests, DestructorWithActiveHandles) {
 }
 
 TEST(EnvironmentTests, HandleOperationsAreNoOpWhenInvalid) {
-  auto handle = env->get_memory_handle();
+  auto handle = env->get_memory_handle(999);
 
   auto item = std::make_unique<test_item>(99);
   handle->set("key", std::move(item));
@@ -435,15 +463,84 @@ TEST(EnvironmentTests, HandleOperationsAreNoOpWhenInvalid) {
   handle->push_ctx();
   handle->pop_ctx();
 
-  auto new_item = std::make_unique<test_item>(88);
-  handle->set("new_key", std::move(new_item));
+  bool set_exception_thrown = false;
+  try {
+    auto new_item = std::make_unique<test_item>(88);
+    handle->set("new_key", std::move(new_item));
+  } catch (const truk::core::environment_exception_c &e) {
+    set_exception_thrown = true;
+    CHECK_EQUAL(
+        static_cast<int>(truk::core::environment_error_e::INVALID_HANDLE),
+        e.get_error_code());
+  }
+  CHECK_TRUE(set_exception_thrown);
 
   handle->drop("key");
   handle->defer_hoist("key");
 
   CHECK_FALSE(handle->is_set("key"));
   CHECK_FALSE(handle->is_set("new_key"));
-  CHECK_TRUE(handle->get("key") == nullptr);
+
+  bool get_exception_thrown = false;
+  try {
+    handle->get("key");
+  } catch (const truk::core::environment_exception_c &e) {
+    get_exception_thrown = true;
+    CHECK_EQUAL(
+        static_cast<int>(truk::core::environment_error_e::INVALID_HANDLE),
+        e.get_error_code());
+  }
+  CHECK_TRUE(get_exception_thrown);
+}
+
+TEST(EnvironmentTests, InvalidHandleThrowsCorrectException) {
+  auto handle = env->get_memory_handle(42);
+
+  delete env;
+  env = nullptr;
+
+  bool set_exception_thrown = false;
+  std::string set_component;
+  std::string set_message;
+  int set_error_code = 0;
+
+  try {
+    auto item = std::make_unique<test_item>(42);
+    handle->set("test", std::move(item));
+  } catch (const truk::core::environment_exception_c &e) {
+    set_exception_thrown = true;
+    set_component = e.get_component();
+    set_message = e.get_message();
+    set_error_code = e.get_error_code();
+  }
+
+  CHECK_TRUE(set_exception_thrown);
+  STRCMP_EQUAL("environment", set_component.c_str());
+  STRCMP_EQUAL("Operation on invalid environment handle (id: 42)",
+               set_message.c_str());
+  CHECK_EQUAL(static_cast<int>(truk::core::environment_error_e::INVALID_HANDLE),
+              set_error_code);
+
+  bool get_exception_thrown = false;
+  std::string get_component;
+  std::string get_message;
+  int get_error_code = 0;
+
+  try {
+    handle->get("test");
+  } catch (const truk::core::environment_exception_c &e) {
+    get_exception_thrown = true;
+    get_component = e.get_component();
+    get_message = e.get_message();
+    get_error_code = e.get_error_code();
+  }
+
+  CHECK_TRUE(get_exception_thrown);
+  STRCMP_EQUAL("environment", get_component.c_str());
+  STRCMP_EQUAL("Operation on invalid environment handle (id: 42)",
+               get_message.c_str());
+  CHECK_EQUAL(static_cast<int>(truk::core::environment_error_e::INVALID_HANDLE),
+              get_error_code);
 }
 
 int main(int argc, char **argv) {

@@ -1,8 +1,10 @@
 #pragma once
 
+#include "exceptions.hpp"
 #include "memory.hpp"
 #include "resource.hpp"
 #include <atomic>
+#include <fmt/format.h>
 #include <memory>
 #include <mutex>
 
@@ -19,6 +21,8 @@ spawn objects, you can "hoist" their lifetime to their parent context explicitly
 */
 
 namespace truk::core {
+
+enum class environment_error_e : int { INVALID_HANDLE = 1 };
 
 //! \brief The envrionment_c object controls the access to a memory object.
 //!        We do this to offer multiple r/w handles to the same memory object
@@ -89,8 +93,9 @@ public:
   public:
     environment_memory_handle_c() = delete;
     environment_memory_handle_c(environment_c &env,
-                                std::shared_ptr<std::atomic<bool>> valid)
-        : _env(env), _valid(valid) {}
+                                std::shared_ptr<std::atomic<bool>> valid,
+                                std::size_t id)
+        : _env(env), _valid(valid), _id(id) {}
 
     void push_ctx() {
       if (!_valid->load()) {
@@ -110,7 +115,10 @@ public:
 
     void set(const std::string &key, memory_c<>::stored_item_ptr item) {
       if (!_valid->load()) {
-        return;
+        throw environment_exception_c(
+            static_cast<int>(environment_error_e::INVALID_HANDLE),
+            fmt::format("Operation on invalid environment handle (id: {})",
+                        _id));
       }
       std::lock_guard<std::mutex> lock(_env._mutex);
       _env._memory->set(key, std::move(item));
@@ -127,7 +135,10 @@ public:
     memory_c<>::storeable_if *get(const std::string &key,
                                   bool use_parent_ctx = false) {
       if (!_valid->load()) {
-        return nullptr;
+        throw environment_exception_c(
+            static_cast<int>(environment_error_e::INVALID_HANDLE),
+            fmt::format("Operation on invalid environment handle (id: {})",
+                        _id));
       }
       std::lock_guard<std::mutex> lock(_env._mutex);
       return _env._memory->get(key, use_parent_ctx);
@@ -152,12 +163,13 @@ public:
   private:
     environment_c &_env;
     std::shared_ptr<std::atomic<bool>> _valid;
+    std::size_t _id;
   };
 
   // there is so much sugar in c++ syntax its hard to swallow sometimes
   using env_mem_handle_ptr = std::unique_ptr<environment_memory_handle_c>;
 
-  env_mem_handle_ptr get_memory_handle();
+  env_mem_handle_ptr get_memory_handle(std::size_t id);
 
 private:
   memory_ptr _memory{nullptr};

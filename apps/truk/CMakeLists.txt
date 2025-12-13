@@ -1,4 +1,12 @@
-add_executable(truk main.cpp)
+add_executable(truk 
+    main.cpp
+    commands/compile.cpp
+    commands/run.cpp
+    commands/toc.cpp
+    commands/tcc.cpp
+    common/args.cpp
+    common/file_utils.cpp
+)
 
 target_compile_options(truk PRIVATE
     -Wall
@@ -23,9 +31,8 @@ if(ENABLE_TSAN)
 endif()
 
 target_link_libraries(truk PRIVATE 
-    truk_core 
     truk_emitc
-    truk_ingestion
     truk_validation
+    truk_tcc
     fmt::fmt
 )
