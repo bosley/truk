@@ -1,0 +1,5 @@
+fn main() : i32 {
+  var i: i32 = 50;
+  var f: f32 = i as f32;
+  return f as i32;
+}

@@ -1,0 +1,9 @@
+struct Data {
+  value: f64
+}
+
+fn main() : i32 {
+  var d: Data = Data{value: 10.0};
+  d.value = d.value * 2.0;
+  return d.value as i32;
+}

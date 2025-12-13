@@ -1,0 +1,5 @@
+fn main() : i32 {
+  var f32_val: f32 = 12.5;
+  var f64_val: f64 = f32_val as f64;
+  return f64_val as i32;
+}

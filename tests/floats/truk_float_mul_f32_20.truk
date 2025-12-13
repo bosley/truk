@@ -1,0 +1,6 @@
+fn main() : i32 {
+  var x: f32 = 4.0;
+  var y: f32 = 5.0;
+  var result: f32 = x * y;
+  return result as i32;
+}

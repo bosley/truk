@@ -1,0 +1,8 @@
+fn main() : i32 {
+  var x: f32 = 10.5;
+  var y: f32 = 3.2;
+  if x > y {
+    return 1;
+  }
+  return 0;
+}

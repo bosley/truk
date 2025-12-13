@@ -1,0 +1,5 @@
+fn main() : i32 {
+  var x: f64 = 10.0;
+  x /= 5.0;
+  return x as i32;
+}

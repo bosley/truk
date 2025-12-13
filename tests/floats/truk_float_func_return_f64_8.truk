@@ -1,0 +1,8 @@
+fn compute() : f64 {
+  return 8.7;
+}
+
+fn main() : i32 {
+  var result: f64 = compute();
+  return result as i32;
+}
