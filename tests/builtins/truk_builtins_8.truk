@@ -1,3 +1,12 @@
+
+
+
+/*
+ 
+        This is a comment and a test
+*/
+
+
 fn main() : i32 {
   var size: u64 = sizeof(@i64);
   return size as i32;
