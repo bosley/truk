@@ -1,0 +1,14 @@
+fn main() : i32 {
+  var x: i32 = 3;
+  var y: i32 = 5;
+  if x > 5 {
+    if y > 3 {
+      return 1;
+    } else {
+      return 2;
+    }
+  } else {
+    return 27;
+  }
+  return 0;
+}

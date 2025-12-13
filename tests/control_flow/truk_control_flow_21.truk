@@ -1,0 +1,9 @@
+fn main() : i32 {
+  var x: i32 = 20;
+  if x > 15 {
+    return 21;
+  } else {
+    return 5;
+  }
+  return 0;
+}

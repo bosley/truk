@@ -1,0 +1,13 @@
+fn main() : i32 {
+  var sum: i32 = 0;
+  for var i: i32 = 0; i < 6; i = i + 1 {
+    if i == 0 {
+      continue;
+    }
+    if i == 5 {
+      break;
+    }
+    sum = sum + 10;
+  }
+  return sum + 2;
+}

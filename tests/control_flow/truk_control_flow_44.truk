@@ -1,0 +1,12 @@
+fn main() : i32 {
+  var sum: i32 = 0;
+  var i: i32 = 0;
+  for ; ; {
+    if i >= 4 {
+      break;
+    }
+    sum = sum + 11;
+    i = i + 1;
+  }
+  return sum;
+}

@@ -1,0 +1,13 @@
+fn main() : i32 {
+  var result: i32 = 0;
+  for var i: i32 = 0; i < 3; i = i + 1 {
+    for var j: i32 = 0; j < 3; j = j + 1 {
+      if i == j {
+        result = result + 5;
+      } else {
+        result = result + 2;
+      }
+    }
+  }
+  return result + 16;
+}
