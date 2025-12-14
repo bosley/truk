@@ -15,10 +15,14 @@ namespace truk::commands {
 
 namespace fs = std::filesystem;
 
-static int compile_truk_to_c(const std::string &input_file,
-                             const std::vector<std::string> &,
-                             std::string &c_output) {
+static int
+compile_truk_to_c(const std::string &input_file,
+                  const std::vector<std::string> &import_search_paths,
+                  std::string &c_output) {
   ingestion::import_resolver_c resolver;
+  for (const auto &path : import_search_paths) {
+    resolver.add_import_search_path(path);
+  }
   auto resolved = resolver.resolve(input_file);
 
   if (!resolved.success) {
@@ -76,17 +80,19 @@ static int compile_truk_to_c(const std::string &input_file,
 }
 
 static int compile_library(const std::string &name,
-                           const kit::target_library_c &lib, const fs::path &) {
+                           const kit::target_library_c &lib,
+                           const fs::path &kit_dir) {
   fmt::print("Building library: {}\n", name);
 
   std::string c_output;
-  std::vector<std::string> include_paths;
+  std::vector<std::string> import_search_paths;
   if (lib.include_paths.has_value()) {
-    include_paths = lib.include_paths.value();
+    import_search_paths = lib.include_paths.value();
   }
+  import_search_paths.push_back(kit_dir.string());
 
-  int result =
-      compile_truk_to_c(lib.source_entry_file_path, include_paths, c_output);
+  int result = compile_truk_to_c(lib.source_entry_file_path,
+                                 import_search_paths, c_output);
   if (result != 0) {
     return result;
   }
@@ -112,13 +118,14 @@ static int compile_application(const std::string &name,
   fmt::print("Building application: {}\n", name);
 
   std::string c_output;
-  std::vector<std::string> include_paths;
+  std::vector<std::string> import_search_paths;
   if (app.include_paths.has_value()) {
-    include_paths = app.include_paths.value();
+    import_search_paths = app.include_paths.value();
   }
+  import_search_paths.push_back(config.kit_file_directory.string());
 
-  int result =
-      compile_truk_to_c(app.source_entry_file_path, include_paths, c_output);
+  int result = compile_truk_to_c(app.source_entry_file_path,
+                                 import_search_paths, c_output);
   if (result != 0) {
     return result;
   }

@@ -109,7 +109,7 @@ extern fn multiply(a: i32, b: i32): i32;
 EOF
     
     cat > "${project_dir}/libs/math/lib_impl.truk" << 'EOF'
-import "lib.truk";
+import "libs/math/lib.truk";
 
 fn add(a: i32, b: i32): i32 {
     return a + b;
@@ -121,7 +121,7 @@ fn multiply(a: i32, b: i32): i32 {
 EOF
     
     cat > "${project_dir}/libs/math/test.truk" << 'EOF'
-import "lib_impl.truk";
+import "libs/math/lib_impl.truk";
 
 fn main(): i32 {
     if (add(2, 3) != 5) {
@@ -139,8 +139,8 @@ extern fn square(x: i32): i32;
 EOF
     
     cat > "${project_dir}/libs/calc/lib_impl.truk" << 'EOF'
-import "../math/lib.truk";
-import "lib.truk";
+import "libs/math/lib.truk";
+import "libs/calc/lib.truk";
 
 fn square(x: i32): i32 {
     return multiply(x, x);
@@ -148,8 +148,8 @@ fn square(x: i32): i32 {
 EOF
     
     cat > "${project_dir}/libs/calc/test.truk" << 'EOF'
-import "../math/lib_impl.truk";
-import "lib_impl.truk";
+import "libs/math/lib_impl.truk";
+import "libs/calc/lib_impl.truk";
 
 fn main(): i32 {
     if (square(5) != 25) {

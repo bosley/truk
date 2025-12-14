@@ -74,12 +74,10 @@ public:
     throw kit_exception_c(exception_e::PARSE_ERROR, pos_,
                           "Unexpected character: " + std::string(1, ch));
   }
-  
+
   std::size_t get_position() const { return pos_; }
-  
-  void set_position(std::size_t pos) { 
-    pos_ = pos;
-  }
+
+  void set_position(std::size_t pos) { pos_ = pos; }
 
 private:
   void skip_whitespace_and_comments() {
@@ -331,7 +329,7 @@ private:
 
     config.libraries.emplace_back(
         lib_name, target_library_c(resolved_source, resolved_output, depends,
-                                    resolved_test, include_paths));
+                                   resolved_test, include_paths));
   }
 
   void parse_application(kit_config_s &config) {
@@ -442,16 +440,16 @@ private:
     std::vector<std::string> values;
     while (current_token_.type == token_type_e::STRING_VALUE ||
            current_token_.type == token_type_e::IDENTIFIER) {
-      
+
       std::size_t peek_pos = lexer_.get_position();
       token_s peek_token = lexer_.next_token();
       lexer_.set_position(peek_pos);
-      
-      if (current_token_.type == token_type_e::IDENTIFIER && 
+
+      if (current_token_.type == token_type_e::IDENTIFIER &&
           peek_token.type == token_type_e::EQUALS) {
         break;
       }
-      
+
       values.push_back(current_token_.value);
       advance();
     }

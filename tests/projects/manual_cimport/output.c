@@ -1,9 +1,9 @@
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 typedef int8_t i8;
 typedef int16_t i16;
@@ -16,48 +16,51 @@ typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
 
-#define TRUK_PANIC(msg, len) do { \
-  fprintf(stderr, "panic: %.*s\n", (int)(len), (const char*)(msg)); \
-  exit(1); \
-} while(0)
+#define TRUK_PANIC(msg, len)                                                   \
+  do {                                                                         \
+    fprintf(stderr, "panic: %.*s\n", (int)(len), (const char *)(msg));         \
+    exit(1);                                                                   \
+  } while (0)
 
-#define TRUK_BOUNDS_CHECK(idx, len) do { \
-  if ((idx) >= (len)) { \
-    fprintf(stderr, "panic: index out of bounds: %llu >= %llu\n", \
-            (unsigned long long)(idx), (unsigned long long)(len)); \
-    exit(1); \
-  } \
-} while(0)
+#define TRUK_BOUNDS_CHECK(idx, len)                                            \
+  do {                                                                         \
+    if ((idx) >= (len)) {                                                      \
+      fprintf(stderr, "panic: index out of bounds: %llu >= %llu\n",            \
+              (unsigned long long)(idx), (unsigned long long)(len));           \
+      exit(1);                                                                 \
+    }                                                                          \
+  } while (0)
 
 #define TRUK_DEFER_SCOPE_BEGIN() do {
-#define TRUK_DEFER_SCOPE_END(...) } while(0); __VA_ARGS__
-#define TRUK_ANONYMOUS(body) do { body } while(0)
+#define TRUK_DEFER_SCOPE_END(...)                                              \
+  }                                                                            \
+  while (0)                                                                    \
+    ;                                                                          \
+  __VA_ARGS__
+#define TRUK_ANONYMOUS(body)                                                   \
+  do {                                                                         \
+    body                                                                       \
+  } while (0)
 
 static inline void truk_bounds_check(u64 idx, u64 len) {
   if (idx >= len) {
-    fprintf(stderr, "panic: index out of bounds: %llu >= %llu\n", 
+    fprintf(stderr, "panic: index out of bounds: %llu >= %llu\n",
             (unsigned long long)idx, (unsigned long long)len);
     exit(1);
   }
 }
 
-#include <stdio.h>
 #include "filehelper.h"
+#include <stdio.h>
 
 typedef struct {
-  void* data;
+  void *data;
   u64 len;
 } truk_slice_void;
 
-i64 get_file_size(i8* path) {
-  return read_file_size(path);
-}
-i32 get_first_byte(i8* path) {
-  return read_first_byte(path);
-}
-i32 get_number_from_file(i8* path) {
-  return read_file_as_number(path);
-}
+i64 get_file_size(i8 *path) { return read_file_size(path); }
+i32 get_first_byte(i8 *path) { return read_first_byte(path); }
+i32 get_number_from_file(i8 *path) { return read_file_as_number(path); }
 i32 main() {
   i64 size = get_file_size("test_data/input.txt");
   if ((size < 0)) {

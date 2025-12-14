@@ -42,6 +42,28 @@ std::string resolve_path(const std::string &import_path,
   return resolved.string();
 }
 
+std::string
+resolve_path_with_search(const std::string &import_path,
+                         const std::string &current_file_path,
+                         const std::vector<std::string> &search_paths) {
+  std::filesystem::path current_dir = get_directory(current_file_path);
+  std::filesystem::path resolved = current_dir / import_path;
+
+  if (std::filesystem::exists(resolved)) {
+    return resolved.string();
+  }
+
+  for (const auto &search_path : search_paths) {
+    std::filesystem::path search_resolved =
+        std::filesystem::path(search_path) / import_path;
+    if (std::filesystem::exists(search_resolved)) {
+      return search_resolved.string();
+    }
+  }
+
+  return resolved.string();
+}
+
 std::string canonicalize_path(const std::string &path) {
   try {
     std::filesystem::path p(path);

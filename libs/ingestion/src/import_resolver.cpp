@@ -218,6 +218,10 @@ void dependency_visitor_c::visit(const import_c &) {}
 
 void dependency_visitor_c::visit(const cimport_c &) {}
 
+void import_resolver_c::add_import_search_path(const std::string &path) {
+  _search_paths.push_back(path);
+}
+
 resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
   _processed_files.clear();
   _import_stack.clear();
@@ -296,7 +300,8 @@ void import_resolver_c::extract_imports_and_declarations(
 
   for (auto &decl : parsed_decls) {
     if (auto *import_node = dynamic_cast<const import_c *>(decl.get())) {
-      std::string resolved_path = resolve_path(import_node->path(), file_path);
+      std::string resolved_path = resolve_path_with_search(
+          import_node->path(), file_path, _search_paths);
       process_file(resolved_path);
     } else if (auto *cimport_node =
                    dynamic_cast<const cimport_c *>(decl.get())) {

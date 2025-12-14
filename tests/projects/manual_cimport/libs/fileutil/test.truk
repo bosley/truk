@@ -1,4 +1,4 @@
-import "lib_impl.truk";
+import "fileutil/lib_impl.truk";
 
 fn main(): i32 {
     var size: i64 = get_file_size("test_data/input.txt");

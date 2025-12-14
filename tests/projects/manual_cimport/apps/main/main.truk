@@ -2,7 +2,7 @@ cimport <stdio.h>;
 
 extern fn printf(fmt: *i8, ...args): i32;
 
-import "../../libs/fileutil/lib.truk";
+import "fileutil/lib.truk";
 
 fn main(): i32 {
     var path: *i8 = "test_data/input.txt";

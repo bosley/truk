@@ -1,8 +1,8 @@
 #include "test.hpp"
 #include <cstdlib>
 #include <filesystem>
-#include <fstream>
 #include <fmt/core.h>
+#include <fstream>
 #include <iostream>
 #include <truk/core/error_display.hpp>
 #include <truk/emitc/emitter.hpp>
@@ -16,10 +16,14 @@ namespace truk::commands {
 
 namespace fs = std::filesystem;
 
-static int compile_truk_to_c(const std::string &input_file,
-                             const std::vector<std::string> &,
-                             std::string &c_output) {
+static int
+compile_truk_to_c(const std::string &input_file,
+                  const std::vector<std::string> &import_search_paths,
+                  std::string &c_output) {
   ingestion::import_resolver_c resolver;
+  for (const auto &path : import_search_paths) {
+    resolver.add_import_search_path(path);
+  }
   auto resolved = resolver.resolve(input_file);
 
   if (!resolved.success) {
@@ -121,13 +125,14 @@ int test(const test_options_s &opts) {
     fs::create_directories(test_exe_path.parent_path());
 
     std::string c_output;
-    std::vector<std::string> include_paths;
+    std::vector<std::string> import_search_paths;
     if (lib.include_paths.has_value()) {
-      include_paths = lib.include_paths.value();
+      import_search_paths = lib.include_paths.value();
     }
+    import_search_paths.push_back(config.kit_file_directory.string());
 
-    int result =
-        compile_truk_to_c(lib.test_file_path.value(), include_paths, c_output);
+    int result = compile_truk_to_c(lib.test_file_path.value(),
+                                   import_search_paths, c_output);
     if (result != 0) {
       fmt::print("COMPILE FAILED\n");
       failed++;

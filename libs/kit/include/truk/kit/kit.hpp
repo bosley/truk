@@ -91,7 +91,8 @@ public:
       const std::string &output_file_path,
       const std::optional<std::vector<std::string>> &depends = std::nullopt,
       const std::optional<std::string> &test_file_path = std::nullopt,
-      const std::optional<std::vector<std::string>> &include_paths = std::nullopt)
+      const std::optional<std::vector<std::string>> &include_paths =
+          std::nullopt)
       : target_base_if(target_type_e::LIBRARY),
         source_entry_file_path(source_entry_file_path),
         output_file_path(output_file_path), depends(depends),
