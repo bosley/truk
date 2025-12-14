@@ -35,6 +35,7 @@ public:
   void add_include_path(const std::string &path);
   void add_library_path(const std::string &path);
   void add_library(const std::string &lib);
+  void add_file(const std::string &file);
   void set_rpath(const std::string &path);
   void set_output_type(int type);
 

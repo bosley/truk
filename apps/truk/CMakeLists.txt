@@ -4,6 +4,10 @@ add_executable(truk
     commands/run.cpp
     commands/toc.cpp
     commands/tcc.cpp
+    commands/new.cpp
+    commands/build.cpp
+    commands/test.cpp
+    commands/clean.cpp
     common/args.cpp
 )
 
@@ -33,5 +37,6 @@ target_link_libraries(truk PRIVATE
     truk_emitc
     truk_validation
     truk_tcc
+    truk_kit
     fmt::fmt
 )

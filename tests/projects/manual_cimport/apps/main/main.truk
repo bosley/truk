@@ -1,0 +1,20 @@
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args): i32;
+
+import "fileutil/lib.truk";
+
+fn main(): i32 {
+    var path: *i8 = "test_data/input.txt";
+    
+    var size: i64 = get_file_size(path);
+    printf("File size: %ld bytes\n", size);
+    
+    var first: i32 = get_first_byte(path);
+    printf("First byte: %d\n", first);
+    
+    var num: i32 = get_number_from_file(path);
+    printf("Number from file: %d\n", num);
+    
+    return num;
+}

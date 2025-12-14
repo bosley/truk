@@ -1,0 +1,3 @@
+extern fn get_file_size(path: *i8): i64;
+extern fn get_first_byte(path: *i8): i32;
+extern fn get_number_from_file(path: *i8): i32;

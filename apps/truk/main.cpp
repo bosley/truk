@@ -1,13 +1,25 @@
+#include "commands/build.hpp"
+#include "commands/clean.hpp"
 #include "commands/compile.hpp"
+#include "commands/new.hpp"
 #include "commands/run.hpp"
 #include "commands/tcc.hpp"
+#include "commands/test.hpp"
 #include "commands/toc.hpp"
 #include "common/args.hpp"
 
 int main(int argc, char **argv) {
   auto args = truk::common::parse_args(argc, argv);
 
-  if (args.command == "toc") {
+  if (args.command == "new") {
+    return truk::commands::new_project({args.project_name});
+  } else if (args.command == "build") {
+    return truk::commands::build({args.target_dir, args.specific_target});
+  } else if (args.command == "test") {
+    return truk::commands::test({args.target_dir, args.specific_target});
+  } else if (args.command == "clean") {
+    return truk::commands::clean({args.target_dir});
+  } else if (args.command == "toc") {
     return truk::commands::toc(
         {args.input_file, args.output_file, args.include_paths});
   } else if (args.command == "tcc") {
