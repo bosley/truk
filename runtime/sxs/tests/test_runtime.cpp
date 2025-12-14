@@ -28,7 +28,9 @@ TEST(SxsBoundsCheck, ValidIndex) {
   __truk_runtime_sxs_bounds_check(9, 10);
 }
 
-TEST(SxsBoundsCheck, BoundaryCondition) { __truk_runtime_sxs_bounds_check(0, 1); }
+TEST(SxsBoundsCheck, BoundaryCondition) {
+  __truk_runtime_sxs_bounds_check(0, 1);
+}
 
 TEST_GROUP(SxsAllocation){};
 
@@ -57,13 +59,17 @@ TEST(SxsAllocation, AllocArrayZeroCount) {
 TEST_GROUP(SxsSizeof){};
 
 TEST(SxsSizeof, BasicTypes) {
-  CHECK_EQUAL(sizeof(__truk_i32), __truk_runtime_sxs_sizeof_type(sizeof(__truk_i32)));
-  CHECK_EQUAL(sizeof(__truk_u64), __truk_runtime_sxs_sizeof_type(sizeof(__truk_u64)));
-  CHECK_EQUAL(sizeof(__truk_f32), __truk_runtime_sxs_sizeof_type(sizeof(__truk_f32)));
+  CHECK_EQUAL(sizeof(__truk_i32),
+              __truk_runtime_sxs_sizeof_type(sizeof(__truk_i32)));
+  CHECK_EQUAL(sizeof(__truk_u64),
+              __truk_runtime_sxs_sizeof_type(sizeof(__truk_u64)));
+  CHECK_EQUAL(sizeof(__truk_f32),
+              __truk_runtime_sxs_sizeof_type(sizeof(__truk_f32)));
 }
 
 TEST(SxsSizeof, PointerType) {
-  CHECK_EQUAL(sizeof(__truk_void *), __truk_runtime_sxs_sizeof_type(sizeof(__truk_void *)));
+  CHECK_EQUAL(sizeof(__truk_void *),
+              __truk_runtime_sxs_sizeof_type(sizeof(__truk_void *)));
 }
 
 int main(int argc, char **argv) {

@@ -122,8 +122,8 @@ void emitter_c::internal_finalize() {
 
   final_header << cdef::emit_runtime_implementation();
 
-  final_header
-      << "typedef struct {\n  __truk_void* data;\n  __truk_u64 len;\n} truk_slice_void;\n\n";
+  final_header << "typedef struct {\n  __truk_void* data;\n  __truk_u64 "
+                  "len;\n} truk_slice_void;\n\n";
 
   _result.chunks.push_back(final_header.str());
   _result.chunks.push_back(_structs.str());
@@ -291,8 +291,8 @@ void emitter_c::ensure_slice_typedef(const type_c *element_type) {
       if (arr->size().has_value()) {
         std::string pointer_type =
             emit_array_pointer_type(element_type, "data");
-        _header << "typedef struct {\n  " << pointer_type << ";\n  __truk_u64 len;\n} "
-                << slice_name << ";\n\n";
+        _header << "typedef struct {\n  " << pointer_type
+                << ";\n  __truk_u64 len;\n} " << slice_name << ";\n\n";
         return;
       }
     }
@@ -986,9 +986,9 @@ void emitter_c::visit(const index_c &node) {
   }
 
   if (is_slice) {
-    _current_expr << "({ __truk_runtime_sxs_bounds_check(" << idx_expr << ", (" << obj_expr
-                  << ").len); (" << obj_expr << ").data[" << idx_expr
-                  << "]; })";
+    _current_expr << "({ __truk_runtime_sxs_bounds_check(" << idx_expr << ", ("
+                  << obj_expr << ").len); (" << obj_expr << ").data["
+                  << idx_expr << "]; })";
   } else {
     _current_expr << obj_expr << "[" << idx_expr << "]";
   }
@@ -1073,8 +1073,8 @@ void emitter_c::visit(const assignment_c &node) {
       _in_expression = was_in_expr;
 
       _functions << cdef::indent(_indent_level);
-      _functions << "__truk_runtime_sxs_bounds_check(" << idx_expr << ", (" << obj_expr
-                 << ").len);\n";
+      _functions << "__truk_runtime_sxs_bounds_check(" << idx_expr << ", ("
+                 << obj_expr << ").len);\n";
       _functions << cdef::indent(_indent_level);
       _functions << "(" << obj_expr << ").data[" << idx_expr << "] = " << value
                  << ";\n";
@@ -1219,7 +1219,8 @@ std::string result_c::assemble_code() const {
       std::string params = output.substr(pos + 16, paren_end - (pos + 16));
       has_args = params.find("argc") != std::string::npos;
 
-      mangled_output += "__truk_i32 truk_main_" + std::to_string(main_index) + "(";
+      mangled_output +=
+          "__truk_i32 truk_main_" + std::to_string(main_index) + "(";
       output = output.substr(pos + 16);
       main_index++;
       pos = 0;
@@ -1230,19 +1231,26 @@ std::string result_c::assemble_code() const {
   mangled_output += output;
 
   /*
-      NOTE: At one point I would like to add debug information and flags to emitter to inject callbacks that run before/after the user program
-            and potentially pass something hidden to the user's function so we can "poke around" in a debug mode easily
+      NOTE: At one point I would like to add debug information and flags to
+     emitter to inject callbacks that run before/after the user program and
+     potentially pass something hidden to the user's function so we can "poke
+     around" in a debug mode easily
 
-      This is where that would have to happen, naturally as this is where we call into the user's provided main (in the compiled target)
-      to run whatever instructions they provided with truk files
+      This is where that would have to happen, naturally as this is where we
+     call into the user's provided main (in the compiled target) to run whatever
+     instructions they provided with truk files
 
-      It would be kind of neat if we were to hash the truk files that we get per-build to make a fingerprint or identity for the app
-      then the runtime could setup a shared memory space on the host env on launch if not exist scoped to the identity of the app, then
-      all individual compiled processes could communicate IPC. If we restrict it to this build fingerprint we can be certain that the
-      "other" instance is the same as us (operationally certain, assumed in good-faith) and that we can freely talk with it
+      It would be kind of neat if we were to hash the truk files that we get
+     per-build to make a fingerprint or identity for the app then the runtime
+     could setup a shared memory space on the host env on launch if not exist
+     scoped to the identity of the app, then all individual compiled processes
+     could communicate IPC. If we restrict it to this build fingerprint we can
+     be certain that the "other" instance is the same as us (operationally
+     certain, assumed in good-faith) and that we can freely talk with it
 
-      Eventually if that was a good idea the runtime could do some security shit, but the idea of each app running in parallel and the program
-      being written to interact with itself to solve the task is a big dream of mine
+      Eventually if that was a good idea the runtime could do some security
+     shit, but the idea of each app running in parallel and the program being
+     written to interact with itself to solve the task is a big dream of mine
   */
   mangled_output += fmt::format(R"(
 int main(int argc, char** argv) {{
@@ -1254,7 +1262,8 @@ int main(int argc, char** argv) {{
   }};
   return __truk_runtime_sxs_start(&app);
 }}
-)", has_args ? "true" : "false");
+)",
+                                has_args ? "true" : "false");
 
   return mangled_output;
 }

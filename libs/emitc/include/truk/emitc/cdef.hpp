@@ -64,7 +64,8 @@ inline std::string emit_runtime_declarations() {
 inline std::string emit_runtime_macros() {
   std::stringstream ss;
   ss << "#define TRUK_PANIC(msg, len) __truk_runtime_sxs_panic((msg), (len))\n";
-  ss << "#define TRUK_BOUNDS_CHECK(idx, len) __truk_runtime_sxs_bounds_check((idx), "
+  ss << "#define TRUK_BOUNDS_CHECK(idx, len) "
+        "__truk_runtime_sxs_bounds_check((idx), "
         "(len))\n\n";
   ss << "#define TRUK_DEFER_SCOPE_BEGIN() do {\n";
   ss << "#define TRUK_DEFER_SCOPE_END(...) } while(0); __VA_ARGS__\n";
@@ -115,8 +116,9 @@ inline std::string emit_library_header() {
 
 inline std::string emit_slice_typedef(const std::string &element_type,
                                       const std::string &slice_name) {
-  return fmt::format("typedef struct {{\n  {}* data;\n  __truk_u64 len;\n}} {};\n\n",
-                     element_type, slice_name);
+  return fmt::format(
+      "typedef struct {{\n  {}* data;\n  __truk_u64 len;\n}} {};\n\n",
+      element_type, slice_name);
 }
 
 inline std::string emit_builtin_alloc(const std::string &type_str) {
@@ -131,8 +133,9 @@ inline std::string
 emit_builtin_alloc_array(const std::string &cast_type,
                          const std::string &elem_type_for_sizeof,
                          const std::string &count_expr) {
-  return fmt::format("{{({0})__truk_runtime_sxs_alloc_array(sizeof({1}), ({2})), ({2})}}",
-                     cast_type, elem_type_for_sizeof, count_expr);
+  return fmt::format(
+      "{{({0})__truk_runtime_sxs_alloc_array(sizeof({1}), ({2})), ({2})}}",
+      cast_type, elem_type_for_sizeof, count_expr);
 }
 
 inline std::string emit_builtin_free_array(const std::string &arr_expr) {
