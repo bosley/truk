@@ -6,27 +6,43 @@ The sxs runtime library provides core functionality for truk programs, including
 
 sxs is developed as a standard C library in this directory but is **embedded directly into the truk compiler binary** at build time. When truk compiles a program, it inlines the sxs runtime code directly into the generated C code.
 
-This approach provides:
-- **Zero installation dependencies** - users only need the truk binary
-- **Version compatibility** - runtime always matches compiler version  
-- **Fast compilation** - no external library linking required
-- **Proper development** - sxs is written as real C code with full IDE support
-- **Tested before use** - sxs tests run before truk is built
-
 ## What sxs Provides
 
-sxs provides **minimal runtime support**:
-- **Type aliases**: i8, i16, i32, i64, u8, u16, u32, u64, f32, f64
-- **Bounds checking**: `sxs_bounds_check()` for array access validation
-- **Panic handling**: `sxs_panic()` for fatal errors
+**Type Definitions:**
+- Type aliases: `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`
 
-sxs does **NOT** provide:
-- Memory allocation (uses standard `malloc`/`free` directly)
-- Data structures (slices are generated per-type by the compiler)
-- String handling
-- I/O operations
+**Memory Operations (inlined):**
+- `sxs_alloc(u64 size)` - Single value allocation
+- `sxs_free(void *ptr)` - Single value deallocation
+- `sxs_alloc_array(u64 elem_size, u64 count)` - Array allocation
+- `sxs_free_array(void *ptr)` - Array deallocation
 
-Memory management is handled by the generated C code calling standard library functions directly.
+**Type Operations (inlined):**
+- `sxs_sizeof_type(u64 size)` - Type size query
+
+**Safety Checks (inlined):**
+- `sxs_bounds_check(u64 idx, u64 len)` - Array bounds validation
+
+**Error Handling:**
+- `sxs_panic(const char *msg, u64 len)` - Fatal error
+
+**Program Entry:**
+- `sxs_start(sxs_target_app_s *app)` - Runtime entry point
+
+## Program Entry Structure
+
+All truk programs enter through the runtime via `sxs_start`:
+
+```c
+typedef struct {
+  void *entry_fn;      // User's main function
+  bool has_args;       // Whether main takes argc/argv
+  i32 argc;           // Command line arguments
+  i8 **argv;
+} sxs_target_app_s;
+```
+
+Generated programs create this structure and pass it to `sxs_start`, which dispatches to the user's code.
 
 ## Build Process
 
@@ -44,8 +60,6 @@ The CMake build ensures this order:
 2. **test_sxs_runtime** - Tests run immediately after sxs builds
 3. **truk_emitc** - Depends on sxs, embeds runtime
 4. **truk binary** - Final executable
-
-This guarantees the runtime is tested before being embedded into the compiler.
 
 ## Testing
 
@@ -65,39 +79,31 @@ Or run directly:
 ```
 runtime/sxs/
 ├── include/sxs/
-│   ├── types.h      - Type aliases (i8, u8, f32, etc.)
-│   ├── runtime.h    - Runtime safety functions (panic, bounds_check)
+│   ├── types.h      - Type aliases
+│   ├── runtime.h    - Runtime functions (inlined hot-path functions)
 │   └── sxs.h        - Master include
 ├── src/
-│   └── runtime.c    - Runtime safety implementations
+│   └── runtime.c    - Non-inlined runtime functions
 └── tests/
     ├── test_runtime.cpp  - CppUTest unit tests
     └── CMakeLists.txt
 ```
 
-## Application vs Library Compilation
+## Performance
 
-The embedded runtime system supports two compilation modes:
+Hot-path functions are `static inline` to eliminate function call overhead:
+- Memory allocation/deallocation
+- Bounds checking (called on every array access)
+- Type size queries
 
-- **Application mode**: Includes full runtime with implementations
-- **Library mode**: Includes only type definitions and declarations
+Cold-path functions remain as regular functions:
+- Panic (error path, rarely called)
+- Program startup (called once)
 
-This is controlled via the `for_application` and `for_library` flags in the embedded runtime metadata.
+## Memory Management
 
-## Adding New Runtime Features
+All memory operations route through sxs functions, which currently call standard `malloc`/`free`. This provides a single point of control for future garbage collection or custom allocator implementations.
 
-To add new functionality to sxs:
-
-1. Add C header to `include/sxs/`
-2. Add C implementation to `src/`
-3. Add tests to `tests/test_runtime.cpp`
-4. Update `cmake/EmbedRuntime.cmake` to include new files
-5. Rebuild - runtime is automatically tested and embedded
-
-## Independence from Compiler Source
+## Independence
 
 The truk binary is completely self-contained. Once built, it can compile truk programs anywhere on the system without access to the compiler source code or runtime files. All runtime code is embedded as string literals in the binary.
-
-## C/C++ Interop
-
-All sxs functions use `extern "C"` linkage to ensure they can be called from both C (in generated code) and C++ (in tests and the compiler itself).

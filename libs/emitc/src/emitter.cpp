@@ -1172,47 +1172,61 @@ std::string result_c::assemble_code() const {
     output += chunk;
   }
 
-  if (metadata.has_multiple_mains()) {
-    std::string mangled_output;
-    int main_index = 0;
-
-    size_t pos = 0;
-    while ((pos = output.find("int main(", pos)) != std::string::npos) {
-      size_t line_start = output.rfind('\n', pos);
-      if (line_start == std::string::npos) {
-        line_start = 0;
-      } else {
-        line_start++;
-      }
-
-      bool is_function_def = true;
-      for (size_t i = line_start; i < pos; ++i) {
-        if (output[i] != ' ' && output[i] != '\t' && output[i] != '\n') {
-          is_function_def = false;
-          break;
-        }
-      }
-
-      if (is_function_def) {
-        mangled_output += output.substr(0, pos);
-        mangled_output += "int truk_main_" + std::to_string(main_index) + "(";
-        output = output.substr(pos + 9);
-        main_index++;
-        pos = 0;
-      } else {
-        pos += 9;
-      }
-    }
-    mangled_output += output;
-
-    mangled_output += "\nint main(int argc, char** argv) {\n";
-    mangled_output += "  return truk_main_0(argc, argv);\n";
-    mangled_output += "}\n";
-
-    return mangled_output;
+  if (!metadata.has_main_function) {
+    return output;
   }
 
-  return output;
+  std::string mangled_output;
+  int main_index = 0;
+  bool has_args = false;
+
+  size_t pos = 0;
+  while ((pos = output.find("i32 main(", pos)) != std::string::npos) {
+    size_t line_start = output.rfind('\n', pos);
+    if (line_start == std::string::npos) {
+      line_start = 0;
+    } else {
+      line_start++;
+    }
+
+    bool is_function_def = true;
+    for (size_t i = line_start; i < pos; ++i) {
+      if (output[i] != ' ' && output[i] != '\t' && output[i] != '\n') {
+        is_function_def = false;
+        break;
+      }
+    }
+
+    if (is_function_def) {
+      mangled_output += output.substr(0, pos);
+      
+      size_t paren_end = output.find(')', pos);
+      std::string params = output.substr(pos + 9, paren_end - (pos + 9));
+      has_args = params.find("argc") != std::string::npos;
+      
+      mangled_output += "i32 truk_main_" + std::to_string(main_index) + "(";
+      output = output.substr(pos + 9);
+      main_index++;
+      pos = 0;
+    } else {
+      pos += 9;
+    }
+  }
+  mangled_output += output;
+
+  mangled_output += "\nint main(int argc, char** argv) {\n";
+  mangled_output += "  sxs_target_app_s app = {\n";
+  mangled_output += "    .entry_fn = (void*)truk_main_0,\n";
+  mangled_output += "    .has_args = ";
+  mangled_output += has_args ? "true" : "false";
+  mangled_output += ",\n";
+  mangled_output += "    .argc = argc,\n";
+  mangled_output += "    .argv = (i8**)argv\n";
+  mangled_output += "  };\n";
+  mangled_output += "  return sxs_start(&app);\n";
+  mangled_output += "}\n";
+
+  return mangled_output;
 }
 
 assembly_result_s result_c::assemble(assembly_type_e type,
