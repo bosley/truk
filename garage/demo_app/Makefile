@@ -1,62 +1,27 @@
-.PHONY: all clean libs apps app_one app_two
+.PHONY: all clean libs apps run
 
-TRUK := $(CURDIR)/../../build/apps/truk/truk
+TRUK := ../../build/apps/truk/truk
 BUILD_DIR := build
-PKG_DIR := pkg
-CMDS_DIR := cmds
 
-LIB_A_SRC := $(PKG_DIR)/lib_a/library_a.truk
-LIB_B_SRC := $(PKG_DIR)/lib_b/library_b.truk
+all: apps
 
-LIB_A_H := $(BUILD_DIR)/lib_a/library_a.h
-LIB_A_C := $(BUILD_DIR)/lib_a/library_a.c
+libs:
+	@echo "Transpiling libraries..."
+	@mkdir -p $(BUILD_DIR)/lib_a $(BUILD_DIR)/lib_b
+	$(TRUK) toc pkg/lib_a/library_a.truk -o $(BUILD_DIR)/lib_a/library_a.c
+	$(TRUK) toc pkg/lib_b/library_b.truk -o $(BUILD_DIR)/lib_b/library_b.c
 
-LIB_B_H := $(BUILD_DIR)/lib_b/library_b.h
-LIB_B_C := $(BUILD_DIR)/lib_b/library_b.c
+apps: libs
+	@echo "Building applications..."
+	@mkdir -p $(BUILD_DIR)
+	cd cmds/app_one && $(CURDIR)/$(TRUK) main.truk -o $(CURDIR)/$(BUILD_DIR)/app_one -I $(CURDIR)/pkg
+	cd cmds/app_two && $(CURDIR)/$(TRUK) main.truk -o $(CURDIR)/$(BUILD_DIR)/app_two -I $(CURDIR)/pkg
 
-APP_ONE_SRC := $(CMDS_DIR)/app_one/main.truk
-APP_TWO_SRC := $(CMDS_DIR)/app_two/main.truk
-
-APP_ONE_BIN := $(BUILD_DIR)/app_one
-APP_TWO_BIN := $(BUILD_DIR)/app_two
-
-all: libs apps
-
-libs: $(LIB_A_C) $(LIB_B_C)
-
-apps: app_one app_two
-
-$(BUILD_DIR)/lib_a:
-	mkdir -p $(BUILD_DIR)/lib_a
-
-$(BUILD_DIR)/lib_b:
-	mkdir -p $(BUILD_DIR)/lib_b
-
-$(LIB_A_H) $(LIB_A_C): $(LIB_A_SRC) | $(BUILD_DIR)/lib_a
-	@echo "Transpiling library_a to C..."
-	$(TRUK) toc $(LIB_A_SRC) -o $(LIB_A_C)
-
-$(LIB_B_H) $(LIB_B_C): $(LIB_B_SRC) | $(BUILD_DIR)/lib_b
-	@echo "Transpiling library_b to C..."
-	$(TRUK) toc $(LIB_B_SRC) -o $(LIB_B_C)
-
-app_one: $(LIB_A_C) $(LIB_B_C) $(APP_ONE_SRC)
-	@echo "Building app_one..."
-	cd $(CMDS_DIR)/app_one && $(TRUK) main.truk -o $(CURDIR)/$(APP_ONE_BIN) -I $(CURDIR)/$(PKG_DIR)
-
-app_two: $(LIB_B_C) $(APP_TWO_SRC)
-	@echo "Building app_two..."
-	cd $(CMDS_DIR)/app_two && $(TRUK) main.truk -o $(CURDIR)/$(APP_TWO_BIN) -I $(CURDIR)/$(PKG_DIR)
+run: apps
+	@echo "\n=== App One ==="
+	@$(BUILD_DIR)/app_one
+	@echo "\n=== App Two ==="
+	@$(BUILD_DIR)/app_two
 
 clean:
 	rm -rf $(BUILD_DIR)
-
-run_app_one: app_one
-	@echo "\n=== Running app_one ==="
-	$(APP_ONE_BIN)
-
-run_app_two: app_two
-	@echo "\n=== Running app_two ==="
-	$(APP_TWO_BIN)
-
-run_all: run_app_one run_app_two

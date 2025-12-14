@@ -23,6 +23,8 @@ endif()
 
 include(FetchContent)
 
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
+
 find_package(fmt QUIET)
 if(NOT fmt_FOUND)
     message(STATUS "fmt not found locally, fetching from GitHub")
@@ -32,7 +34,10 @@ if(NOT fmt_FOUND)
         GIT_TAG 10.2.1
         GIT_SHALLOW TRUE
     )
+    set(FMT_INSTALL OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(fmt)
+else()
+    message(STATUS "Using system fmt - note: for standalone binary, build from source")
 endif()
 
 if(BUILD_TESTS)
