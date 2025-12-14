@@ -1,0 +1,26 @@
+import "lib_a/library_a.truk";
+import "lib_b/library_b.truk";
+
+cimport <stdio.h>;
+extern fn printf(fmt: *i8, ...args): i32;
+
+fn main() : i32 {
+  printf("=== App One: Point Math Demo ===\n");
+  
+  var p1: Point = point_new(3, 4);
+  var p2: Point = point_new(5, 12);
+  
+  printf("Point 1: (%d, %d)\n", p1.x, p1.y);
+  printf("Point 2: (%d, %d)\n", p2.x, p2.y);
+  
+  var p3: Point = point_add(p1, p2);
+  printf("Sum: (%d, %d)\n", p3.x, p3.y);
+  
+  var dist: i32 = point_distance_squared(p3);
+  printf("Distance squared from origin: %d\n", dist);
+  
+  var sum: i32 = add(10, 20);
+  printf("10 + 20 = %d\n", sum);
+  
+  return 0;
+}

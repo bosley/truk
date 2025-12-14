@@ -35,3 +35,8 @@ target_link_libraries(truk PRIVATE
     truk_tcc
     fmt::fmt
 )
+
+install(TARGETS truk
+    RUNTIME DESTINATION bin
+    COMPONENT runtime
+)

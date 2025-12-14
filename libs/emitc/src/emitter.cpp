@@ -918,6 +918,9 @@ void emitter_c::visit(const call_c &node) {
     }
   }
 
+  bool was_in_expr = _in_expression;
+  _in_expression = true;
+
   node.callee()->accept(*this);
   _current_expr << "(";
 
@@ -928,6 +931,8 @@ void emitter_c::visit(const call_c &node) {
   }
 
   _current_expr << ")";
+
+  _in_expression = was_in_expr;
 
   if (!_in_expression) {
     _functions << cdef::indent(_indent_level) << _current_expr.str() << ";\n";

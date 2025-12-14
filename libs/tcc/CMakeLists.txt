@@ -33,7 +33,13 @@ if(NOT TCC_INCLUDE_DIR OR NOT TCC_LIBRARY)
 endif()
 
 target_include_directories(truk_tcc PRIVATE ${TCC_INCLUDE_DIR})
-target_link_libraries(truk_tcc PRIVATE ${TCC_LIBRARY})
+target_link_libraries(truk_tcc PUBLIC ${TCC_LIBRARY})
+
+if(APPLE)
+    target_link_libraries(truk_tcc PUBLIC dl)
+elseif(UNIX)
+    target_link_libraries(truk_tcc PUBLIC dl m)
+endif()
 
 target_compile_options(truk_tcc PRIVATE
     -Wall

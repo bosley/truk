@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <filesystem>
 #include <truk/ingestion/file_utils.hpp>
 #include <truk/ingestion/import_resolver.hpp>
 #include <truk/ingestion/parser.hpp>
@@ -218,6 +219,25 @@ void dependency_visitor_c::visit(const import_c &) {}
 
 void dependency_visitor_c::visit(const cimport_c &) {}
 
+std::string
+import_resolver_c::resolve_import_path(const std::string &import_path,
+                                       const std::string &current_file) {
+  std::string relative_path = resolve_path(import_path, current_file);
+  if (std::filesystem::exists(relative_path)) {
+    return relative_path;
+  }
+
+  for (const auto &include_dir : _include_paths) {
+    std::filesystem::path candidate =
+        std::filesystem::path(include_dir) / import_path;
+    if (std::filesystem::exists(candidate)) {
+      return candidate.string();
+    }
+  }
+
+  return relative_path;
+}
+
 resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
   _processed_files.clear();
   _import_stack.clear();
@@ -296,7 +316,8 @@ void import_resolver_c::extract_imports_and_declarations(
 
   for (auto &decl : parsed_decls) {
     if (auto *import_node = dynamic_cast<const import_c *>(decl.get())) {
-      std::string resolved_path = resolve_path(import_node->path(), file_path);
+      std::string resolved_path =
+          resolve_import_path(import_node->path(), file_path);
       process_file(resolved_path);
     } else if (auto *cimport_node =
                    dynamic_cast<const cimport_c *>(decl.get())) {
