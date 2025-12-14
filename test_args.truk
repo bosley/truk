@@ -1,0 +1,19 @@
+fn main() : i32 {
+  var count: i32 = argc();
+  printf("argc: %d\n", count);
+  
+  if count > 0 {
+    var arg0: []u8 = argv(0);
+    printf("Program name length: %llu\n", len(arg0));
+  }
+  
+  if count > 1 {
+    var arg1: []u8 = argv(1);
+    printf("First arg length: %llu\n", len(arg1));
+    if len(arg1) > 0 {
+      printf("First char: %c\n", arg1[0]);
+    }
+  }
+  
+  return 0;
+}

@@ -1,0 +1,11 @@
+fn main() : i32 {
+  var count: i32 = argc();
+  if count > 1 {
+    var first_arg: []u8 = argv(1);
+    var len: u64 = len(first_arg);
+    if len > 0 {
+      return 42;
+    }
+  }
+  return 0;
+}

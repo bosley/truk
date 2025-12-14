@@ -175,6 +175,26 @@ static type_ptr build_va_arg_ptr_signature(const type_c *type_param) {
                                            std::move(return_type));
 }
 
+static type_ptr build_argc_signature(const type_c *type_param) {
+  std::vector<type_ptr> params;
+  auto return_type = std::make_unique<primitive_type_c>(keywords_e::I32, 0);
+  return std::make_unique<function_type_c>(0, std::move(params),
+                                           std::move(return_type));
+}
+
+static type_ptr build_argv_signature(const type_c *type_param) {
+  std::vector<type_ptr> params;
+  auto index_param = std::make_unique<primitive_type_c>(keywords_e::I32, 0);
+  params.push_back(std::move(index_param));
+
+  auto u8_type = std::make_unique<primitive_type_c>(keywords_e::U8, 0);
+  auto return_type =
+      std::make_unique<array_type_c>(0, std::move(u8_type), std::nullopt);
+
+  return std::make_unique<function_type_c>(0, std::move(params),
+                                           std::move(return_type));
+}
+
 static std::vector<builtin_signature_s> builtin_registry = {
     {"alloc", builtin_kind_e::ALLOC, true, false, {}, build_alloc_signature},
     {"free", builtin_kind_e::FREE, false, false, {"ptr"}, build_free_signature},
@@ -227,7 +247,14 @@ static std::vector<builtin_signature_s> builtin_registry = {
      false,
      false,
      {},
-     build_va_arg_ptr_signature}};
+     build_va_arg_ptr_signature},
+    {"argc", builtin_kind_e::ARGC, false, false, {}, build_argc_signature},
+    {"argv",
+     builtin_kind_e::ARGV,
+     false,
+     false,
+     {"index"},
+     build_argv_signature}};
 
 const std::vector<builtin_signature_s> &get_builtins() {
   return builtin_registry;

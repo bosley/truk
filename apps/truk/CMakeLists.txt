@@ -40,3 +40,7 @@ target_link_libraries(truk PRIVATE
     truk_kit
     fmt::fmt
 )
+
+install(TARGETS truk
+    RUNTIME DESTINATION bin
+)

@@ -25,6 +25,19 @@ typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
 
+typedef struct {
+  void* data;
+  u64 len;
+} truk_slice_void;
+
+typedef struct {
+  u8* data;
+  u64 len;
+} truk_slice_u8;
+
+static i32 __truk_argc = 0;
+static char **__truk_argv = NULL;
+
 #define TRUK_PANIC(msg, len) do { \
   fprintf(stderr, "panic: %.*s\n", (int)(len), (const char*)(msg)); \
   exit(1); \
@@ -48,6 +61,20 @@ static inline void truk_bounds_check(u64 idx, u64 len) {
             (unsigned long long)idx, (unsigned long long)len);
     exit(1);
   }
+}
+
+static inline i32 truk_builtin_argc(void) {
+  return __truk_argc;
+}
+
+static inline truk_slice_u8 truk_builtin_argv(i32 index) {
+  if (index < 0 || index >= __truk_argc) {
+    fprintf(stderr, "panic: argv index out of bounds: %d (argc=%d)\n", index, __truk_argc);
+    exit(1);
+  }
+  char *arg = __truk_argv[index];
+  u64 len = strlen(arg);
+  return (truk_slice_u8){(u8*)arg, len};
 }
 
 )";

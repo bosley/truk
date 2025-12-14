@@ -131,6 +131,80 @@ var size: u64 = sizeof(@i32);
 var ptr_size: u64 = sizeof(@*i32);
 ```
 
+## Program Arguments
+
+### `argc() -> i32`
+
+Returns the number of command-line arguments passed to the program.
+
+**Parameters:** None
+
+**Returns:** Number of arguments as `i32` (includes program name as argv[0])
+
+**Example:**
+```truk
+fn main() : i32 {
+  var count: i32 = argc();
+  printf("Program received %d arguments\n", count);
+  return 0;
+}
+```
+
+**Note:** The argument count includes the program name itself at index 0, so `argc()` is always at least 1.
+
+### `argv(index: i32) -> []u8`
+
+Returns the command-line argument at the specified index as a byte slice.
+
+**Parameters:**
+- `index`: Zero-based index of the argument to retrieve
+
+**Returns:** Unsized array (slice) of bytes containing the argument string
+
+**Example:**
+```truk
+fn main() : i32 {
+  var count: i32 = argc();
+  
+  if count > 1 {
+    var first_arg: []u8 = argv(1);
+    var arg_len: u64 = len(first_arg);
+    printf("First argument length: %llu\n", arg_len);
+  }
+  
+  return 0;
+}
+```
+
+**Bounds checking:** If `index` is negative or >= `argc()`, the program will panic with an out-of-bounds error.
+
+**Complete example:**
+```truk
+fn print_all_args() : void {
+  var count: i32 = argc();
+  var i: i32 = 0;
+  
+  while i < count {
+    var arg: []u8 = argv(i);
+    printf("argv[%d]: length %llu\n", i, len(arg));
+    i = i + 1;
+  }
+}
+
+fn main() : i32 {
+  print_all_args();
+  return 0;
+}
+```
+
+**Usage with truk CLI:**
+```bash
+truk run program.truk -- arg1 arg2 "arg with spaces"
+
+truk program.truk -o myprogram
+./myprogram arg1 arg2 "arg with spaces"
+```
+
 ## Error Handling
 
 ### `panic(message: []u8) -> void`

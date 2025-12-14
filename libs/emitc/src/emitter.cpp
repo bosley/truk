@@ -27,7 +27,10 @@ const char *emission_phase_name(emission_phase_e phase) {
   }
 }
 
-emitter_c::emitter_c() : _collecting_declarations(false) {}
+emitter_c::emitter_c() : _collecting_declarations(false) {
+  _slice_types_emitted.insert("truk_slice_void");
+  _slice_types_emitted.insert("truk_slice_u8");
+}
 
 emitter_c &emitter_c::add_declaration(const base_c *decl) {
   if (decl) {
@@ -106,9 +109,6 @@ void emitter_c::internal_finalize() {
   if (!_c_imports.empty()) {
     final_header << "\n";
   }
-
-  final_header
-      << "typedef struct {\n  void* data;\n  u64 len;\n} truk_slice_void;\n\n";
 
   _result.chunks.push_back(final_header.str());
   _result.chunks.push_back(_structs.str());
@@ -328,8 +328,12 @@ void emitter_c::visit(const fn_c &node) {
   _current_phase = emission_phase_e::FUNCTION_DEFINITION;
   _current_node_context = "function '" + node.name().name + "'";
 
+  bool is_main_function = (node.name().name == "main");
+  std::string function_name =
+      is_main_function ? "truk_user_main" : node.name().name;
+
   std::string return_type = emit_type(node.return_type());
-  _functions << return_type << " " << node.name().name << "(";
+  _functions << return_type << " " << function_name << "(";
 
   bool has_variadic = false;
   std::string variadic_name;
@@ -402,6 +406,14 @@ void emitter_c::visit(const fn_c &node) {
   }
 
   _functions << "\n";
+
+  if (is_main_function) {
+    _functions << "int main(int argc, char **argv) {\n";
+    _functions << "  __truk_argc = argc;\n";
+    _functions << "  __truk_argv = argv;\n";
+    _functions << "  return truk_user_main();\n";
+    _functions << "}\n\n";
+  }
 
   _function_defers.clear();
   _current_function_name = "";
@@ -931,6 +943,22 @@ void emitter_c::visit(const call_c &node) {
       case builtins::builtin_kind_e::VA_ARG_PTR: {
         _current_expr << "va_arg(__truk_va_args, void*)";
         return;
+      }
+      case builtins::builtin_kind_e::ARGC: {
+        _current_expr << "truk_builtin_argc()";
+        return;
+      }
+      case builtins::builtin_kind_e::ARGV: {
+        if (!node.arguments().empty()) {
+          std::stringstream arg_stream;
+          std::swap(arg_stream, _current_expr);
+          node.arguments()[0]->accept(*this);
+          std::string arg = _current_expr.str();
+          std::swap(arg_stream, _current_expr);
+          _current_expr << "truk_builtin_argv(" << arg << ")";
+          return;
+        }
+        break;
       }
       }
     }

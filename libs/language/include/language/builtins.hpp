@@ -20,7 +20,9 @@ enum class builtin_kind_e {
   VA_ARG_I32,
   VA_ARG_I64,
   VA_ARG_F64,
-  VA_ARG_PTR
+  VA_ARG_PTR,
+  ARGC,
+  ARGV
 };
 
 struct builtin_signature_s {
