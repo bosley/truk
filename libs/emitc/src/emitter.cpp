@@ -123,7 +123,7 @@ void emitter_c::internal_finalize() {
   final_header << cdef::emit_runtime_implementation();
 
   final_header
-      << "typedef struct {\n  void* data;\n  u64 len;\n} truk_slice_void;\n\n";
+      << "typedef struct {\n  __truk_void* data;\n  __truk_u64 len;\n} truk_slice_void;\n\n";
 
   _result.chunks.push_back(final_header.str());
   _result.chunks.push_back(_structs.str());
@@ -151,31 +151,31 @@ std::string emitter_c::emit_type(const type_c *type) {
   if (auto prim = dynamic_cast<const primitive_type_c *>(type)) {
     switch (prim->keyword()) {
     case keywords_e::I8:
-      return "i8";
+      return "__truk_i8";
     case keywords_e::I16:
-      return "i16";
+      return "__truk_i16";
     case keywords_e::I32:
-      return "i32";
+      return "__truk_i32";
     case keywords_e::I64:
-      return "i64";
+      return "__truk_i64";
     case keywords_e::U8:
-      return "u8";
+      return "__truk_u8";
     case keywords_e::U16:
-      return "u16";
+      return "__truk_u16";
     case keywords_e::U32:
-      return "u32";
+      return "__truk_u32";
     case keywords_e::U64:
-      return "u64";
+      return "__truk_u64";
     case keywords_e::F32:
-      return "f32";
+      return "__truk_f32";
     case keywords_e::F64:
-      return "f64";
+      return "__truk_f64";
     case keywords_e::BOOL:
-      return "bool";
+      return "__truk_bool";
     case keywords_e::VOID:
-      return "void";
+      return "__truk_void";
     default:
-      return "void";
+      return "__truk_void";
     }
   }
 
@@ -291,7 +291,7 @@ void emitter_c::ensure_slice_typedef(const type_c *element_type) {
       if (arr->size().has_value()) {
         std::string pointer_type =
             emit_array_pointer_type(element_type, "data");
-        _header << "typedef struct {\n  " << pointer_type << ";\n  u64 len;\n} "
+        _header << "typedef struct {\n  " << pointer_type << ";\n  __truk_u64 len;\n} "
                 << slice_name << ";\n\n";
         return;
       }
@@ -912,19 +912,19 @@ void emitter_c::visit(const call_c &node) {
         break;
       }
       case builtins::builtin_kind_e::VA_ARG_I32: {
-        _current_expr << "va_arg(__truk_va_args, i32)";
+        _current_expr << "va_arg(__truk_va_args, __truk_i32)";
         return;
       }
       case builtins::builtin_kind_e::VA_ARG_I64: {
-        _current_expr << "va_arg(__truk_va_args, i64)";
+        _current_expr << "va_arg(__truk_va_args, __truk_i64)";
         return;
       }
       case builtins::builtin_kind_e::VA_ARG_F64: {
-        _current_expr << "va_arg(__truk_va_args, f64)";
+        _current_expr << "va_arg(__truk_va_args, __truk_f64)";
         return;
       }
       case builtins::builtin_kind_e::VA_ARG_PTR: {
-        _current_expr << "va_arg(__truk_va_args, void*)";
+        _current_expr << "va_arg(__truk_va_args, __truk_void*)";
         return;
       }
       }
@@ -986,7 +986,7 @@ void emitter_c::visit(const index_c &node) {
   }
 
   if (is_slice) {
-    _current_expr << "({ sxs_bounds_check(" << idx_expr << ", (" << obj_expr
+    _current_expr << "({ __truk_runtime_sxs_bounds_check(" << idx_expr << ", (" << obj_expr
                   << ").len); (" << obj_expr << ").data[" << idx_expr
                   << "]; })";
   } else {
@@ -1073,7 +1073,7 @@ void emitter_c::visit(const assignment_c &node) {
       _in_expression = was_in_expr;
 
       _functions << cdef::indent(_indent_level);
-      _functions << "sxs_bounds_check(" << idx_expr << ", (" << obj_expr
+      _functions << "__truk_runtime_sxs_bounds_check(" << idx_expr << ", (" << obj_expr
                  << ").len);\n";
       _functions << cdef::indent(_indent_level);
       _functions << "(" << obj_expr << ").data[" << idx_expr << "] = " << value
@@ -1196,7 +1196,7 @@ std::string result_c::assemble_code() const {
   bool has_args = false;
 
   size_t pos = 0;
-  while ((pos = output.find("i32 main(", pos)) != std::string::npos) {
+  while ((pos = output.find("__truk_i32 main(", pos)) != std::string::npos) {
     size_t line_start = output.rfind('\n', pos);
     if (line_start == std::string::npos) {
       line_start = 0;
@@ -1216,29 +1216,29 @@ std::string result_c::assemble_code() const {
       mangled_output += output.substr(0, pos);
 
       size_t paren_end = output.find(')', pos);
-      std::string params = output.substr(pos + 9, paren_end - (pos + 9));
+      std::string params = output.substr(pos + 16, paren_end - (pos + 16));
       has_args = params.find("argc") != std::string::npos;
 
-      mangled_output += "i32 truk_main_" + std::to_string(main_index) + "(";
-      output = output.substr(pos + 9);
+      mangled_output += "__truk_i32 truk_main_" + std::to_string(main_index) + "(";
+      output = output.substr(pos + 16);
       main_index++;
       pos = 0;
     } else {
-      pos += 9;
+      pos += 16;
     }
   }
   mangled_output += output;
 
   mangled_output += "\nint main(int argc, char** argv) {\n";
-  mangled_output += "  sxs_target_app_s app = {\n";
-  mangled_output += "    .entry_fn = (void*)truk_main_0,\n";
+  mangled_output += "  __truk_runtime_sxs_target_app_s app = {\n";
+  mangled_output += "    .entry_fn = (__truk_void*)truk_main_0,\n";
   mangled_output += "    .has_args = ";
   mangled_output += has_args ? "true" : "false";
   mangled_output += ",\n";
   mangled_output += "    .argc = argc,\n";
-  mangled_output += "    .argv = (i8**)argv\n";
+  mangled_output += "    .argv = (__truk_i8**)argv\n";
   mangled_output += "  };\n";
-  mangled_output += "  return sxs_start(&app);\n";
+  mangled_output += "  return __truk_runtime_sxs_start(&app);\n";
   mangled_output += "}\n";
 
   return mangled_output;

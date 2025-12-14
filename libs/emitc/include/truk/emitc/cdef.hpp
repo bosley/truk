@@ -63,8 +63,8 @@ inline std::string emit_runtime_declarations() {
 
 inline std::string emit_runtime_macros() {
   std::stringstream ss;
-  ss << "#define TRUK_PANIC(msg, len) sxs_panic((msg), (len))\n";
-  ss << "#define TRUK_BOUNDS_CHECK(idx, len) sxs_bounds_check((idx), "
+  ss << "#define TRUK_PANIC(msg, len) __truk_runtime_sxs_panic((msg), (len))\n";
+  ss << "#define TRUK_BOUNDS_CHECK(idx, len) __truk_runtime_sxs_bounds_check((idx), "
         "(len))\n\n";
   ss << "#define TRUK_DEFER_SCOPE_BEGIN() do {\n";
   ss << "#define TRUK_DEFER_SCOPE_END(...) } while(0); __VA_ARGS__\n";
@@ -115,28 +115,28 @@ inline std::string emit_library_header() {
 
 inline std::string emit_slice_typedef(const std::string &element_type,
                                       const std::string &slice_name) {
-  return fmt::format("typedef struct {{\n  {}* data;\n  u64 len;\n}} {};\n\n",
+  return fmt::format("typedef struct {{\n  {}* data;\n  __truk_u64 len;\n}} {};\n\n",
                      element_type, slice_name);
 }
 
 inline std::string emit_builtin_alloc(const std::string &type_str) {
-  return fmt::format("({0}*)sxs_alloc(sizeof({0}))", type_str);
+  return fmt::format("({0}*)__truk_runtime_sxs_alloc(sizeof({0}))", type_str);
 }
 
 inline std::string emit_builtin_free(const std::string &ptr_expr) {
-  return fmt::format("sxs_free({})", ptr_expr);
+  return fmt::format("__truk_runtime_sxs_free({})", ptr_expr);
 }
 
 inline std::string
 emit_builtin_alloc_array(const std::string &cast_type,
                          const std::string &elem_type_for_sizeof,
                          const std::string &count_expr) {
-  return fmt::format("{{({0})sxs_alloc_array(sizeof({1}), ({2})), ({2})}}",
+  return fmt::format("{{({0})__truk_runtime_sxs_alloc_array(sizeof({1}), ({2})), ({2})}}",
                      cast_type, elem_type_for_sizeof, count_expr);
 }
 
 inline std::string emit_builtin_free_array(const std::string &arr_expr) {
-  return fmt::format("sxs_free_array(({}).data)", arr_expr);
+  return fmt::format("__truk_runtime_sxs_free_array(({}).data)", arr_expr);
 }
 
 inline std::string emit_builtin_len(const std::string &arr_expr) {
@@ -144,7 +144,7 @@ inline std::string emit_builtin_len(const std::string &arr_expr) {
 }
 
 inline std::string emit_builtin_sizeof(const std::string &type_str) {
-  return fmt::format("sxs_sizeof_type(sizeof({}))", type_str);
+  return fmt::format("__truk_runtime_sxs_sizeof_type(sizeof({}))", type_str);
 }
 
 inline std::string emit_builtin_panic(const std::string &msg_expr) {
