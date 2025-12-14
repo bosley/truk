@@ -1,6 +1,7 @@
 #include "test.hpp"
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <fmt/core.h>
 #include <iostream>
 #include <truk/core/error_display.hpp>
@@ -121,6 +122,9 @@ int test(const test_options_s &opts) {
 
     std::string c_output;
     std::vector<std::string> include_paths;
+    if (lib.include_paths.has_value()) {
+      include_paths = lib.include_paths.value();
+    }
 
     int result =
         compile_truk_to_c(lib.test_file_path.value(), include_paths, c_output);
@@ -133,18 +137,9 @@ int test(const test_options_s &opts) {
     tcc::tcc_compiler_c compiler;
     compiler.set_output_type(tcc::OUTPUT_EXE);
 
-    fs::path lib_path(lib.output_file_path);
-    if (fs::exists(lib_path)) {
-      compiler.add_library_path(lib_path.parent_path().string());
-
-      std::string lib_filename = lib_path.filename().string();
-      if (lib_filename.substr(0, 3) == "lib" && lib_filename.size() > 3) {
-        std::string base_name = lib_filename.substr(3);
-        size_t dot_pos = base_name.find('.');
-        if (dot_pos != std::string::npos) {
-          base_name = base_name.substr(0, dot_pos);
-        }
-        compiler.add_library(base_name);
+    if (lib.include_paths.has_value()) {
+      for (const auto &path : lib.include_paths.value()) {
+        compiler.add_include_path(path);
       }
     }
 

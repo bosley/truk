@@ -81,6 +81,9 @@ static int compile_library(const std::string &name,
 
   std::string c_output;
   std::vector<std::string> include_paths;
+  if (lib.include_paths.has_value()) {
+    include_paths = lib.include_paths.value();
+  }
 
   int result =
       compile_truk_to_c(lib.source_entry_file_path, include_paths, c_output);

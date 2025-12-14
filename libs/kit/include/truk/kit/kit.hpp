@@ -90,16 +90,18 @@ public:
       const std::string &source_entry_file_path,
       const std::string &output_file_path,
       const std::optional<std::vector<std::string>> &depends = std::nullopt,
-      const std::optional<std::string> &test_file_path = std::nullopt)
+      const std::optional<std::string> &test_file_path = std::nullopt,
+      const std::optional<std::vector<std::string>> &include_paths = std::nullopt)
       : target_base_if(target_type_e::LIBRARY),
         source_entry_file_path(source_entry_file_path),
         output_file_path(output_file_path), depends(depends),
-        test_file_path(test_file_path) {}
+        test_file_path(test_file_path), include_paths(include_paths) {}
 
   std::string source_entry_file_path;
   std::string output_file_path;
   std::optional<std::vector<std::string>> depends;
   std::optional<std::string> test_file_path;
+  std::optional<std::vector<std::string>> include_paths;
 };
 
 struct kit_config_s {

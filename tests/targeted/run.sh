@@ -2,8 +2,8 @@
 
 set -e
 
-TRUK_BIN="../../build/apps/truk/truk"
 TEST_DIR="$(cd "$(dirname "$0")" && pwd)"
+TRUK_BIN="$(cd "${TEST_DIR}/../.." && pwd)/build/apps/truk/truk"
 TEMP_DIR="${TEST_DIR}/.tmp"
 
 RED='\033[0;31m'

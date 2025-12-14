@@ -1,0 +1,15 @@
+project manual_cimport
+
+library fileutil {
+    source = libs/fileutil/lib.truk
+    output = build/libfileutil.c
+    test = libs/fileutil/test.truk
+    include_paths = include
+}
+
+application main {
+    source = apps/main/main.truk
+    output = build/main
+    libraries = fileutil
+    include_paths = include
+}
