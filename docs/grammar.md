@@ -3,10 +3,23 @@
 ```
 program         ::= declaration*
 
-declaration     ::= fn_decl
+declaration     ::= import_decl
+                  | cimport_decl
+                  | extern_decl
+                  | fn_decl
                   | struct_decl
                   | var_decl
                   | const_decl
+
+import_decl     ::= "import" STRING ";"
+
+cimport_decl    ::= "cimport" ("<" path_chars ">" | STRING) ";"
+
+extern_decl     ::= "extern" (extern_fn_decl | extern_struct_decl)
+
+extern_fn_decl  ::= "fn" IDENTIFIER "(" param_list? ")" (":" type)? ";"
+
+extern_struct_decl ::= "struct" IDENTIFIER ";"
 
 fn_decl         ::= "fn" IDENTIFIER "(" param_list? ")" (":" type)? block
 
@@ -135,4 +148,6 @@ INTEGER         ::= [0-9]+ | "0x"[0-9a-fA-F]+ | "0b"[01]+ | "0o"[0-7]+
 FLOAT           ::= [0-9]+"."[0-9]+([eE][+-]?[0-9]+)?
 
 STRING          ::= '"' ([^"\\\n] | "\\" .)* '"'
+
+path_chars      ::= [^>]+
 ```
