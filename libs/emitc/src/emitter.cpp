@@ -145,7 +145,7 @@ void emitter_c::internal_finalize() {
 
 std::string emitter_c::emit_type(const type_c *type) {
   if (!type) {
-    return "void";
+    return "__truk_void";
   }
 
   if (auto prim = dynamic_cast<const primitive_type_c *>(type)) {
@@ -199,12 +199,12 @@ std::string emitter_c::emit_type(const type_c *type) {
     }
   }
 
-  return "void";
+  return "__truk_void";
 }
 
 std::string emitter_c::emit_type_for_sizeof(const type_c *type) {
   if (!type) {
-    return "void";
+    return "__truk_void";
   }
 
   if (auto prim = dynamic_cast<const primitive_type_c *>(type)) {
@@ -228,7 +228,7 @@ std::string emitter_c::emit_type_for_sizeof(const type_c *type) {
     }
   }
 
-  return "void";
+  return "__truk_void";
 }
 
 std::string emitter_c::emit_array_pointer_type(const type_c *array_type,
@@ -1229,17 +1229,32 @@ std::string result_c::assemble_code() const {
   }
   mangled_output += output;
 
-  mangled_output += "\nint main(int argc, char** argv) {\n";
-  mangled_output += "  __truk_runtime_sxs_target_app_s app = {\n";
-  mangled_output += "    .entry_fn = (__truk_void*)truk_main_0,\n";
-  mangled_output += "    .has_args = ";
-  mangled_output += has_args ? "true" : "false";
-  mangled_output += ",\n";
-  mangled_output += "    .argc = argc,\n";
-  mangled_output += "    .argv = (__truk_i8**)argv\n";
-  mangled_output += "  };\n";
-  mangled_output += "  return __truk_runtime_sxs_start(&app);\n";
-  mangled_output += "}\n";
+  /*
+      NOTE: At one point I would like to add debug information and flags to emitter to inject callbacks that run before/after the user program
+            and potentially pass something hidden to the user's function so we can "poke around" in a debug mode easily
+
+      This is where that would have to happen, naturally as this is where we call into the user's provided main (in the compiled target)
+      to run whatever instructions they provided with truk files
+
+      It would be kind of neat if we were to hash the truk files that we get per-build to make a fingerprint or identity for the app
+      then the runtime could setup a shared memory space on the host env on launch if not exist scoped to the identity of the app, then
+      all individual compiled processes could communicate IPC. If we restrict it to this build fingerprint we can be certain that the
+      "other" instance is the same as us (operationally certain, assumed in good-faith) and that we can freely talk with it
+
+      Eventually if that was a good idea the runtime could do some security shit, but the idea of each app running in parallel and the program
+      being written to interact with itself to solve the task is a big dream of mine
+  */
+  mangled_output += fmt::format(R"(
+int main(int argc, char** argv) {{
+  __truk_runtime_sxs_target_app_s app = {{
+    .entry_fn = (__truk_void*)truk_main_0,
+    .has_args = {},
+    .argc = argc,
+    .argv = (__truk_i8**)argv
+  }};
+  return __truk_runtime_sxs_start(&app);
+}}
+)", has_args ? "true" : "false");
 
   return mangled_output;
 }
