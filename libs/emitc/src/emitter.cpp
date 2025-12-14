@@ -787,7 +787,7 @@ void emitter_c::visit(const call_c &node) {
           node.arguments()[0]->accept(*this);
           std::string arg = _current_expr.str();
           std::swap(arg_stream, _current_expr);
-          _current_expr << "free(" << arg << ")";
+          _current_expr << cdef::emit_builtin_free(arg);
 
           if (!_in_expression) {
             _functions << cdef::indent(_indent_level) << _current_expr.str()
@@ -827,10 +827,8 @@ void emitter_c::visit(const call_c &node) {
               cast_type = elem_type_for_sizeof + "*";
             }
 
-            _current_expr << "(" << slice_type << "){(" << cast_type
-                          << ")malloc(sizeof(" << elem_type_for_sizeof
-                          << ") * (" << count_expr << ")), (" << count_expr
-                          << ")}";
+            _current_expr << cdef::emit_builtin_alloc_array(
+                cast_type, elem_type_for_sizeof, count_expr);
             return;
           }
         }
@@ -843,7 +841,7 @@ void emitter_c::visit(const call_c &node) {
           node.arguments()[0]->accept(*this);
           std::string arg = _current_expr.str();
           std::swap(arg_stream, _current_expr);
-          _current_expr << "free((" << arg << ").data)";
+          _current_expr << cdef::emit_builtin_free_array(arg);
 
           if (!_in_expression) {
             _functions << cdef::indent(_indent_level) << _current_expr.str()
@@ -872,7 +870,7 @@ void emitter_c::visit(const call_c &node) {
           if (auto type_param = dynamic_cast<const type_param_c *>(
                   node.arguments()[0].get())) {
             std::string type_str = emit_type_for_sizeof(type_param->type());
-            _current_expr << "sizeof(" << type_str << ")";
+            _current_expr << cdef::emit_builtin_sizeof(type_str);
             return;
           }
         }

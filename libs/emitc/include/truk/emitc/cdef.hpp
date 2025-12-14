@@ -96,22 +96,22 @@ inline std::string emit_slice_typedef(const std::string &element_type,
 }
 
 inline std::string emit_builtin_alloc(const std::string &type_str) {
-  return fmt::format("({0}*)malloc(sizeof({0}))", type_str);
+  return fmt::format("({0}*)sxs_alloc(sizeof({0}))", type_str);
 }
 
 inline std::string emit_builtin_free(const std::string &ptr_expr) {
-  return fmt::format("free({})", ptr_expr);
+  return fmt::format("sxs_free({})", ptr_expr);
 }
 
-inline std::string emit_builtin_alloc_array(const std::string &element_type,
-                                            const std::string &slice_type,
+inline std::string emit_builtin_alloc_array(const std::string &cast_type,
+                                            const std::string &elem_type_for_sizeof,
                                             const std::string &count_expr) {
-  return fmt::format("({{{0}*)malloc(sizeof({1}) * ({2})), ({2})}})",
-                     element_type, element_type, count_expr);
+  return fmt::format("{{({0})sxs_alloc_array(sizeof({1}), ({2})), ({2})}}",
+                     cast_type, elem_type_for_sizeof, count_expr);
 }
 
 inline std::string emit_builtin_free_array(const std::string &arr_expr) {
-  return fmt::format("free(({}).data)", arr_expr);
+  return fmt::format("sxs_free_array(({}).data)", arr_expr);
 }
 
 inline std::string emit_builtin_len(const std::string &arr_expr) {
@@ -119,7 +119,7 @@ inline std::string emit_builtin_len(const std::string &arr_expr) {
 }
 
 inline std::string emit_builtin_sizeof(const std::string &type_str) {
-  return fmt::format("sizeof({})", type_str);
+  return fmt::format("sxs_sizeof_type(sizeof({}))", type_str);
 }
 
 inline std::string emit_builtin_panic(const std::string &msg_expr) {
