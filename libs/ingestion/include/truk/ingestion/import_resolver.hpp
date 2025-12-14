@@ -19,6 +19,7 @@ struct import_error_s {
 struct resolved_imports_s {
   std::vector<truk::language::nodes::base_ptr> all_declarations;
   std::vector<import_error_s> errors;
+  std::vector<truk::language::nodes::c_import_s> c_imports;
   bool success;
 };
 
@@ -62,6 +63,7 @@ public:
   void visit(const truk::language::nodes::struct_literal_c &node) override;
   void visit(const truk::language::nodes::type_param_c &node) override;
   void visit(const truk::language::nodes::import_c &node) override;
+  void visit(const truk::language::nodes::cimport_c &node) override;
 
 private:
   const std::unordered_map<std::string, const truk::language::nodes::base_c *>
@@ -94,6 +96,7 @@ private:
                      std::unordered_set<std::string>>
       _decl_dependencies;
   std::vector<import_error_s> _errors;
+  std::vector<truk::language::nodes::c_import_s> _c_imports;
 };
 
 } // namespace truk::ingestion

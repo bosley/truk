@@ -25,6 +25,8 @@ enum class keywords_e {
   FALSE,
   NIL,
   IMPORT,
+  CIMPORT,
+  EXTERN,
   I8,
   I16,
   I32,

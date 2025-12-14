@@ -216,6 +216,8 @@ void dependency_visitor_c::visit(const type_param_c &node) {
 
 void dependency_visitor_c::visit(const import_c &) {}
 
+void dependency_visitor_c::visit(const cimport_c &) {}
+
 resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
   _processed_files.clear();
   _import_stack.clear();
@@ -223,6 +225,7 @@ resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
   _symbol_to_decl.clear();
   _decl_dependencies.clear();
   _errors.clear();
+  _c_imports.clear();
 
   process_file(entry_file);
 
@@ -233,6 +236,8 @@ resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
   if (result.success) {
     result.all_declarations = std::move(_all_declarations);
   }
+  
+  result.c_imports = std::move(_c_imports);
 
   return result;
 }
@@ -276,6 +281,10 @@ void import_resolver_c::process_file(const std::string &file_path) {
     return;
   }
 
+  for (const auto &c_import : parse_result.c_imports) {
+    _c_imports.push_back(c_import);
+  }
+
   extract_imports_and_declarations(parse_result.declarations, canonical);
 
   _import_stack.pop_back();
@@ -289,6 +298,11 @@ void import_resolver_c::extract_imports_and_declarations(
     if (auto *import_node = dynamic_cast<const import_c *>(decl.get())) {
       std::string resolved_path = resolve_path(import_node->path(), file_path);
       process_file(resolved_path);
+    } else if (auto *cimport_node = dynamic_cast<const cimport_c *>(decl.get())) {
+      _c_imports.push_back({
+        .path = cimport_node->path(),
+        .is_angle_bracket = cimport_node->is_angle_bracket()
+      });
     } else {
       if (auto *fn_node = dynamic_cast<const fn_c *>(decl.get())) {
         _symbol_to_decl[fn_node->name().name] = decl.get();

@@ -35,7 +35,19 @@ parse_result_s parser_c::parse() {
   result.source_data = _data;
   result.source_len = _len;
   try {
-    result.declarations = parse_program();
+    auto all_decls = parse_program();
+    
+    for (auto &decl : all_decls) {
+      if (auto *cimport_node = dynamic_cast<const language::nodes::cimport_c *>(decl.get())) {
+        result.c_imports.push_back({
+          .path = cimport_node->path(),
+          .is_angle_bracket = cimport_node->is_angle_bracket()
+        });
+      } else {
+        result.declarations.push_back(std::move(decl));
+      }
+    }
+    
     result.success = true;
   } catch (const parse_error &e) {
     result.success = false;
@@ -154,6 +166,12 @@ language::nodes::base_ptr parser_c::parse_declaration() {
   if (check_keyword(language::keywords_e::IMPORT)) {
     return parse_import_decl();
   }
+  if (check_keyword(language::keywords_e::CIMPORT)) {
+    return parse_cimport_decl();
+  }
+  if (check_keyword(language::keywords_e::EXTERN)) {
+    return parse_extern_decl();
+  }
   if (check_keyword(language::keywords_e::FN)) {
     return parse_fn_decl();
   }
@@ -167,7 +185,7 @@ language::nodes::base_ptr parser_c::parse_declaration() {
     return parse_const_decl();
   }
   const auto &token = peek();
-  throw parse_error("Expected declaration (fn, struct, var, const, or import)",
+  throw parse_error("Expected declaration (fn, struct, var, const, import, cimport, or extern)",
                     token.line, token.column);
 }
 
@@ -190,7 +208,63 @@ language::nodes::base_ptr parser_c::parse_import_decl() {
                                                      path);
 }
 
-language::nodes::base_ptr parser_c::parse_fn_decl() {
+language::nodes::base_ptr parser_c::parse_cimport_decl() {
+  const auto &cimport_token = consume_keyword(language::keywords_e::CIMPORT,
+                                              "Expected 'cimport' keyword");
+
+  bool is_angle_bracket = false;
+  std::string path;
+
+  if (check(token_type_e::LESS)) {
+    is_angle_bracket = true;
+    advance();
+    
+    std::string path_builder;
+    while (!is_at_end() && !check(token_type_e::GREATER)) {
+      const auto &token = peek();
+      if (token.type == token_type_e::SEMICOLON) {
+        throw parse_error("Expected '>' to close angle bracket in cimport",
+                         token.line, token.column);
+      }
+      path_builder += token.lexeme;
+      advance();
+    }
+    
+    consume(token_type_e::GREATER, "Expected '>' after cimport path");
+    path = path_builder;
+  } else if (check(token_type_e::STRING_LITERAL)) {
+    const auto &path_token = advance();
+    path = path_token.lexeme;
+    if (path.size() >= 2 && path.front() == '"' && path.back() == '"') {
+      path = path.substr(1, path.size() - 2);
+    }
+  } else {
+    const auto &token = peek();
+    throw parse_error("Expected '<' or string literal after 'cimport'",
+                     token.line, token.column);
+  }
+
+  consume(token_type_e::SEMICOLON, "Expected ';' after cimport path");
+
+  return std::make_unique<language::nodes::cimport_c>(cimport_token.source_index,
+                                                      path, is_angle_bracket);
+}
+
+language::nodes::base_ptr parser_c::parse_extern_decl() {
+  consume_keyword(language::keywords_e::EXTERN, "Expected 'extern' keyword");
+
+  if (check_keyword(language::keywords_e::FN)) {
+    return parse_fn_decl(true);
+  } else if (check_keyword(language::keywords_e::STRUCT)) {
+    return parse_struct_decl(true);
+  } else {
+    const auto &token = peek();
+    throw parse_error("Expected 'fn' or 'struct' after 'extern'",
+                     token.line, token.column);
+  }
+}
+
+language::nodes::base_ptr parser_c::parse_fn_decl(bool is_extern) {
   const auto &fn_token =
       consume_keyword(language::keywords_e::FN, "Expected 'fn' keyword");
   const auto &name_token = consume_identifier("Expected function name");
@@ -214,31 +288,42 @@ language::nodes::base_ptr parser_c::parse_fn_decl() {
         language::keywords_e::VOID, fn_token.source_index);
   }
 
-  auto body = parse_block();
+  std::optional<language::nodes::base_ptr> body = std::nullopt;
+  
+  if (is_extern) {
+    consume(token_type_e::SEMICOLON, "Expected ';' after extern function declaration");
+  } else {
+    body = parse_block();
+  }
 
   return std::make_unique<language::nodes::fn_c>(
       fn_token.source_index, std::move(name), std::move(params),
-      std::move(return_type), std::move(body));
+      std::move(return_type), std::move(body), is_extern);
 }
 
-language::nodes::base_ptr parser_c::parse_struct_decl() {
+language::nodes::base_ptr parser_c::parse_struct_decl(bool is_extern) {
   const auto &struct_token = consume_keyword(language::keywords_e::STRUCT,
                                              "Expected 'struct' keyword");
   const auto &name_token = consume_identifier("Expected struct name");
   language::nodes::identifier_s name(name_token.lexeme,
                                      name_token.source_index);
 
-  consume(token_type_e::LEFT_BRACE, "Expected '{' after struct name");
-
   std::vector<language::nodes::struct_field_s> fields;
-  if (!check(token_type_e::RIGHT_BRACE)) {
-    fields = parse_field_list();
+
+  if (check(token_type_e::SEMICOLON)) {
+    consume(token_type_e::SEMICOLON, "Expected ';' after struct name");
+  } else {
+    consume(token_type_e::LEFT_BRACE, "Expected '{' after struct name");
+
+    if (!check(token_type_e::RIGHT_BRACE)) {
+      fields = parse_field_list();
+    }
+
+    consume(token_type_e::RIGHT_BRACE, "Expected '}' after struct fields");
   }
 
-  consume(token_type_e::RIGHT_BRACE, "Expected '}' after struct fields");
-
   return std::make_unique<language::nodes::struct_c>(
-      struct_token.source_index, std::move(name), std::move(fields));
+      struct_token.source_index, std::move(name), std::move(fields), is_extern);
 }
 
 language::nodes::base_ptr parser_c::parse_var_decl() {

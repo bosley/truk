@@ -1,0 +1,16 @@
+cimport "stdio.h";
+
+extern struct FILE;
+
+extern fn fopen(filename: *i8, mode: *i8): *FILE;
+extern fn fclose(file: *FILE): i32;
+extern fn fprintf(file: *FILE, fmt: *i8, ...args): i32;
+
+fn main(): i32 {
+    var f: *FILE = fopen("test.txt", "w");
+    if (f != nil) {
+        fprintf(f, "Hello from Truk!\n");
+        fclose(f);
+    }
+    return 15;
+}

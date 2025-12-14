@@ -154,6 +154,7 @@ public:
   void visit(const truk::language::nodes::struct_literal_c &node) override;
   void visit(const truk::language::nodes::type_param_c &node) override;
   void visit(const truk::language::nodes::import_c &node) override;
+  void visit(const truk::language::nodes::cimport_c &node) override;
 
 private:
   truk::core::memory_c<2048> _memory;

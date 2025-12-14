@@ -314,6 +314,10 @@ bool type_checker_c::is_compatible_for_assignment(const type_entry_s *target,
     if (source->name == "void" || target->name == "void") {
       return true;
     }
+    if ((target->name == "i8" && source->name == "u8") ||
+        (target->name == "u8" && source->name == "i8")) {
+      return true;
+    }
   }
 
   return false;
@@ -618,6 +622,11 @@ void type_checker_c::visit(const struct_c &node) {
   auto incomplete_type =
       std::make_unique<type_entry_s>(type_kind_e::STRUCT, node.name().name);
   register_type(node.name().name, std::move(incomplete_type));
+
+  if (node.is_extern() && node.fields().empty()) {
+    _memory.defer_hoist("__type__" + node.name().name);
+    return;
+  }
 
   for (const auto &field : node.fields()) {
     auto field_type = resolve_type(field.type.get());
@@ -1261,5 +1270,7 @@ bool type_checker_c::check_no_control_flow(const base_c *node) {
 }
 
 void type_checker_c::visit(const import_c &node) {}
+
+void type_checker_c::visit(const cimport_c &node) {}
 
 } // namespace truk::validation

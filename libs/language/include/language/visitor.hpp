@@ -32,6 +32,7 @@ class array_literal_c;
 class struct_literal_c;
 class type_param_c;
 class import_c;
+class cimport_c;
 
 class visitor_if {
 public:
@@ -67,6 +68,7 @@ public:
   virtual void visit(const struct_literal_c &node) = 0;
   virtual void visit(const type_param_c &node) = 0;
   virtual void visit(const import_c &node) = 0;
+  virtual void visit(const cimport_c &node) = 0;
 };
 
 } // namespace truk::language::nodes

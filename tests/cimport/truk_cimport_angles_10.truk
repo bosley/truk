@@ -1,0 +1,9 @@
+cimport <math.h>;
+
+extern fn sqrt(x: f64): f64;
+extern fn pow(x: f64, y: f64): f64;
+
+fn main(): i32 {
+    var result: f64 = sqrt(16.0);
+    return 10;
+}

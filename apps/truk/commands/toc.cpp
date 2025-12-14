@@ -42,8 +42,9 @@ int toc(const toc_options_s &opts) {
   }
 
   emitc::emitter_c emitter;
-  auto emit_result =
-      emitter.add_declarations(resolved.all_declarations).finalize();
+  auto emit_result = emitter.add_declarations(resolved.all_declarations)
+                         .set_c_imports(resolved.c_imports)
+                         .finalize();
 
   if (emit_result.has_errors()) {
     for (const auto &err : emit_result.errors) {

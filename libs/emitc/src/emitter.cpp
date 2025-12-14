@@ -44,6 +44,11 @@ emitter_c::add_declarations(const std::vector<std::unique_ptr<base_c>> &decls) {
   return *this;
 }
 
+emitter_c &emitter_c::set_c_imports(const std::vector<language::nodes::c_import_s> &imports) {
+  _c_imports = imports;
+  return *this;
+}
+
 result_c emitter_c::finalize() {
   _current_phase = emission_phase_e::COLLECTION;
   for (const auto *decl : _declarations) {
@@ -89,6 +94,18 @@ void emitter_c::emit(const base_c *root) {
 void emitter_c::internal_finalize() {
   std::stringstream final_header;
   final_header << cdef::emit_program_header();
+  
+  for (const auto &import : _c_imports) {
+    if (import.is_angle_bracket) {
+      final_header << "#include <" << import.path << ">\n";
+    } else {
+      final_header << "#include \"" << import.path << "\"\n";
+    }
+  }
+  if (!_c_imports.empty()) {
+    final_header << "\n";
+  }
+  
   final_header
       << "typedef struct {\n  void* data;\n  u64 len;\n} truk_slice_void;\n\n";
 
@@ -135,7 +152,11 @@ std::string emitter_c::emit_type(const type_c *type) {
   }
 
   if (auto named = dynamic_cast<const named_type_c *>(type)) {
-    return named->name().name;
+    const std::string &name = named->name().name;
+    if (_extern_struct_names.count(name)) {
+      return "struct " + name;
+    }
+    return name;
   }
 
   if (auto ptr = dynamic_cast<const pointer_type_c *>(type)) {
@@ -296,6 +317,10 @@ void emitter_c::visit(const fn_c &node) {
     return;
   }
 
+  if (node.is_extern()) {
+    return;
+  }
+
   emission_phase_e saved_phase = _current_phase;
   std::string saved_context = _current_node_context;
 
@@ -341,13 +366,14 @@ void emitter_c::visit(const fn_c &node) {
     }
   }
 
-  _functions << ") ";
+  _functions << ")";
 
   _current_function_name = node.name().name;
   _current_function_return_type = node.return_type();
   _function_defers.clear();
 
   if (node.body()) {
+    _functions << " ";
     if (has_variadic) {
       _functions << "{\n";
       _indent_level++;
@@ -374,7 +400,7 @@ void emitter_c::visit(const fn_c &node) {
     }
   }
 
-  _functions << "\n\n";
+  _functions << "\n";
 
   _function_defers.clear();
   _current_function_name = "";
@@ -386,6 +412,13 @@ void emitter_c::visit(const fn_c &node) {
 void emitter_c::visit(const struct_c &node) {
   if (_collecting_declarations) {
     _struct_names.insert(node.name().name);
+    if (node.is_extern()) {
+      _extern_struct_names.insert(node.name().name);
+    }
+    return;
+  }
+
+  if (node.is_extern()) {
     return;
   }
 
@@ -1144,5 +1177,7 @@ void emitter_c::emit_function_defers() {
 }
 
 void emitter_c::visit(const import_c &node) {}
+
+void emitter_c::visit(const cimport_c &node) {}
 
 } // namespace truk::emitc

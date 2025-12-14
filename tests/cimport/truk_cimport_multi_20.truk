@@ -1,0 +1,15 @@
+cimport "stdio.h";
+cimport <math.h>;
+cimport <stdlib.h>;
+
+extern fn printf(fmt: *i8, ...args): i32;
+extern fn sqrt(x: f64): f64;
+extern fn malloc(size: u64): *void;
+extern fn free(ptr: *void): void;
+
+fn main(): i32 {
+    printf("Testing multiple cimports\n");
+    var result: f64 = sqrt(25.0);
+    printf("sqrt(25) = %f\n", result);
+    return 20;
+}

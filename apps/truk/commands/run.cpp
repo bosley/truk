@@ -69,8 +69,9 @@ int run(const run_options_s &opts) {
   }
 
   emitc::emitter_c emitter;
-  auto emit_result =
-      emitter.add_declarations(parse_result.declarations).finalize();
+  auto emit_result = emitter.add_declarations(parse_result.declarations)
+                         .set_c_imports(parse_result.c_imports)
+                         .finalize();
 
   if (emit_result.has_errors()) {
     core::error_display_c display;
