@@ -1,29 +1,30 @@
 #include "build.hpp"
 #include "compile.hpp"
-#include <truk/kit/kit.hpp>
+#include <filesystem>
+#include <fmt/core.h>
+#include <fstream>
 #include <truk/core/error_display.hpp>
 #include <truk/emitc/emitter.hpp>
 #include <truk/ingestion/import_resolver.hpp>
 #include <truk/ingestion/parser.hpp>
+#include <truk/kit/kit.hpp>
 #include <truk/tcc/tcc.hpp>
 #include <truk/validation/typecheck.hpp>
-#include <fmt/core.h>
-#include <filesystem>
-#include <fstream>
 
 namespace truk::commands {
 
 namespace fs = std::filesystem;
 
-static int compile_truk_to_c(const std::string& input_file, 
-                              const std::vector<std::string>&,
-                              std::string& c_output) {
+static int compile_truk_to_c(const std::string &input_file,
+                             const std::vector<std::string> &,
+                             std::string &c_output) {
   ingestion::import_resolver_c resolver;
   auto resolved = resolver.resolve(input_file);
 
   if (!resolved.success) {
     for (const auto &err : resolved.errors) {
-      fmt::print(stderr, "Import error in '{}': {}\n", err.file_path, err.message);
+      fmt::print(stderr, "Import error in '{}': {}\n", err.file_path,
+                 err.message);
       if (err.line > 0) {
         fmt::print(stderr, "  at line {}, column {}\n", err.line, err.column);
       }
@@ -74,15 +75,15 @@ static int compile_truk_to_c(const std::string& input_file,
   return 0;
 }
 
-static int compile_library(const std::string& name, 
-                           const kit::target_library_c& lib,
-                           const fs::path&) {
+static int compile_library(const std::string &name,
+                           const kit::target_library_c &lib, const fs::path &) {
   fmt::print("Building library: {}\n", name);
 
   std::string c_output;
   std::vector<std::string> include_paths;
-  
-  int result = compile_truk_to_c(lib.source_entry_file_path, include_paths, c_output);
+
+  int result =
+      compile_truk_to_c(lib.source_entry_file_path, include_paths, c_output);
   if (result != 0) {
     return result;
   }
@@ -92,7 +93,8 @@ static int compile_library(const std::string& name,
 
   std::ofstream out_file(lib.output_file_path);
   if (!out_file.is_open()) {
-    fmt::print(stderr, "Error: Failed to write library C output to '{}'\n", lib.output_file_path);
+    fmt::print(stderr, "Error: Failed to write library C output to '{}'\n",
+               lib.output_file_path);
     return 1;
   }
   out_file << c_output;
@@ -101,9 +103,9 @@ static int compile_library(const std::string& name,
   return 0;
 }
 
-static int compile_application(const std::string& name,
-                               const kit::target_application_c& app,
-                               const kit::kit_config_s& config) {
+static int compile_application(const std::string &name,
+                               const kit::target_application_c &app,
+                               const kit::kit_config_s &config) {
   fmt::print("Building application: {}\n", name);
 
   std::string c_output;
@@ -112,7 +114,8 @@ static int compile_application(const std::string& name,
     include_paths = app.include_paths.value();
   }
 
-  int result = compile_truk_to_c(app.source_entry_file_path, include_paths, c_output);
+  int result =
+      compile_truk_to_c(app.source_entry_file_path, include_paths, c_output);
   if (result != 0) {
     return result;
   }
@@ -124,31 +127,31 @@ static int compile_application(const std::string& name,
   compiler.set_output_type(tcc::OUTPUT_EXE);
 
   if (app.include_paths.has_value()) {
-    for (const auto& path : app.include_paths.value()) {
+    for (const auto &path : app.include_paths.value()) {
       compiler.add_include_path(path);
     }
   }
 
   if (app.library_paths.has_value()) {
-    for (const auto& path : app.library_paths.value()) {
+    for (const auto &path : app.library_paths.value()) {
       compiler.add_library_path(path);
     }
   }
 
   if (app.libraries.has_value()) {
-    for (const auto& lib_name : app.libraries.value()) {
-      for (const auto& [name, lib] : config.libraries) {
+    for (const auto &lib_name : app.libraries.value()) {
+      for (const auto &[name, lib] : config.libraries) {
         if (name == lib_name) {
           fs::path lib_path(lib.output_file_path);
           std::string ext = lib_path.extension().string();
-          
+
           if (ext == ".c") {
             compiler.add_file(lib.output_file_path);
           } else if (ext == ".o" || ext == ".obj") {
             compiler.add_file(lib.output_file_path);
           } else if (ext == ".a" || ext == ".so" || ext == ".dylib") {
             compiler.add_library_path(lib_path.parent_path().string());
-            
+
             std::string lib_filename = lib_path.filename().string();
             if (lib_filename.substr(0, 3) == "lib" && lib_filename.size() > 3) {
               std::string base_name = lib_filename.substr(3);
@@ -168,7 +171,8 @@ static int compile_application(const std::string& name,
   auto compile_result = compiler.compile_string(c_output, app.output_file_path);
 
   if (!compile_result.success) {
-    fmt::print(stderr, "Error compiling application '{}': {}\n", name, compile_result.error_message);
+    fmt::print(stderr, "Error compiling application '{}': {}\n", name,
+               compile_result.error_message);
     return 1;
   }
 
@@ -178,7 +182,8 @@ static int compile_application(const std::string& name,
 int build(const build_options_s &opts) {
   auto kit_path = kit::find_kit_file(opts.target_dir);
   if (!kit_path.has_value()) {
-    fmt::print(stderr, "Error: No truk.kit found in '{}' or parent directories\n", 
+    fmt::print(stderr,
+               "Error: No truk.kit found in '{}' or parent directories\n",
                opts.target_dir.string());
     return 1;
   }
@@ -186,7 +191,7 @@ int build(const build_options_s &opts) {
   kit::kit_config_s config;
   try {
     config = kit::parse_kit_file(kit_path.value());
-  } catch (const kit::kit_exception_c& e) {
+  } catch (const kit::kit_exception_c &e) {
     fmt::print(stderr, "Error parsing kit file: {}\n", e.what());
     return 1;
   }
@@ -194,12 +199,12 @@ int build(const build_options_s &opts) {
   kit::build_order_s build_order;
   try {
     build_order = kit::resolve_build_order(config);
-  } catch (const kit::kit_exception_c& e) {
+  } catch (const kit::kit_exception_c &e) {
     fmt::print(stderr, "Error resolving dependencies: {}\n", e.what());
     return 1;
   }
 
-  for (const auto& [name, lib] : build_order.libraries) {
+  for (const auto &[name, lib] : build_order.libraries) {
     int result = compile_library(name, lib, config.kit_file_directory);
     if (result != 0) {
       fmt::print(stderr, "Failed to build library: {}\n", name);
@@ -207,7 +212,7 @@ int build(const build_options_s &opts) {
     }
   }
 
-  for (const auto& [name, app] : build_order.applications) {
+  for (const auto &[name, app] : build_order.applications) {
     int result = compile_application(name, app, config);
     if (result != 0) {
       fmt::print(stderr, "Failed to build application: {}\n", name);
@@ -215,7 +220,8 @@ int build(const build_options_s &opts) {
     }
   }
 
-  std::string project_name = config.project_name.empty() ? "project" : config.project_name;
+  std::string project_name =
+      config.project_name.empty() ? "project" : config.project_name;
   fmt::print("Successfully built {}\n", project_name);
   return 0;
 }

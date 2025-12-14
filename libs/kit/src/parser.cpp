@@ -1,8 +1,8 @@
 #include "truk/kit/kit.hpp"
+#include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <sstream>
-#include <cctype>
-#include <algorithm>
 
 namespace truk::kit {
 
@@ -28,8 +28,8 @@ struct token_s {
 
 class lexer_c {
 public:
-  lexer_c(const std::string& source) 
-    : source_(source), pos_(0), line_(1), column_(1) {}
+  lexer_c(const std::string &source)
+      : source_(source), pos_(0), line_(1), column_(1) {}
 
   token_s next_token() {
     skip_whitespace_and_comments();
@@ -71,8 +71,8 @@ public:
       return read_value(start_pos, start_line, start_column);
     }
 
-    throw kit_exception_c(exception_e::PARSE_ERROR, pos_, 
-                         "Unexpected character: " + std::string(1, ch));
+    throw kit_exception_c(exception_e::PARSE_ERROR, pos_,
+                          "Unexpected character: " + std::string(1, ch));
   }
 
 private:
@@ -102,32 +102,38 @@ private:
     }
   }
 
-  token_s read_identifier_or_path(std::size_t start_pos, std::size_t start_line, std::size_t start_column) {
+  token_s read_identifier_or_path(std::size_t start_pos, std::size_t start_line,
+                                  std::size_t start_column) {
     std::string value;
-    
-    if (pos_ < source_.size() && (source_[pos_] == '/' || source_[pos_] == '.')) {
-      while (pos_ < source_.size() && !std::isspace(source_[pos_]) && 
-             source_[pos_] != '{' && source_[pos_] != '}' && source_[pos_] != '=' && 
-             source_[pos_] != '#') {
+
+    if (pos_ < source_.size() &&
+        (source_[pos_] == '/' || source_[pos_] == '.')) {
+      while (pos_ < source_.size() && !std::isspace(source_[pos_]) &&
+             source_[pos_] != '{' && source_[pos_] != '}' &&
+             source_[pos_] != '=' && source_[pos_] != '#') {
         value += source_[pos_];
         advance();
       }
-      return {token_type_e::STRING_VALUE, value, start_pos, start_line, start_column};
+      return {token_type_e::STRING_VALUE, value, start_pos, start_line,
+              start_column};
     }
-    
-    while (pos_ < source_.size() && (std::isalnum(source_[pos_]) || source_[pos_] == '_')) {
+
+    while (pos_ < source_.size() &&
+           (std::isalnum(source_[pos_]) || source_[pos_] == '_')) {
       value += source_[pos_];
       advance();
     }
 
-    if (pos_ < source_.size() && (source_[pos_] == '/' || source_[pos_] == '.')) {
-      while (pos_ < source_.size() && !std::isspace(source_[pos_]) && 
-             source_[pos_] != '{' && source_[pos_] != '}' && source_[pos_] != '=' && 
-             source_[pos_] != '#') {
+    if (pos_ < source_.size() &&
+        (source_[pos_] == '/' || source_[pos_] == '.')) {
+      while (pos_ < source_.size() && !std::isspace(source_[pos_]) &&
+             source_[pos_] != '{' && source_[pos_] != '}' &&
+             source_[pos_] != '=' && source_[pos_] != '#') {
         value += source_[pos_];
         advance();
       }
-      return {token_type_e::STRING_VALUE, value, start_pos, start_line, start_column};
+      return {token_type_e::STRING_VALUE, value, start_pos, start_line,
+              start_column};
     }
 
     token_type_e type = token_type_e::IDENTIFIER;
@@ -142,7 +148,8 @@ private:
     return {type, value, start_pos, start_line, start_column};
   }
 
-  token_s read_quoted_string(std::size_t start_pos, std::size_t start_line, std::size_t start_column) {
+  token_s read_quoted_string(std::size_t start_pos, std::size_t start_line,
+                             std::size_t start_column) {
     advance();
     std::string value;
     while (pos_ < source_.size() && source_[pos_] != '"') {
@@ -155,22 +162,25 @@ private:
       advance();
     }
     if (pos_ >= source_.size()) {
-      throw kit_exception_c(exception_e::PARSE_ERROR, start_pos, 
-                           "Unterminated string literal");
+      throw kit_exception_c(exception_e::PARSE_ERROR, start_pos,
+                            "Unterminated string literal");
     }
     advance();
-    return {token_type_e::STRING_VALUE, value, start_pos, start_line, start_column};
+    return {token_type_e::STRING_VALUE, value, start_pos, start_line,
+            start_column};
   }
 
-  token_s read_value(std::size_t start_pos, std::size_t start_line, std::size_t start_column) {
+  token_s read_value(std::size_t start_pos, std::size_t start_line,
+                     std::size_t start_column) {
     std::string value;
-    while (pos_ < source_.size() && !std::isspace(source_[pos_]) && 
-           source_[pos_] != '{' && source_[pos_] != '}' && source_[pos_] != '=' && 
-           source_[pos_] != '#') {
+    while (pos_ < source_.size() && !std::isspace(source_[pos_]) &&
+           source_[pos_] != '{' && source_[pos_] != '}' &&
+           source_[pos_] != '=' && source_[pos_] != '#') {
       value += source_[pos_];
       advance();
     }
-    return {token_type_e::STRING_VALUE, value, start_pos, start_line, start_column};
+    return {token_type_e::STRING_VALUE, value, start_pos, start_line,
+            start_column};
   }
 
   std::string source_;
@@ -181,8 +191,9 @@ private:
 
 class parser_c {
 public:
-  parser_c(const std::filesystem::path& kit_path, const std::string& source)
-    : kit_path_(kit_path), lexer_(source), current_token_(lexer_.next_token()) {}
+  parser_c(const std::filesystem::path &kit_path, const std::string &source)
+      : kit_path_(kit_path), lexer_(source),
+        current_token_(lexer_.next_token()) {}
 
   kit_config_s parse() {
     kit_config_s config;
@@ -196,8 +207,9 @@ public:
       } else if (current_token_.type == token_type_e::KEYWORD_APPLICATION) {
         parse_application(config);
       } else {
-        throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                             "Expected 'project', 'library', or 'application'");
+        throw kit_exception_c(
+            exception_e::PARSE_ERROR, current_token_.position,
+            "Expected 'project', 'library', or 'application'");
       }
     }
 
@@ -205,42 +217,41 @@ public:
   }
 
 private:
-  void advance() {
-    current_token_ = lexer_.next_token();
-  }
+  void advance() { current_token_ = lexer_.next_token(); }
 
-  void expect(token_type_e type, const std::string& error_msg) {
+  void expect(token_type_e type, const std::string &error_msg) {
     if (current_token_.type != type) {
-      throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position, error_msg);
+      throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
+                            error_msg);
     }
     advance();
   }
 
-  void parse_project(kit_config_s& config) {
+  void parse_project(kit_config_s &config) {
     advance();
-    if (current_token_.type != token_type_e::IDENTIFIER && 
+    if (current_token_.type != token_type_e::IDENTIFIER &&
         current_token_.type != token_type_e::STRING_VALUE) {
       throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                           "Expected project name");
+                            "Expected project name");
     }
     config.project_name = current_token_.value;
     advance();
   }
 
-  void parse_library(kit_config_s& config) {
+  void parse_library(kit_config_s &config) {
     advance();
-    if (current_token_.type != token_type_e::IDENTIFIER && 
+    if (current_token_.type != token_type_e::IDENTIFIER &&
         current_token_.type != token_type_e::STRING_VALUE) {
       throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                           "Expected library name");
+                            "Expected library name");
     }
     std::string lib_name = current_token_.value;
     advance();
 
-    for (const auto& [name, _] : config.libraries) {
+    for (const auto &[name, _] : config.libraries) {
       if (name == lib_name) {
         throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                             "Duplicate library name: " + lib_name);
+                              "Duplicate library name: " + lib_name);
       }
     }
 
@@ -254,11 +265,12 @@ private:
     while (current_token_.type != token_type_e::RBRACE) {
       if (current_token_.type == token_type_e::END_OF_FILE) {
         throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                             "Unexpected end of file in library block");
+                              "Unexpected end of file in library block");
       }
       if (current_token_.type != token_type_e::IDENTIFIER) {
         throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                             "Expected field name, got: " + current_token_.value);
+                              "Expected field name, got: " +
+                                  current_token_.value);
       }
       std::string field_name = current_token_.value;
       advance();
@@ -275,7 +287,7 @@ private:
         test = read_value_tokens();
       } else {
         throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                             "Unknown library field: " + field_name);
+                              "Unknown library field: " + field_name);
       }
     }
 
@@ -283,38 +295,44 @@ private:
 
     if (source.empty()) {
       throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                           "Library '" + lib_name + "' missing required field 'source'");
+                            "Library '" + lib_name +
+                                "' missing required field 'source'");
     }
     if (output.empty()) {
       throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                           "Library '" + lib_name + "' missing required field 'output'");
+                            "Library '" + lib_name +
+                                "' missing required field 'output'");
     }
 
-    std::string resolved_source = resolve_path(config.kit_file_directory, source).string();
-    std::string resolved_output = resolve_path(config.kit_file_directory, output).string();
+    std::string resolved_source =
+        resolve_path(config.kit_file_directory, source).string();
+    std::string resolved_output =
+        resolve_path(config.kit_file_directory, output).string();
     std::optional<std::string> resolved_test;
     if (test.has_value()) {
-      resolved_test = resolve_path(config.kit_file_directory, test.value()).string();
+      resolved_test =
+          resolve_path(config.kit_file_directory, test.value()).string();
     }
 
-    config.libraries.emplace_back(lib_name, 
-      target_library_c(resolved_source, resolved_output, depends, resolved_test));
+    config.libraries.emplace_back(
+        lib_name, target_library_c(resolved_source, resolved_output, depends,
+                                   resolved_test));
   }
 
-  void parse_application(kit_config_s& config) {
+  void parse_application(kit_config_s &config) {
     advance();
-    if (current_token_.type != token_type_e::IDENTIFIER && 
+    if (current_token_.type != token_type_e::IDENTIFIER &&
         current_token_.type != token_type_e::STRING_VALUE) {
       throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                           "Expected application name");
+                            "Expected application name");
     }
     std::string app_name = current_token_.value;
     advance();
 
-    for (const auto& [name, _] : config.applications) {
+    for (const auto &[name, _] : config.applications) {
       if (name == app_name) {
         throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                             "Duplicate application name: " + app_name);
+                              "Duplicate application name: " + app_name);
       }
     }
 
@@ -329,11 +347,12 @@ private:
     while (current_token_.type != token_type_e::RBRACE) {
       if (current_token_.type == token_type_e::END_OF_FILE) {
         throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                             "Unexpected end of file in application block");
+                              "Unexpected end of file in application block");
       }
       if (current_token_.type != token_type_e::IDENTIFIER) {
         throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                             "Expected field name, got: " + current_token_.value);
+                              "Expected field name, got: " +
+                                  current_token_.value);
       }
       std::string field_name = current_token_.value;
       advance();
@@ -349,20 +368,22 @@ private:
       } else if (field_name == "library_paths") {
         auto paths = read_list_tokens();
         std::vector<std::string> resolved;
-        for (const auto& p : paths) {
-          resolved.push_back(resolve_path(config.kit_file_directory, p).string());
+        for (const auto &p : paths) {
+          resolved.push_back(
+              resolve_path(config.kit_file_directory, p).string());
         }
         library_paths = resolved;
       } else if (field_name == "include_paths") {
         auto paths = read_list_tokens();
         std::vector<std::string> resolved;
-        for (const auto& p : paths) {
-          resolved.push_back(resolve_path(config.kit_file_directory, p).string());
+        for (const auto &p : paths) {
+          resolved.push_back(
+              resolve_path(config.kit_file_directory, p).string());
         }
         include_paths = resolved;
       } else {
         throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                             "Unknown application field: " + field_name);
+                              "Unknown application field: " + field_name);
       }
     }
 
@@ -370,27 +391,33 @@ private:
 
     if (source.empty()) {
       throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                           "Application '" + app_name + "' missing required field 'source'");
+                            "Application '" + app_name +
+                                "' missing required field 'source'");
     }
     if (output.empty()) {
       throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                           "Application '" + app_name + "' missing required field 'output'");
+                            "Application '" + app_name +
+                                "' missing required field 'output'");
     }
 
-    std::string resolved_source = resolve_path(config.kit_file_directory, source).string();
-    std::string resolved_output = resolve_path(config.kit_file_directory, output).string();
+    std::string resolved_source =
+        resolve_path(config.kit_file_directory, source).string();
+    std::string resolved_output =
+        resolve_path(config.kit_file_directory, output).string();
 
-    config.applications.emplace_back(app_name,
-      target_application_c(resolved_source, resolved_output, libraries, library_paths, include_paths));
+    config.applications.emplace_back(
+        app_name,
+        target_application_c(resolved_source, resolved_output, libraries,
+                             library_paths, include_paths));
   }
 
   std::string read_value_tokens() {
-    if (current_token_.type != token_type_e::STRING_VALUE && 
+    if (current_token_.type != token_type_e::STRING_VALUE &&
         current_token_.type != token_type_e::IDENTIFIER) {
       throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                           "Expected value");
+                            "Expected value");
     }
-    
+
     std::string value = current_token_.value;
     advance();
     return value;
@@ -398,7 +425,7 @@ private:
 
   std::vector<std::string> read_list_tokens() {
     std::vector<std::string> values;
-    while (current_token_.type == token_type_e::STRING_VALUE || 
+    while (current_token_.type == token_type_e::STRING_VALUE ||
            current_token_.type == token_type_e::IDENTIFIER) {
       values.push_back(current_token_.value);
       advance();
@@ -411,11 +438,11 @@ private:
   token_s current_token_;
 };
 
-kit_config_s parse_kit_file(const std::filesystem::path& kit_path) {
+kit_config_s parse_kit_file(const std::filesystem::path &kit_path) {
   std::ifstream file(kit_path);
   if (!file.is_open()) {
-    throw kit_exception_c(exception_e::PARSE_ERROR, 0, 
-                         "Failed to open kit file: " + kit_path.string());
+    throw kit_exception_c(exception_e::PARSE_ERROR, 0,
+                          "Failed to open kit file: " + kit_path.string());
   }
 
   std::stringstream buffer;

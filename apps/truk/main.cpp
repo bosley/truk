@@ -1,11 +1,11 @@
+#include "commands/build.hpp"
+#include "commands/clean.hpp"
 #include "commands/compile.hpp"
+#include "commands/new.hpp"
 #include "commands/run.hpp"
 #include "commands/tcc.hpp"
-#include "commands/toc.hpp"
-#include "commands/new.hpp"
-#include "commands/build.hpp"
 #include "commands/test.hpp"
-#include "commands/clean.hpp"
+#include "commands/toc.hpp"
 #include "common/args.hpp"
 
 int main(int argc, char **argv) {

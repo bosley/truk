@@ -1,7 +1,7 @@
 #include "new.hpp"
 #include <filesystem>
-#include <fstream>
 #include <fmt/core.h>
+#include <fstream>
 
 namespace truk::commands {
 
@@ -14,9 +14,10 @@ int new_project(const new_options_s &opts) {
   }
 
   fs::path project_dir(opts.project_name);
-  
+
   if (fs::exists(project_dir)) {
-    fmt::print(stderr, "Error: Directory '{}' already exists\n", opts.project_name);
+    fmt::print(stderr, "Error: Directory '{}' already exists\n",
+               opts.project_name);
     return 1;
   }
 
@@ -45,9 +46,9 @@ int new_project(const new_options_s &opts) {
     fmt::print("  cd {}\n", opts.project_name);
     fmt::print("  truk build\n");
     fmt::print("  ./build/main\n");
-    
+
     return 0;
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     fmt::print(stderr, "Error creating project: {}\n", e.what());
     return 1;
   }

@@ -1,18 +1,18 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
 
 namespace truk::common {
 
 struct parsed_args_s {
   std::string command;
-  
+
   std::string project_name;
   std::string target_dir;
   std::optional<std::string> specific_target;
-  
+
   std::string input_file;
   std::string output_file;
   std::vector<std::string> include_paths;
