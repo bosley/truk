@@ -1,3 +1,7 @@
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args): i32;
+
 fn compute(base: i32, ...values) : i32 {
   var x: i32 = __TRUK_VA_ARG_I32();
   var y: i32 = __TRUK_VA_ARG_I32();

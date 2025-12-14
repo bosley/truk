@@ -886,36 +886,6 @@ void emitter_c::visit(const call_c &node) {
         }
         break;
       }
-      case builtins::builtin_kind_e::PRINTF: {
-        if (node.arguments().empty()) {
-          break;
-        }
-
-        _current_expr << "printf(";
-
-        for (size_t i = 0; i < node.arguments().size(); ++i) {
-          if (i > 0)
-            _current_expr << ", ";
-
-          std::stringstream arg_stream;
-          std::swap(arg_stream, _current_expr);
-          node.arguments()[i]->accept(*this);
-          std::string arg = _current_expr.str();
-          std::swap(arg_stream, _current_expr);
-
-          _current_expr << arg;
-        }
-
-        _current_expr << ")";
-
-        if (!_in_expression) {
-          _functions << cdef::indent(_indent_level) << _current_expr.str()
-                     << ";\n";
-          _current_expr.str("");
-          _current_expr.clear();
-        }
-        return;
-      }
       case builtins::builtin_kind_e::VA_ARG_I32: {
         _current_expr << "va_arg(__truk_va_args, i32)";
         return;

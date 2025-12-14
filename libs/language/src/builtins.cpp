@@ -133,19 +133,6 @@ static type_ptr build_panic_signature(const type_c *type_param) {
                                            std::move(return_type));
 }
 
-static type_ptr build_printf_signature(const type_c *type_param) {
-  std::vector<type_ptr> params;
-
-  auto u8_type = std::make_unique<primitive_type_c>(keywords_e::U8, 0);
-  auto format_param = std::make_unique<pointer_type_c>(0, std::move(u8_type));
-  params.push_back(std::move(format_param));
-
-  auto return_type = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
-
-  return std::make_unique<function_type_c>(0, std::move(params),
-                                           std::move(return_type), true);
-}
-
 static type_ptr build_va_arg_i32_signature(const type_c *type_param) {
   std::vector<type_ptr> params;
   auto return_type = std::make_unique<primitive_type_c>(keywords_e::I32, 0);
@@ -198,12 +185,6 @@ static std::vector<builtin_signature_s> builtin_registry = {
      false,
      {"message"},
      build_panic_signature},
-    {"printf",
-     builtin_kind_e::PRINTF,
-     false,
-     true,
-     {"format"},
-     build_printf_signature},
     {"__TRUK_VA_ARG_I32",
      builtin_kind_e::VA_ARG_I32,
      false,

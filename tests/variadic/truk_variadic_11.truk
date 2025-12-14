@@ -1,3 +1,7 @@
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args): i32;
+
 fn average_f64(count: i32, ...nums) : i32 {
   var sum: f64 = 0.0;
   var i: i32 = 0;

@@ -1,3 +1,7 @@
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args): i32;
+
 fn average_via_ptr(count: i32, ...ptrs) : i32 {
   var sum: i32 = 0;
   var i: i32 = 0;

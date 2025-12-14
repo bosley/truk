@@ -3,7 +3,10 @@
 
 namespace truk::tcc {
 
-tcc_compiler_c::tcc_compiler_c() { m_state = tcc_new(); }
+tcc_compiler_c::tcc_compiler_c() {
+  m_state = tcc_new();
+  tcc_set_options(static_cast<TCCState *>(m_state), "-w");
+}
 
 tcc_compiler_c::~tcc_compiler_c() {
   if (m_state) {

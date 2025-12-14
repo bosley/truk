@@ -1,3 +1,7 @@
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args): i32;
+
 fn product_f64(count: i32, ...nums) : i32 {
   var a: f64 = __TRUK_VA_ARG_F64();
   var b: f64 = __TRUK_VA_ARG_F64();

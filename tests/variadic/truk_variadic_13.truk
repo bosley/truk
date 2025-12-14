@@ -1,3 +1,7 @@
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args): i32;
+
 fn range_f64(lower: f64, upper: f64, ...values) : i32 {
   var val: f64 = __TRUK_VA_ARG_F64();
   printf("Checking if %f is in range [%f, %f]\n", val, lower, upper);

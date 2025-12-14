@@ -1,3 +1,7 @@
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args): i32;
+
 fn print_all(count: i32, ...nums) : i32 {
   var i: i32 = 0;
   while i < count {
