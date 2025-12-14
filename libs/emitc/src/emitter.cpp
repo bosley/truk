@@ -1,5 +1,6 @@
 #include <language/builtins.hpp>
 #include <language/keywords.hpp>
+#include <set>
 #include <truk/emitc/cdef.hpp>
 #include <truk/emitc/emitter.hpp>
 
@@ -94,18 +95,32 @@ void emitter_c::emit(const base_c *root) {
 
 void emitter_c::internal_finalize() {
   std::stringstream final_header;
-  final_header << cdef::emit_program_header();
 
+  final_header << cdef::emit_system_includes();
+  final_header << cdef::emit_runtime_types();
+  final_header << cdef::emit_runtime_declarations();
+  final_header << cdef::emit_runtime_macros();
+
+  std::set<std::string> system_includes = {"stdbool.h", "stdint.h", "stdlib.h",
+                                           "stdio.h",   "string.h", "stdarg.h"};
+
+  bool has_user_imports = false;
   for (const auto &import : _c_imports) {
+    if (import.is_angle_bracket && system_includes.count(import.path)) {
+      continue;
+    }
+    has_user_imports = true;
     if (import.is_angle_bracket) {
       final_header << "#include <" << import.path << ">\n";
     } else {
       final_header << "#include \"" << import.path << "\"\n";
     }
   }
-  if (!_c_imports.empty()) {
+  if (has_user_imports) {
     final_header << "\n";
   }
+
+  final_header << cdef::emit_runtime_implementation();
 
   final_header
       << "typedef struct {\n  void* data;\n  u64 len;\n} truk_slice_void;\n\n";
@@ -1199,11 +1214,11 @@ std::string result_c::assemble_code() const {
 
     if (is_function_def) {
       mangled_output += output.substr(0, pos);
-      
+
       size_t paren_end = output.find(')', pos);
       std::string params = output.substr(pos + 9, paren_end - (pos + 9));
       has_args = params.find("argc") != std::string::npos;
-      
+
       mangled_output += "i32 truk_main_" + std::to_string(main_index) + "(";
       output = output.substr(pos + 9);
       main_index++;
