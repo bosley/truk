@@ -56,18 +56,53 @@ int toc(const toc_options_s &opts) {
     return 1;
   }
 
-  std::string output;
-  for (const auto &chunk : emit_result.chunks) {
-    output += chunk;
+  emitc::assembly_type_e assembly_type =
+      emit_result.metadata.has_main_function
+          ? emitc::assembly_type_e::APPLICATION
+          : emitc::assembly_type_e::LIBRARY;
+
+  std::string base_path = opts.output_file;
+  size_t ext_pos = base_path.find_last_of('.');
+  if (ext_pos != std::string::npos) {
+    base_path = base_path.substr(0, ext_pos);
   }
 
-  if (!ingestion::write_file(opts.output_file, output)) {
-    fmt::print(stderr, "Error: Could not write output file '{}'\n",
-               opts.output_file);
-    return 1;
+  std::string header_file = base_path + ".h";
+  std::string source_file = base_path + ".c";
+
+  size_t last_slash = header_file.find_last_of("/\\");
+  std::string header_basename = (last_slash != std::string::npos)
+                                    ? header_file.substr(last_slash + 1)
+                                    : header_file;
+
+  auto assembly_result = emit_result.assemble(assembly_type, header_basename);
+
+  if (assembly_type == emitc::assembly_type_e::LIBRARY) {
+
+    if (!ingestion::write_file(header_file, assembly_result.header)) {
+      fmt::print(stderr, "Error: Could not write header file '{}'\n",
+                 header_file);
+      return 1;
+    }
+
+    if (!ingestion::write_file(source_file, assembly_result.source)) {
+      fmt::print(stderr, "Error: Could not write source file '{}'\n",
+                 source_file);
+      return 1;
+    }
+
+    fmt::print("Successfully emitted library to '{}' and '{}'\n", header_file,
+               source_file);
+  } else {
+    if (!ingestion::write_file(opts.output_file, assembly_result.source)) {
+      fmt::print(stderr, "Error: Could not write output file '{}'\n",
+                 opts.output_file);
+      return 1;
+    }
+
+    fmt::print("Successfully emitted C code to '{}'\n", opts.output_file);
   }
 
-  fmt::print("Successfully emitted C code to '{}'\n", opts.output_file);
   return 0;
 }
 

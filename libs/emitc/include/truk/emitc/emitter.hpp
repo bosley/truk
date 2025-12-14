@@ -2,6 +2,7 @@
 
 #include <language/node.hpp>
 #include <language/visitor.hpp>
+#include <truk/core/exceptions.hpp>
 
 #include <memory>
 #include <sstream>
@@ -11,6 +12,14 @@
 #include <vector>
 
 namespace truk::emitc {
+
+class emitter_exception_c : public truk::core::truk_exception_c {
+public:
+  emitter_exception_c(const std::string &message)
+      : truk_exception_c("emitter", message) {}
+  emitter_exception_c(int error_code, const std::string &message)
+      : truk_exception_c("emitter", error_code, message) {}
+};
 
 enum class emission_phase_e {
   COLLECTION,
@@ -36,11 +45,42 @@ struct error_s {
         node_context(std::move(ctx)) {}
 };
 
+struct compilation_unit_metadata_s {
+  std::unordered_set<std::string> defined_functions;
+  std::unordered_set<std::string> defined_structs;
+  std::unordered_set<std::string> extern_structs;
+  bool has_main_function{false};
+  int main_function_count{0};
+
+  bool is_library() const { return !has_main_function; }
+  bool has_multiple_mains() const { return main_function_count > 1; }
+};
+
+enum class assembly_type_e { APPLICATION, LIBRARY };
+
+struct assembly_result_s {
+  assembly_type_e type;
+  std::string source;
+  std::string header;
+  std::string header_name;
+
+  assembly_result_s(assembly_type_e t, std::string src)
+      : type(t), source(std::move(src)) {}
+  assembly_result_s(assembly_type_e t, std::string src, std::string hdr,
+                    std::string hdr_name = "")
+      : type(t), source(std::move(src)), header(std::move(hdr)),
+        header_name(std::move(hdr_name)) {}
+};
+
 struct result_c {
   std::vector<error_s> errors;
   std::vector<std::string> chunks;
+  compilation_unit_metadata_s metadata;
 
   bool has_errors() const { return !errors.empty(); }
+  std::string assemble_code() const;
+  assembly_result_s assemble(assembly_type_e type,
+                             const std::string &header_name = "") const;
 };
 
 class emitter_c : public truk::language::nodes::visitor_if {

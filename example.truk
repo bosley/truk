@@ -1,0 +1,22 @@
+/*
+  This example program loads the c printf function and dumps all arguments to stdout
+  Compile this with `truk example.truk -o example` and then run with `./example hello!!!!` 
+    - bosley
+*/
+
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args): i32;
+
+fn main(argc: i32, argv: **i8) : i32 {
+  printf("Program name: %s\n", argv[0]);
+  printf("Number of arguments: %d\n", argc);
+  
+  var i: i32 = 0;
+  while i < argc {
+    printf("  arg[%d]: %s\n", i, argv[i]);
+    i = i + 1;
+  }
+  
+  return 0;
+}

@@ -114,6 +114,18 @@ void emitter_c::internal_finalize() {
   _result.chunks.push_back(_structs.str());
   _result.chunks.push_back(_header.str());
   _result.chunks.push_back(_functions.str());
+
+  _result.metadata.defined_functions = _function_names;
+  _result.metadata.defined_structs = _struct_names;
+  _result.metadata.extern_structs = _extern_struct_names;
+
+  _result.metadata.main_function_count = 0;
+  for (const auto &func_name : _function_names) {
+    if (func_name == "main") {
+      _result.metadata.main_function_count++;
+    }
+  }
+  _result.metadata.has_main_function = _result.metadata.main_function_count > 0;
 }
 
 std::string emitter_c::emit_type(const type_c *type) {
@@ -1150,5 +1162,133 @@ void emitter_c::emit_function_defers() {
 void emitter_c::visit(const import_c &node) {}
 
 void emitter_c::visit(const cimport_c &node) {}
+
+std::string result_c::assemble_code() const {
+  std::string output;
+  for (const auto &chunk : chunks) {
+    output += chunk;
+  }
+
+  if (metadata.has_multiple_mains()) {
+    std::string mangled_output;
+    int main_index = 0;
+
+    size_t pos = 0;
+    while ((pos = output.find("int main(", pos)) != std::string::npos) {
+      size_t line_start = output.rfind('\n', pos);
+      if (line_start == std::string::npos) {
+        line_start = 0;
+      } else {
+        line_start++;
+      }
+
+      bool is_function_def = true;
+      for (size_t i = line_start; i < pos; ++i) {
+        if (output[i] != ' ' && output[i] != '\t' && output[i] != '\n') {
+          is_function_def = false;
+          break;
+        }
+      }
+
+      if (is_function_def) {
+        mangled_output += output.substr(0, pos);
+        mangled_output += "int truk_main_" + std::to_string(main_index) + "(";
+        output = output.substr(pos + 9);
+        main_index++;
+        pos = 0;
+      } else {
+        pos += 9;
+      }
+    }
+    mangled_output += output;
+
+    mangled_output += "\nint main(int argc, char** argv) {\n";
+    mangled_output += "  return truk_main_0(argc, argv);\n";
+    mangled_output += "}\n";
+
+    return mangled_output;
+  }
+
+  return output;
+}
+
+assembly_result_s result_c::assemble(assembly_type_e type,
+                                     const std::string &header_name) const {
+  if (type == assembly_type_e::APPLICATION) {
+    return assembly_result_s(assembly_type_e::APPLICATION, assemble_code());
+  }
+
+  if (chunks.size() < 4) {
+    throw emitter_exception_c("Invalid emission state: expected at least 4 "
+                              "chunks for library assembly");
+  }
+
+  std::string header_content;
+  std::string source_content;
+
+  header_content += "#pragma once\n\n";
+  header_content += cdef::emit_library_header();
+  header_content += chunks[1];
+  header_content += chunks[2];
+
+  std::string functions_chunk = chunks[3];
+  std::stringstream function_declarations;
+
+  size_t pos = 0;
+  while (pos < functions_chunk.size()) {
+    size_t func_start = functions_chunk.find_first_not_of(" \t\n", pos);
+    if (func_start == std::string::npos)
+      break;
+
+    size_t open_brace = functions_chunk.find('{', func_start);
+    if (open_brace == std::string::npos)
+      break;
+
+    size_t line_end = functions_chunk.rfind('\n', open_brace);
+    if (line_end == std::string::npos || line_end < func_start) {
+      line_end = func_start;
+    }
+
+    std::string signature =
+        functions_chunk.substr(func_start, open_brace - func_start);
+    size_t last_newline = signature.find_last_of('\n');
+    if (last_newline != std::string::npos) {
+      signature = signature.substr(last_newline + 1);
+    }
+
+    while (!signature.empty() &&
+           (signature.back() == ' ' || signature.back() == '\t')) {
+      signature.pop_back();
+    }
+
+    if (!signature.empty()) {
+      function_declarations << signature << ";\n";
+    }
+
+    int brace_count = 1;
+    size_t search_pos = open_brace + 1;
+    while (search_pos < functions_chunk.size() && brace_count > 0) {
+      if (functions_chunk[search_pos] == '{') {
+        brace_count++;
+      } else if (functions_chunk[search_pos] == '}') {
+        brace_count--;
+      }
+      search_pos++;
+    }
+
+    pos = search_pos;
+  }
+
+  header_content += function_declarations.str();
+
+  source_content += cdef::emit_program_header();
+  if (!header_name.empty()) {
+    source_content += "#include \"" + header_name + "\"\n\n";
+  }
+  source_content += chunks[3];
+
+  return assembly_result_s(assembly_type_e::LIBRARY, source_content,
+                           header_content, header_name);
+}
 
 } // namespace truk::emitc

@@ -85,10 +85,19 @@ int run(const run_options_s &opts) {
     return 1;
   }
 
-  std::string c_source;
-  for (const auto &chunk : emit_result.chunks) {
-    c_source += chunk;
+  if (!emit_result.metadata.has_main_function) {
+    fmt::print(stderr, "Error: No main function found. Cannot run program.\n");
+    return 1;
   }
+
+  if (emit_result.metadata.has_multiple_mains()) {
+    fmt::print(stderr,
+               "Warning: Multiple main functions detected. Using first one.\n");
+  }
+
+  auto assembly_result =
+      emit_result.assemble(emitc::assembly_type_e::APPLICATION);
+  std::string c_source = assembly_result.source;
 
   truk::tcc::tcc_compiler_c compiler;
 
