@@ -15,6 +15,9 @@ int toc(const toc_options_s &opts) {
   }
 
   ingestion::import_resolver_c resolver;
+  for (const auto &path : opts.include_paths) {
+    resolver.add_include_path(path);
+  }
   auto resolved = resolver.resolve(opts.input_file);
 
   if (!resolved.success) {

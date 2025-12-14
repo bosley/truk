@@ -76,6 +76,10 @@ class import_resolver_c {
 public:
   import_resolver_c() = default;
 
+  void add_include_path(const std::string &path) {
+    _include_paths.push_back(path);
+  }
+
   resolved_imports_s resolve(const std::string &entry_file);
 
 private:
@@ -87,6 +91,10 @@ private:
   void analyze_dependencies(const truk::language::nodes::base_c *decl,
                             std::unordered_set<std::string> &deps);
 
+  std::string resolve_import_path(const std::string &import_path,
+                                  const std::string &current_file);
+
+  std::vector<std::string> _include_paths;
   std::unordered_set<std::string> _processed_files;
   std::vector<std::string> _import_stack;
   std::vector<truk::language::nodes::base_ptr> _all_declarations;
