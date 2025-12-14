@@ -104,6 +104,13 @@ test_generated_libs() {
     mkdir -p "${project_dir}/libs/calc"
     
     cat > "${project_dir}/libs/math/lib.truk" << 'EOF'
+extern fn add(a: i32, b: i32): i32;
+extern fn multiply(a: i32, b: i32): i32;
+EOF
+    
+    cat > "${project_dir}/libs/math/lib_impl.truk" << 'EOF'
+import "lib.truk";
+
 fn add(a: i32, b: i32): i32 {
     return a + b;
 }
@@ -114,7 +121,7 @@ fn multiply(a: i32, b: i32): i32 {
 EOF
     
     cat > "${project_dir}/libs/math/test.truk" << 'EOF'
-import "lib.truk";
+import "lib_impl.truk";
 
 fn main(): i32 {
     if (add(2, 3) != 5) {
@@ -128,7 +135,12 @@ fn main(): i32 {
 EOF
     
     cat > "${project_dir}/libs/calc/lib.truk" << 'EOF'
-extern fn multiply(a: i32, b: i32): i32;
+extern fn square(x: i32): i32;
+EOF
+    
+    cat > "${project_dir}/libs/calc/lib_impl.truk" << 'EOF'
+import "../math/lib.truk";
+import "lib.truk";
 
 fn square(x: i32): i32 {
     return multiply(x, x);
@@ -136,8 +148,8 @@ fn square(x: i32): i32 {
 EOF
     
     cat > "${project_dir}/libs/calc/test.truk" << 'EOF'
-import "../math/lib.truk";
-import "lib.truk";
+import "../math/lib_impl.truk";
+import "lib_impl.truk";
 
 fn main(): i32 {
     if (square(5) != 25) {
@@ -155,9 +167,8 @@ cimport <stdio.h>;
 
 extern fn printf(fmt: *i8, ...args): i32;
 
-extern fn add(a: i32, b: i32): i32;
-extern fn multiply(a: i32, b: i32): i32;
-extern fn square(x: i32): i32;
+import "../../libs/math/lib.truk";
+import "../../libs/calc/lib.truk";
 
 fn main(): i32 {
     var sum: i32 = add(10, 20);
@@ -174,13 +185,13 @@ EOF
 project testproject
 
 library math {
-    source = libs/math/lib.truk
+    source = libs/math/lib_impl.truk
     output = build/libmath.c
     test = libs/math/test.truk
 }
 
 library calc {
-    source = libs/calc/lib.truk
+    source = libs/calc/lib_impl.truk
     output = build/libcalc.c
     test = libs/calc/test.truk
     depends = math

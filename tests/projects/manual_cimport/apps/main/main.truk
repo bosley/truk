@@ -2,9 +2,7 @@ cimport <stdio.h>;
 
 extern fn printf(fmt: *i8, ...args): i32;
 
-extern fn get_file_size(path: *i8): i64;
-extern fn get_first_byte(path: *i8): i32;
-extern fn get_number_from_file(path: *i8): i32;
+import "../../libs/fileutil/lib.truk";
 
 fn main(): i32 {
     var path: *i8 = "test_data/input.txt";
