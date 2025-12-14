@@ -1,4 +1,4 @@
-cimport "stdio.h";
+cimport <stdio.h>;
 
 extern struct FILE;
 

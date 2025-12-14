@@ -1,0 +1,8 @@
+cimport "myheader.h";
+
+extern fn my_custom_function(x: i32): i32;
+
+fn main(): i32 {
+    var result: i32 = my_custom_function(6);
+    return result;
+}

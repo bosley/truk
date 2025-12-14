@@ -1,4 +1,4 @@
-cimport "stdio.h";
+cimport <stdio.h>;
 
 extern fn printf(fmt: *i8, ...args): i32;
 

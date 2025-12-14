@@ -44,7 +44,8 @@ emitter_c::add_declarations(const std::vector<std::unique_ptr<base_c>> &decls) {
   return *this;
 }
 
-emitter_c &emitter_c::set_c_imports(const std::vector<language::nodes::c_import_s> &imports) {
+emitter_c &emitter_c::set_c_imports(
+    const std::vector<language::nodes::c_import_s> &imports) {
   _c_imports = imports;
   return *this;
 }
@@ -94,7 +95,7 @@ void emitter_c::emit(const base_c *root) {
 void emitter_c::internal_finalize() {
   std::stringstream final_header;
   final_header << cdef::emit_program_header();
-  
+
   for (const auto &import : _c_imports) {
     if (import.is_angle_bracket) {
       final_header << "#include <" << import.path << ">\n";
@@ -105,7 +106,7 @@ void emitter_c::internal_finalize() {
   if (!_c_imports.empty()) {
     final_header << "\n";
   }
-  
+
   final_header
       << "typedef struct {\n  void* data;\n  u64 len;\n} truk_slice_void;\n\n";
 

@@ -51,7 +51,8 @@ public:
   emitter_c &add_declaration(const truk::language::nodes::base_c *decl);
   emitter_c &add_declarations(
       const std::vector<std::unique_ptr<truk::language::nodes::base_c>> &decls);
-  emitter_c &set_c_imports(const std::vector<truk::language::nodes::c_import_s> &imports);
+  emitter_c &
+  set_c_imports(const std::vector<truk::language::nodes::c_import_s> &imports);
 
   result_c finalize();
 

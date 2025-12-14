@@ -36,18 +36,18 @@ parse_result_s parser_c::parse() {
   result.source_len = _len;
   try {
     auto all_decls = parse_program();
-    
+
     for (auto &decl : all_decls) {
-      if (auto *cimport_node = dynamic_cast<const language::nodes::cimport_c *>(decl.get())) {
-        result.c_imports.push_back({
-          .path = cimport_node->path(),
-          .is_angle_bracket = cimport_node->is_angle_bracket()
-        });
+      if (auto *cimport_node =
+              dynamic_cast<const language::nodes::cimport_c *>(decl.get())) {
+        result.c_imports.push_back(
+            {.path = cimport_node->path(),
+             .is_angle_bracket = cimport_node->is_angle_bracket()});
       } else {
         result.declarations.push_back(std::move(decl));
       }
     }
-    
+
     result.success = true;
   } catch (const parse_error &e) {
     result.success = false;
@@ -185,7 +185,8 @@ language::nodes::base_ptr parser_c::parse_declaration() {
     return parse_const_decl();
   }
   const auto &token = peek();
-  throw parse_error("Expected declaration (fn, struct, var, const, import, cimport, or extern)",
+  throw parse_error("Expected declaration (fn, struct, var, const, import, "
+                    "cimport, or extern)",
                     token.line, token.column);
 }
 
@@ -218,18 +219,18 @@ language::nodes::base_ptr parser_c::parse_cimport_decl() {
   if (check(token_type_e::LESS)) {
     is_angle_bracket = true;
     advance();
-    
+
     std::string path_builder;
     while (!is_at_end() && !check(token_type_e::GREATER)) {
       const auto &token = peek();
       if (token.type == token_type_e::SEMICOLON) {
         throw parse_error("Expected '>' to close angle bracket in cimport",
-                         token.line, token.column);
+                          token.line, token.column);
       }
       path_builder += token.lexeme;
       advance();
     }
-    
+
     consume(token_type_e::GREATER, "Expected '>' after cimport path");
     path = path_builder;
   } else if (check(token_type_e::STRING_LITERAL)) {
@@ -241,13 +242,13 @@ language::nodes::base_ptr parser_c::parse_cimport_decl() {
   } else {
     const auto &token = peek();
     throw parse_error("Expected '<' or string literal after 'cimport'",
-                     token.line, token.column);
+                      token.line, token.column);
   }
 
   consume(token_type_e::SEMICOLON, "Expected ';' after cimport path");
 
-  return std::make_unique<language::nodes::cimport_c>(cimport_token.source_index,
-                                                      path, is_angle_bracket);
+  return std::make_unique<language::nodes::cimport_c>(
+      cimport_token.source_index, path, is_angle_bracket);
 }
 
 language::nodes::base_ptr parser_c::parse_extern_decl() {
@@ -259,8 +260,8 @@ language::nodes::base_ptr parser_c::parse_extern_decl() {
     return parse_struct_decl(true);
   } else {
     const auto &token = peek();
-    throw parse_error("Expected 'fn' or 'struct' after 'extern'",
-                     token.line, token.column);
+    throw parse_error("Expected 'fn' or 'struct' after 'extern'", token.line,
+                      token.column);
   }
 }
 
@@ -289,9 +290,10 @@ language::nodes::base_ptr parser_c::parse_fn_decl(bool is_extern) {
   }
 
   std::optional<language::nodes::base_ptr> body = std::nullopt;
-  
+
   if (is_extern) {
-    consume(token_type_e::SEMICOLON, "Expected ';' after extern function declaration");
+    consume(token_type_e::SEMICOLON,
+            "Expected ';' after extern function declaration");
   } else {
     body = parse_block();
   }

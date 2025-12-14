@@ -236,7 +236,7 @@ resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
   if (result.success) {
     result.all_declarations = std::move(_all_declarations);
   }
-  
+
   result.c_imports = std::move(_c_imports);
 
   return result;
@@ -298,11 +298,11 @@ void import_resolver_c::extract_imports_and_declarations(
     if (auto *import_node = dynamic_cast<const import_c *>(decl.get())) {
       std::string resolved_path = resolve_path(import_node->path(), file_path);
       process_file(resolved_path);
-    } else if (auto *cimport_node = dynamic_cast<const cimport_c *>(decl.get())) {
-      _c_imports.push_back({
-        .path = cimport_node->path(),
-        .is_angle_bracket = cimport_node->is_angle_bracket()
-      });
+    } else if (auto *cimport_node =
+                   dynamic_cast<const cimport_c *>(decl.get())) {
+      _c_imports.push_back(
+          {.path = cimport_node->path(),
+           .is_angle_bracket = cimport_node->is_angle_bracket()});
     } else {
       if (auto *fn_node = dynamic_cast<const fn_c *>(decl.get())) {
         _symbol_to_decl[fn_node->name().name] = decl.get();
