@@ -262,7 +262,6 @@ private:
     expect(token_type_e::LBRACE, "Expected '{' after library name");
 
     std::string source;
-    std::string output;
     std::optional<std::vector<std::string>> depends;
     std::optional<std::string> test;
     std::optional<std::vector<std::string>> include_paths;
@@ -284,8 +283,6 @@ private:
 
       if (field_name == "source") {
         source = read_value_tokens();
-      } else if (field_name == "output") {
-        output = read_value_tokens();
       } else if (field_name == "depends") {
         depends = read_list_tokens();
       } else if (field_name == "test") {
@@ -311,16 +308,9 @@ private:
                             "Library '" + lib_name +
                                 "' missing required field 'source'");
     }
-    if (output.empty()) {
-      throw kit_exception_c(exception_e::PARSE_ERROR, current_token_.position,
-                            "Library '" + lib_name +
-                                "' missing required field 'output'");
-    }
 
     std::string resolved_source =
         resolve_path(config.kit_file_directory, source).string();
-    std::string resolved_output =
-        resolve_path(config.kit_file_directory, output).string();
     std::optional<std::string> resolved_test;
     if (test.has_value()) {
       resolved_test =
@@ -328,8 +318,8 @@ private:
     }
 
     config.libraries.emplace_back(
-        lib_name, target_library_c(resolved_source, resolved_output, depends,
-                                   resolved_test, include_paths));
+        lib_name, target_library_c(resolved_source, depends, resolved_test,
+                                   include_paths));
   }
 
   void parse_application(kit_config_s &config) {

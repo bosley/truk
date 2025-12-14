@@ -45,6 +45,12 @@ public:
   compile_result_s compile_string(const std::string &c_source,
                                   const std::string &output_file);
 
+  compile_result_s compile_to_object(const std::string &c_source,
+                                     const std::string &output_o_file);
+
+  compile_result_s create_static_archive(const std::string &o_file,
+                                         const std::string &output_a_file);
+
   run_result_s compile_and_run(const std::string &c_source, int argc,
                                char **argv);
 

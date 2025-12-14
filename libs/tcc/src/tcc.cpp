@@ -1,9 +1,14 @@
 #include "truk/tcc/tcc.hpp"
+#include <cstdlib>
 #include <libtcc.h>
+#include <sstream>
 
 namespace truk::tcc {
 
-tcc_compiler_c::tcc_compiler_c() { m_state = tcc_new(); }
+tcc_compiler_c::tcc_compiler_c() {
+  m_state = tcc_new();
+  tcc_set_options(static_cast<TCCState *>(m_state), "-w");
+}
 
 tcc_compiler_c::~tcc_compiler_c() {
   if (m_state) {
@@ -72,6 +77,61 @@ tcc_compiler_c::compile_string(const std::string &c_source,
 
   if (tcc_output_file(state, output_file.c_str()) < 0) {
     result.error_message = "Failed to write output file: " + output_file;
+    return result;
+  }
+
+  result.success = true;
+  return result;
+}
+
+compile_result_s
+tcc_compiler_c::compile_to_object(const std::string &c_source,
+                                  const std::string &output_o_file) {
+  compile_result_s result;
+  result.success = false;
+
+  TCCState *state = static_cast<TCCState *>(m_state);
+
+  tcc_set_output_type(state, TCC_OUTPUT_OBJ);
+
+  if (tcc_compile_string(state, c_source.c_str()) < 0) {
+    result.error_message = "Failed to compile C source to object";
+    return result;
+  }
+
+  if (tcc_output_file(state, output_o_file.c_str()) < 0) {
+    result.error_message = "Failed to write object file: " + output_o_file;
+    return result;
+  }
+
+  result.success = true;
+  return result;
+}
+
+compile_result_s
+tcc_compiler_c::create_static_archive(const std::string &o_file,
+                                      const std::string &output_a_file) {
+  compile_result_s result;
+  result.success = false;
+
+  std::ostringstream cmd;
+  cmd << "ar rcs \"" << output_a_file << "\" \"" << o_file << "\" 2>&1";
+
+  FILE *pipe = popen(cmd.str().c_str(), "r");
+  if (!pipe) {
+    result.error_message = "Failed to execute ar command";
+    return result;
+  }
+
+  std::string output;
+  char buffer[256];
+  while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+    output += buffer;
+  }
+
+  int exit_code = pclose(pipe);
+  if (exit_code != 0) {
+    result.error_message = "ar command failed: " + output;
     return result;
   }
 

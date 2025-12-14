@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fmt/core.h>
 #include <fstream>
+#include <truk/core/cache.hpp>
 #include <truk/core/error_display.hpp>
 #include <truk/emitc/emitter.hpp>
 #include <truk/ingestion/import_resolver.hpp>
@@ -18,7 +19,8 @@ namespace fs = std::filesystem;
 static int
 compile_truk_to_c(const std::string &input_file,
                   const std::vector<std::string> &import_search_paths,
-                  std::string &c_output) {
+                  std::string &c_output,
+                  std::vector<std::string> &source_files) {
   ingestion::import_resolver_c resolver;
   for (const auto &path : import_search_paths) {
     resolver.add_import_search_path(path);
@@ -35,6 +37,8 @@ compile_truk_to_c(const std::string &input_file,
     }
     return 1;
   }
+
+  source_files = resolved.all_source_files;
 
   validation::type_checker_c type_checker;
   for (auto &decl : resolved.all_declarations) {
@@ -81,43 +85,79 @@ compile_truk_to_c(const std::string &input_file,
 
 static int compile_library(const std::string &name,
                            const kit::target_library_c &lib,
-                           const fs::path &kit_dir) {
-  fmt::print("Building library: {}\n", name);
+                           const fs::path &kit_dir,
+                           core::cache_manager_c &cache) {
+  auto cache_entry = cache.get_library_cache_paths(name);
 
-  std::string c_output;
   std::vector<std::string> import_search_paths;
   if (lib.include_paths.has_value()) {
     import_search_paths = lib.include_paths.value();
   }
   import_search_paths.push_back(kit_dir.string());
 
+  std::string c_output;
+  std::vector<std::string> source_files;
   int result = compile_truk_to_c(lib.source_entry_file_path,
-                                 import_search_paths, c_output);
+                                 import_search_paths, c_output, source_files);
   if (result != 0) {
     return result;
   }
 
-  fs::path output_path(lib.output_file_path);
-  fs::create_directories(output_path.parent_path());
+  if (!cache.needs_rebuild(name, source_files)) {
+    fmt::print("Library '{}' is up to date\n", name);
+    return 0;
+  }
 
-  std::ofstream out_file(lib.output_file_path);
-  if (!out_file.is_open()) {
-    fmt::print(stderr, "Error: Failed to write library C output to '{}'\n",
-               lib.output_file_path);
+  fmt::print("Building library: {}\n", name);
+
+  fs::create_directories(cache_entry.c_file.parent_path());
+
+  std::ofstream c_file(cache_entry.c_file);
+  if (!c_file.is_open()) {
+    fmt::print(stderr, "Error: Failed to write C output to '{}'\n",
+               cache_entry.c_file.string());
     return 1;
   }
-  out_file << c_output;
-  out_file.close();
+  c_file << c_output;
+  c_file.close();
+
+  tcc::tcc_compiler_c compiler;
+
+  if (lib.include_paths.has_value()) {
+    for (const auto &path : lib.include_paths.value()) {
+      compiler.add_include_path(path);
+    }
+  }
+
+  auto obj_result =
+      compiler.compile_to_object(c_output, cache_entry.o_file.string());
+  if (!obj_result.success) {
+    fmt::print(stderr, "Error compiling library '{}' to object: {}\n", name,
+               obj_result.error_message);
+    return 1;
+  }
+
+  auto ar_result = compiler.create_static_archive(cache_entry.o_file.string(),
+                                                  cache_entry.a_file.string());
+  if (!ar_result.success) {
+    fmt::print(stderr, "Error creating archive for library '{}': {}\n", name,
+               ar_result.error_message);
+    return 1;
+  }
+
+  cache.update_metadata(name, source_files);
 
   return 0;
 }
 
 static int compile_application(const std::string &name,
                                const kit::target_application_c &app,
-                               const kit::kit_config_s &config) {
+                               const kit::kit_config_s &config,
+                               core::cache_manager_c &cache) {
   fmt::print("Building application: {}\n", name);
 
   std::string c_output;
+  std::vector<std::string> source_files;
   std::vector<std::string> import_search_paths;
   if (app.include_paths.has_value()) {
     import_search_paths = app.include_paths.value();
@@ -125,7 +165,7 @@ static int compile_application(const std::string &name,
   import_search_paths.push_back(config.kit_file_directory.string());
 
   int result = compile_truk_to_c(app.source_entry_file_path,
-                                 import_search_paths, c_output);
+                                 import_search_paths, c_output, source_files);
   if (result != 0) {
     return result;
   }
@@ -150,30 +190,16 @@ static int compile_application(const std::string &name,
 
   if (app.libraries.has_value()) {
     for (const auto &lib_name : app.libraries.value()) {
-      for (const auto &[name, lib] : config.libraries) {
-        if (name == lib_name) {
-          fs::path lib_path(lib.output_file_path);
-          std::string ext = lib_path.extension().string();
-
-          if (ext == ".c") {
-            compiler.add_file(lib.output_file_path);
-          } else if (ext == ".o" || ext == ".obj") {
-            compiler.add_file(lib.output_file_path);
-          } else if (ext == ".a" || ext == ".so" || ext == ".dylib") {
-            compiler.add_library_path(lib_path.parent_path().string());
-
-            std::string lib_filename = lib_path.filename().string();
-            if (lib_filename.substr(0, 3) == "lib" && lib_filename.size() > 3) {
-              std::string base_name = lib_filename.substr(3);
-              size_t dot_pos = base_name.find('.');
-              if (dot_pos != std::string::npos) {
-                base_name = base_name.substr(0, dot_pos);
-              }
-              compiler.add_library(base_name);
-            }
-          }
-          break;
-        }
+      auto lib_cache_entry = cache.get_library_cache_paths(lib_name);
+      if (fs::exists(lib_cache_entry.o_file)) {
+        compiler.add_file(lib_cache_entry.o_file.string());
+      } else if (fs::exists(lib_cache_entry.a_file)) {
+        compiler.add_file(lib_cache_entry.a_file.string());
+      } else {
+        fmt::print(stderr,
+                   "Error: Library '{}' not found (checked .o and .a files)\n",
+                   lib_name);
+        return 1;
       }
     }
   }
@@ -206,6 +232,9 @@ int build(const build_options_s &opts) {
     return 1;
   }
 
+  core::cache_manager_c cache(config.kit_file_directory);
+  cache.ensure_cache_directories();
+
   kit::build_order_s build_order;
   try {
     build_order = kit::resolve_build_order(config);
@@ -215,7 +244,7 @@ int build(const build_options_s &opts) {
   }
 
   for (const auto &[name, lib] : build_order.libraries) {
-    int result = compile_library(name, lib, config.kit_file_directory);
+    int result = compile_library(name, lib, config.kit_file_directory, cache);
     if (result != 0) {
       fmt::print(stderr, "Failed to build library: {}\n", name);
       return 1;
@@ -223,7 +252,7 @@ int build(const build_options_s &opts) {
   }
 
   for (const auto &[name, app] : build_order.applications) {
-    int result = compile_application(name, app, config);
+    int result = compile_application(name, app, config, cache);
     if (result != 0) {
       fmt::print(stderr, "Failed to build application: {}\n", name);
       return 1;
