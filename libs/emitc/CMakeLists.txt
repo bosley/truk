@@ -1,10 +1,18 @@
+include(EmbedRuntime)
+
+set(EMBEDDED_RUNTIME_FILE "${CMAKE_BINARY_DIR}/generated/embedded_runtime.hpp")
+embed_sxs_runtime("${EMBEDDED_RUNTIME_FILE}")
+
 add_library(truk_emitc STATIC
     src/emitter.cpp
+    ${EMBEDDED_RUNTIME_FILE}
 )
 
 target_include_directories(truk_emitc
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE
+        ${CMAKE_BINARY_DIR}/generated
 )
 
 target_link_libraries(truk_emitc PUBLIC

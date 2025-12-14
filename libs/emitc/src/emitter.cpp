@@ -973,7 +973,7 @@ void emitter_c::visit(const index_c &node) {
   }
 
   if (is_slice) {
-    _current_expr << "({ truk_bounds_check(" << idx_expr << ", (" << obj_expr
+    _current_expr << "({ sxs_bounds_check(" << idx_expr << ", (" << obj_expr
                   << ").len); (" << obj_expr << ").data[" << idx_expr
                   << "]; })";
   } else {
@@ -1060,7 +1060,7 @@ void emitter_c::visit(const assignment_c &node) {
       _in_expression = was_in_expr;
 
       _functions << cdef::indent(_indent_level);
-      _functions << "truk_bounds_check(" << idx_expr << ", (" << obj_expr
+      _functions << "sxs_bounds_check(" << idx_expr << ", (" << obj_expr
                  << ").len);\n";
       _functions << cdef::indent(_indent_level);
       _functions << "(" << obj_expr << ").data[" << idx_expr << "] = " << value

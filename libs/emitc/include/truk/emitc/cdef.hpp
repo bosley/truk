@@ -1,56 +1,80 @@
 #pragma once
 
+#include "embedded_runtime.hpp"
 #include <fmt/core.h>
 #include <sstream>
 #include <string>
 
 namespace truk::emitc::cdef {
 
-inline std::string emit_program_header() {
-  return R"(#include <stdint.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
+inline std::string assemble_runtime_for_application() {
+  std::stringstream ss;
 
-typedef int8_t i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef float f32;
-typedef double f64;
+  ss << "#include <stdlib.h>\n";
+  ss << "#include <stdio.h>\n";
+  ss << "#include <string.h>\n";
+  ss << "#include <stdarg.h>\n\n";
 
-#define TRUK_PANIC(msg, len) do { \
-  fprintf(stderr, "panic: %.*s\n", (int)(len), (const char*)(msg)); \
-  exit(1); \
-} while(0)
-
-#define TRUK_BOUNDS_CHECK(idx, len) do { \
-  if ((idx) >= (len)) { \
-    fprintf(stderr, "panic: index out of bounds: %llu >= %llu\n", \
-            (unsigned long long)(idx), (unsigned long long)(len)); \
-    exit(1); \
-  } \
-} while(0)
-
-#define TRUK_DEFER_SCOPE_BEGIN() do {
-#define TRUK_DEFER_SCOPE_END(...) } while(0); __VA_ARGS__
-#define TRUK_ANONYMOUS(body) do { body } while(0)
-
-static inline void truk_bounds_check(u64 idx, u64 len) {
-  if (idx >= len) {
-    fprintf(stderr, "panic: index out of bounds: %llu >= %llu\n", 
-            (unsigned long long)idx, (unsigned long long)len);
-    exit(1);
+  if (embedded::runtime_files.count("include/sxs/types.h")) {
+    ss << embedded::runtime_files.at("include/sxs/types.h").content << "\n";
   }
+
+  if (embedded::runtime_files.count("include/sxs/runtime.h")) {
+    auto content = embedded::runtime_files.at("include/sxs/runtime.h").content;
+    size_t pos = content.find("#include \"types.h\"");
+    if (pos != std::string::npos) {
+      content.erase(pos, 18);
+    }
+    ss << content << "\n";
+  }
+
+  ss << "\n";
+
+  ss << "#define TRUK_PANIC(msg, len) sxs_panic((msg), (len))\n";
+  ss << "#define TRUK_BOUNDS_CHECK(idx, len) sxs_bounds_check((idx), "
+        "(len))\n\n";
+
+  ss << "#define TRUK_DEFER_SCOPE_BEGIN() do {\n";
+  ss << "#define TRUK_DEFER_SCOPE_END(...) } while(0); __VA_ARGS__\n";
+  ss << "#define TRUK_ANONYMOUS(body) do { body } while(0)\n\n";
+
+  if (embedded::runtime_files.count("src/runtime.c")) {
+    auto content = embedded::runtime_files.at("src/runtime.c").content;
+    size_t pos = content.find("#include <sxs/runtime.h>");
+    if (pos != std::string::npos) {
+      content.erase(pos, 24);
+    }
+    ss << content << "\n";
+  }
+
+  return ss.str();
 }
 
-)";
+inline std::string assemble_runtime_for_library() {
+  std::stringstream ss;
+
+  if (embedded::runtime_files.count("include/sxs/types.h")) {
+    ss << embedded::runtime_files.at("include/sxs/types.h").content << "\n";
+  }
+
+  if (embedded::runtime_files.count("include/sxs/runtime.h")) {
+    auto content = embedded::runtime_files.at("include/sxs/runtime.h").content;
+    size_t pos = content.find("#include \"types.h\"");
+    if (pos != std::string::npos) {
+      content.erase(pos, 18);
+    }
+    ss << content << "\n";
+  }
+
+  return ss.str();
+}
+
+inline std::string emit_program_header() {
+  return assemble_runtime_for_application();
+}
+
+inline std::string emit_library_header() {
+  return assemble_runtime_for_library();
 }
 
 inline std::string emit_slice_typedef(const std::string &element_type,
@@ -96,23 +120,5 @@ inline std::string emit_bounds_check(const std::string &idx_expr,
 }
 
 inline std::string indent(int level) { return std::string(level * 2, ' '); }
-
-inline std::string emit_library_header() {
-  return R"(#include <stdint.h>
-#include <stdbool.h>
-
-typedef int8_t i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef float f32;
-typedef double f64;
-
-)";
-}
 
 } // namespace truk::emitc::cdef
