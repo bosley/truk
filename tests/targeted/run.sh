@@ -2,7 +2,7 @@
 
 set -e
 
-TRUK_BIN="../build/apps/truk/truk"
+TRUK_BIN="../../build/apps/truk/truk"
 TEST_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMP_DIR="${TEST_DIR}/.tmp"
 
