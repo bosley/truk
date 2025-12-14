@@ -26,32 +26,6 @@ int clean(const clean_options_s &opts) {
 
   int removed_count = 0;
 
-  for (const auto &[name, lib] : config.libraries) {
-    fs::path lib_path(lib.output_file_path);
-    if (fs::exists(lib_path)) {
-      try {
-        fs::remove(lib_path);
-        fmt::print("Removed: {}\n", lib.output_file_path);
-        removed_count++;
-      } catch (const std::exception &e) {
-        fmt::print(stderr, "Warning: Failed to remove {}: {}\n",
-                   lib.output_file_path, e.what());
-      }
-    }
-
-    std::string test_exe = "build/test_" + name;
-    if (fs::exists(test_exe)) {
-      try {
-        fs::remove(test_exe);
-        fmt::print("Removed: {}\n", test_exe);
-        removed_count++;
-      } catch (const std::exception &e) {
-        fmt::print(stderr, "Warning: Failed to remove {}: {}\n", test_exe,
-                   e.what());
-      }
-    }
-  }
-
   for (const auto &[name, app] : config.applications) {
     fs::path app_path(app.output_file_path);
     if (fs::exists(app_path)) {
@@ -74,6 +48,20 @@ int clean(const clean_options_s &opts) {
         fmt::print("Removed empty build directory\n");
       }
     } catch (const std::exception &e) {
+    }
+  }
+
+  fs::path cache_dir = config.kit_file_directory / ".cache";
+  if (fs::exists(cache_dir) && fs::is_directory(cache_dir)) {
+    try {
+      std::uintmax_t removed_files = fs::remove_all(cache_dir);
+      if (removed_files > 0) {
+        fmt::print("Removed .cache directory ({} file(s))\n", removed_files);
+        removed_count += removed_files;
+      }
+    } catch (const std::exception &e) {
+      fmt::print(stderr, "Warning: Failed to remove .cache directory: {}\n",
+                 e.what());
     }
   }
 

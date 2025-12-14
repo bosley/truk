@@ -243,6 +243,9 @@ resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
 
   result.c_imports = std::move(_c_imports);
 
+  result.all_source_files.assign(_processed_files.begin(),
+                                 _processed_files.end());
+
   return result;
 }
 

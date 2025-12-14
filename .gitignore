@@ -10,3 +10,5 @@ build-*/
 .tags/
 *.out
 *.vsix
+.cache/
+.tmp/

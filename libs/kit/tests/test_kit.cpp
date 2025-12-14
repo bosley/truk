@@ -102,7 +102,6 @@ TEST(KitParserTests, ParseSimpleLibrary) {
   write_kit_file(R"(
 library math {
     source = libs/math/lib.truk
-    output = build/libmath.c
 }
 )");
 
@@ -114,7 +113,6 @@ library math {
   STRCMP_EQUAL("math", name.c_str());
   CHECK(lib.source_entry_file_path.find("libs/math/lib.truk") !=
         std::string::npos);
-  CHECK(lib.output_file_path.find("build/libmath.c") != std::string::npos);
   CHECK_FALSE(lib.depends.has_value());
   CHECK_FALSE(lib.test_file_path.has_value());
 }
@@ -123,7 +121,6 @@ TEST(KitParserTests, ParseLibraryWithDependencies) {
   write_kit_file(R"(
 library database {
     source = libs/db/lib.truk
-    output = build/libdb.c
     depends = json logger
 }
 )");
@@ -142,7 +139,6 @@ TEST(KitParserTests, ParseLibraryWithTest) {
   write_kit_file(R"(
 library math {
     source = libs/math/lib.truk
-    output = build/libmath.c
     test = libs/math/test.truk
 }
 )");
@@ -161,12 +157,10 @@ TEST(KitParserTests, ParseMultipleLibrariesAndApps) {
                  "\n"
                  "library json {\n"
                  "    source = libs/json/lib.truk\n"
-                 "    output = build/libjson.c\n"
                  "}\n"
                  "\n"
                  "library http {\n"
                  "    source = libs/http/lib.truk\n"
-                 "    output = build/libhttp.c\n"
                  "    depends = json\n"
                  "}\n"
                  "\n"
@@ -215,7 +209,6 @@ TEST(KitParserTests, ParseWithComments) {
                  "# Another comment\n"
                  "library math {\n"
                  "    source = lib.truk\n"
-                 "    output = build/lib.c\n"
                  "}\n");
 
   auto config = truk::kit::parse_kit_file(test_dir / "truk.kit");
@@ -243,13 +236,13 @@ TEST(KitParserTests, ParseQuotedStrings) {
 }
 
 TEST(KitParserTests, ErrorOnMissingRequiredField_Library) {
-  write_kit_file("library math {\n    source = lib.truk\n}\n");
+  write_kit_file("library math {\n}\n");
 
   try {
     truk::kit::parse_kit_file(test_dir / "truk.kit");
-    FAIL("Expected exception for missing 'output' field");
+    FAIL("Expected exception for missing 'source' field");
   } catch (const truk::kit::kit_exception_c &e) {
-    CHECK(std::string(e.what()).find("missing required field 'output'") !=
+    CHECK(std::string(e.what()).find("missing required field 'source'") !=
           std::string::npos);
   }
 }
@@ -269,11 +262,9 @@ TEST(KitParserTests, ErrorOnMissingRequiredField_Application) {
 TEST(KitParserTests, ErrorOnDuplicateLibraryName) {
   write_kit_file("library math {\n"
                  "    source = lib1.truk\n"
-                 "    output = build/lib1.c\n"
                  "}\n"
                  "library math {\n"
                  "    source = lib2.truk\n"
-                 "    output = build/lib2.c\n"
                  "}\n");
 
   try {
@@ -305,7 +296,6 @@ TEST(KitParserTests, ErrorOnDuplicateApplicationName) {
 TEST(KitParserTests, ErrorOnUnknownLibraryField) {
   write_kit_file("library math {\n"
                  "    source = lib.truk\n"
-                 "    output = build/lib.c\n"
                  "    invalid_field = value\n"
                  "}\n");
 
@@ -334,8 +324,7 @@ TEST(KitParserTests, ErrorOnUnknownApplicationField) {
 
 TEST(KitParserTests, ErrorOnMissingClosingBrace) {
   write_kit_file("library math {\n"
-                 "    source = lib.truk\n"
-                 "    output = build/lib.c\n");
+                 "    source = lib.truk\n");
 
   try {
     truk::kit::parse_kit_file(test_dir / "truk.kit");
@@ -357,10 +346,10 @@ TEST_GROUP(KitResolverTests) {
 };
 
 TEST(KitResolverTests, ResolveNoDependencies) {
-  config.libraries.emplace_back(
-      "lib1", truk::kit::target_library_c("lib1.truk", "lib1.c"));
-  config.libraries.emplace_back(
-      "lib2", truk::kit::target_library_c("lib2.truk", "lib2.c"));
+  config.libraries.emplace_back("lib1",
+                                truk::kit::target_library_c("lib1.truk"));
+  config.libraries.emplace_back("lib2",
+                                truk::kit::target_library_c("lib2.truk"));
 
   auto order = truk::kit::resolve_build_order(config);
 
@@ -368,12 +357,12 @@ TEST(KitResolverTests, ResolveNoDependencies) {
 }
 
 TEST(KitResolverTests, ResolveSimpleDependency) {
-  config.libraries.emplace_back(
-      "json", truk::kit::target_library_c("json.truk", "json.c"));
+  config.libraries.emplace_back("json",
+                                truk::kit::target_library_c("json.truk"));
 
   std::vector<std::string> deps = {"json"};
-  config.libraries.emplace_back(
-      "database", truk::kit::target_library_c("db.truk", "db.c", deps));
+  config.libraries.emplace_back("database",
+                                truk::kit::target_library_c("db.truk", deps));
 
   auto order = truk::kit::resolve_build_order(config);
 
@@ -383,20 +372,20 @@ TEST(KitResolverTests, ResolveSimpleDependency) {
 }
 
 TEST(KitResolverTests, ResolveComplexDependencies) {
-  config.libraries.emplace_back(
-      "json", truk::kit::target_library_c("json.truk", "json.c"));
+  config.libraries.emplace_back("json",
+                                truk::kit::target_library_c("json.truk"));
 
   std::vector<std::string> db_deps = {"json"};
   config.libraries.emplace_back(
-      "database", truk::kit::target_library_c("db.truk", "db.c", db_deps));
+      "database", truk::kit::target_library_c("db.truk", db_deps));
 
   std::vector<std::string> http_deps = {"json"};
   config.libraries.emplace_back(
-      "http", truk::kit::target_library_c("http.truk", "http.c", http_deps));
+      "http", truk::kit::target_library_c("http.truk", http_deps));
 
   std::vector<std::string> api_deps = {"http", "database"};
   config.libraries.emplace_back(
-      "api", truk::kit::target_library_c("api.truk", "api.c", api_deps));
+      "api", truk::kit::target_library_c("api.truk", api_deps));
 
   auto order = truk::kit::resolve_build_order(config);
 
@@ -427,12 +416,12 @@ TEST(KitResolverTests, ResolveComplexDependencies) {
 
 TEST(KitResolverTests, ErrorOnCircularDependency) {
   std::vector<std::string> deps_a = {"lib_b"};
-  config.libraries.emplace_back(
-      "lib_a", truk::kit::target_library_c("a.truk", "a.c", deps_a));
+  config.libraries.emplace_back("lib_a",
+                                truk::kit::target_library_c("a.truk", deps_a));
 
   std::vector<std::string> deps_b = {"lib_a"};
-  config.libraries.emplace_back(
-      "lib_b", truk::kit::target_library_c("b.truk", "b.c", deps_b));
+  config.libraries.emplace_back("lib_b",
+                                truk::kit::target_library_c("b.truk", deps_b));
 
   try {
     truk::kit::resolve_build_order(config);
@@ -445,8 +434,8 @@ TEST(KitResolverTests, ErrorOnCircularDependency) {
 
 TEST(KitResolverTests, ErrorOnUnknownDependency) {
   std::vector<std::string> deps = {"nonexistent"};
-  config.libraries.emplace_back(
-      "lib", truk::kit::target_library_c("lib.truk", "lib.c", deps));
+  config.libraries.emplace_back("lib",
+                                truk::kit::target_library_c("lib.truk", deps));
 
   try {
     truk::kit::resolve_build_order(config);
@@ -457,8 +446,7 @@ TEST(KitResolverTests, ErrorOnUnknownDependency) {
 }
 
 TEST(KitResolverTests, ApplicationsComeLast) {
-  config.libraries.emplace_back(
-      "lib", truk::kit::target_library_c("lib.truk", "lib.c"));
+  config.libraries.emplace_back("lib", truk::kit::target_library_c("lib.truk"));
 
   config.applications.emplace_back(
       "app", truk::kit::target_application_c("app.truk", "app"));

@@ -20,6 +20,7 @@ struct resolved_imports_s {
   std::vector<truk::language::nodes::base_ptr> all_declarations;
   std::vector<import_error_s> errors;
   std::vector<truk::language::nodes::c_import_s> c_imports;
+  std::vector<std::string> all_source_files;
   bool success;
 };
 

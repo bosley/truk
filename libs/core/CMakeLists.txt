@@ -5,6 +5,7 @@ truk_add_library(
         src/environment.cpp
         src/rll.cpp
         src/error_display.cpp
+        src/cache.cpp
     HEADERS
         include/truk/core/core.hpp
         include/truk/core/memory.hpp
@@ -14,6 +15,7 @@ truk_add_library(
         include/truk/core/host.hpp
         include/truk/core/rll.hpp
         include/truk/core/error_display.hpp
+        include/truk/core/cache.hpp
     DEPENDENCIES
         fmt::fmt
 )

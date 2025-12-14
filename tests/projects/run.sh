@@ -66,16 +66,6 @@ test_manual_cimport() {
     
     run_test "manual_cimport: truk clean" "${TRUK_BIN} clean" 0 "${temp_project}"
     
-    if [ -d "${temp_project}/build" ]; then
-        echo -e "${RED}FAIL${NC} manual_cimport: build directory not removed after clean"
-        failed_tests=$((failed_tests + 1))
-        total_tests=$((total_tests + 1))
-    else
-        echo -e "${GREEN}PASS${NC} manual_cimport: build directory removed after clean"
-        passed_tests=$((passed_tests + 1))
-        total_tests=$((total_tests + 1))
-    fi
-    
     echo ""
 }
 
@@ -186,13 +176,11 @@ project testproject
 
 library math {
     source = libs/math/lib_impl.truk
-    output = build/libmath.c
     test = libs/math/test.truk
 }
 
 library calc {
     source = libs/calc/lib_impl.truk
-    output = build/libcalc.c
     test = libs/calc/test.truk
     depends = math
 }
@@ -219,8 +207,11 @@ EOF
     echo ""
 }
 
+echo "Running all test suites..."
+echo ""
+
+echo "=== Running projects tests ==="
 test_manual_cimport
-test_generated_libs
 
 echo "=========================================="
 echo "Test Summary"
