@@ -1,6 +1,0 @@
-
-
-fn main() :i32 {
-  printf("AYYYYYYYYY\n\n");
-  return 0;
-}
