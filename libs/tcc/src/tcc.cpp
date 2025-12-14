@@ -23,6 +23,10 @@ void tcc_compiler_c::add_library(const std::string &lib) {
   tcc_add_library(static_cast<TCCState *>(m_state), lib.c_str());
 }
 
+void tcc_compiler_c::add_file(const std::string &file) {
+  tcc_add_file(static_cast<TCCState *>(m_state), file.c_str());
+}
+
 void tcc_compiler_c::set_rpath(const std::string &path) {
   std::string rpath_option = "-Wl,-rpath," + path;
   tcc_set_options(static_cast<TCCState *>(m_state), rpath_option.c_str());

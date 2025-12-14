@@ -6,6 +6,14 @@ namespace truk::common {
 
 void print_usage(const char *program_name) {
   fmt::print(stderr, "Usage:\n");
+  fmt::print(stderr, "  {} new <name>\n", program_name);
+  fmt::print(stderr, "    Create new project with truk.kit\n\n");
+  fmt::print(stderr, "  {} build [target]\n", program_name);
+  fmt::print(stderr, "    Build project (or specific target directory)\n\n");
+  fmt::print(stderr, "  {} test [target]\n", program_name);
+  fmt::print(stderr, "    Run all tests (or specific test)\n\n");
+  fmt::print(stderr, "  {} clean\n", program_name);
+  fmt::print(stderr, "    Remove build artifacts\n\n");
   fmt::print(stderr,
              "  {} <file.truk> [-o output] [-I path]... [-L path]... "
              "[-l lib]... [-rpath path]...\n",
@@ -45,6 +53,35 @@ parsed_args_s parse_args(int argc, char **argv) {
   }
 
   int idx = 1;
+
+  if (std::strcmp(argv[1], "new") == 0) {
+    args.command = "new";
+    if (argc < 3) {
+      fmt::print(stderr, "Error: 'new' command requires a project name\n");
+      print_usage(argv[0]);
+      std::exit(1);
+    }
+    args.project_name = argv[2];
+    return args;
+  }
+
+  if (std::strcmp(argv[1], "build") == 0) {
+    args.command = "build";
+    args.target_dir = argc > 2 ? argv[2] : ".";
+    return args;
+  }
+
+  if (std::strcmp(argv[1], "test") == 0) {
+    args.command = "test";
+    args.target_dir = argc > 2 ? argv[2] : ".";
+    return args;
+  }
+
+  if (std::strcmp(argv[1], "clean") == 0) {
+    args.command = "clean";
+    args.target_dir = argc > 2 ? argv[2] : ".";
+    return args;
+  }
 
   if (std::strcmp(argv[1], "toc") == 0 || std::strcmp(argv[1], "tcc") == 0 ||
       std::strcmp(argv[1], "run") == 0) {
