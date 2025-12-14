@@ -1286,7 +1286,6 @@ assembly_result_s result_c::assemble(assembly_type_e type,
 
   header_content += function_declarations.str();
 
-  source_content += cdef::emit_program_header();
   if (!header_name.empty()) {
     source_content += "#include \"" + header_name + "\"\n\n";
   }

@@ -7,6 +7,30 @@
 
 namespace truk::emitc::cdef {
 
+inline std::string strip_pragma_and_includes(const std::string &content) {
+  std::stringstream result;
+  std::istringstream stream(content);
+  std::string line;
+
+  while (std::getline(stream, line)) {
+    if (line.find("#pragma once") != std::string::npos) {
+      continue;
+    }
+    if (line.find("#include \"types.h\"") != std::string::npos) {
+      continue;
+    }
+    if (line.find("#include <sxs/runtime.h>") != std::string::npos) {
+      continue;
+    }
+    if (line.empty() && result.str().empty()) {
+      continue;
+    }
+    result << line << "\n";
+  }
+
+  return result.str();
+}
+
 inline std::string assemble_runtime_for_application() {
   std::stringstream ss;
 
@@ -16,19 +40,14 @@ inline std::string assemble_runtime_for_application() {
   ss << "#include <stdarg.h>\n\n";
 
   if (embedded::runtime_files.count("include/sxs/types.h")) {
-    ss << embedded::runtime_files.at("include/sxs/types.h").content << "\n";
+    ss << strip_pragma_and_includes(
+        embedded::runtime_files.at("include/sxs/types.h").content);
   }
 
   if (embedded::runtime_files.count("include/sxs/runtime.h")) {
-    auto content = embedded::runtime_files.at("include/sxs/runtime.h").content;
-    size_t pos = content.find("#include \"types.h\"");
-    if (pos != std::string::npos) {
-      content.erase(pos, 18);
-    }
-    ss << content << "\n";
+    ss << strip_pragma_and_includes(
+        embedded::runtime_files.at("include/sxs/runtime.h").content);
   }
-
-  ss << "\n";
 
   ss << "#define TRUK_PANIC(msg, len) sxs_panic((msg), (len))\n";
   ss << "#define TRUK_BOUNDS_CHECK(idx, len) sxs_bounds_check((idx), "
@@ -39,12 +58,8 @@ inline std::string assemble_runtime_for_application() {
   ss << "#define TRUK_ANONYMOUS(body) do { body } while(0)\n\n";
 
   if (embedded::runtime_files.count("src/runtime.c")) {
-    auto content = embedded::runtime_files.at("src/runtime.c").content;
-    size_t pos = content.find("#include <sxs/runtime.h>");
-    if (pos != std::string::npos) {
-      content.erase(pos, 24);
-    }
-    ss << content << "\n";
+    ss << strip_pragma_and_includes(
+        embedded::runtime_files.at("src/runtime.c").content);
   }
 
   return ss.str();
@@ -54,16 +69,13 @@ inline std::string assemble_runtime_for_library() {
   std::stringstream ss;
 
   if (embedded::runtime_files.count("include/sxs/types.h")) {
-    ss << embedded::runtime_files.at("include/sxs/types.h").content << "\n";
+    ss << strip_pragma_and_includes(
+        embedded::runtime_files.at("include/sxs/types.h").content);
   }
 
   if (embedded::runtime_files.count("include/sxs/runtime.h")) {
-    auto content = embedded::runtime_files.at("include/sxs/runtime.h").content;
-    size_t pos = content.find("#include \"types.h\"");
-    if (pos != std::string::npos) {
-      content.erase(pos, 18);
-    }
-    ss << content << "\n";
+    ss << strip_pragma_and_includes(
+        embedded::runtime_files.at("include/sxs/runtime.h").content);
   }
 
   return ss.str();

@@ -3,7 +3,7 @@
 #include <sxs/runtime.h>
 #include <sxs/types.h>
 
-TEST_GROUP(SxsTypes) {};
+TEST_GROUP(SxsTypes){};
 
 TEST(SxsTypes, TypeSizes) {
   CHECK_EQUAL(1, sizeof(i8));
@@ -20,7 +20,7 @@ TEST(SxsTypes, TypeSizes) {
 
 TEST(SxsTypes, BoolType) { CHECK_EQUAL(1, sizeof(bool)); }
 
-TEST_GROUP(SxsBoundsCheck) {};
+TEST_GROUP(SxsBoundsCheck){};
 
 TEST(SxsBoundsCheck, ValidIndex) {
   sxs_bounds_check(0, 10);
