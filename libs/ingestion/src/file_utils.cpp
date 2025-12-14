@@ -1,16 +1,15 @@
-#include "file_utils.hpp"
 #include <filesystem>
-#include <fmt/core.h>
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
+#include <truk/ingestion/file_utils.hpp>
 
-namespace truk::common {
+namespace truk::ingestion {
 
 std::string read_file(const std::string &path) {
   std::ifstream file(path);
   if (!file.is_open()) {
-    fmt::print(stderr, "Error: Could not open file '{}'\n", path);
-    std::exit(1);
+    throw std::runtime_error("Could not open file: " + path);
   }
 
   std::stringstream buffer;
@@ -21,7 +20,6 @@ std::string read_file(const std::string &path) {
 bool write_file(const std::string &path, const std::string &content) {
   std::ofstream out(path);
   if (!out.is_open()) {
-    fmt::print(stderr, "Error: Could not open output file '{}'\n", path);
     return false;
   }
 
@@ -56,4 +54,4 @@ std::string canonicalize_path(const std::string &path) {
   }
 }
 
-} // namespace truk::common
+} // namespace truk::ingestion

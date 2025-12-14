@@ -1,8 +1,8 @@
 #include "run.hpp"
-#include "../common/file_utils.hpp"
 #include <fmt/core.h>
 #include <truk/core/error_display.hpp>
 #include <truk/emitc/emitter.hpp>
+#include <truk/ingestion/file_utils.hpp>
 #include <truk/ingestion/parser.hpp>
 #include <truk/tcc/tcc.hpp>
 #include <truk/validation/typecheck.hpp>
@@ -23,7 +23,7 @@ int run(const run_options_s &opts) {
     fmt::print("Rpath: {}\n", path);
   }
 
-  std::string source = common::read_file(opts.input_file);
+  std::string source = ingestion::read_file(opts.input_file);
 
   ingestion::parser_c parser(source.c_str(), source.size());
   auto parse_result = parser.parse();

@@ -1,6 +1,8 @@
 add_library(truk_ingestion STATIC
     src/tokenize.cpp
     src/parser.cpp
+    src/file_utils.cpp
+    src/import_resolver.cpp
 )
 
 target_include_directories(truk_ingestion PUBLIC

@@ -1,9 +1,8 @@
 #include "compile.hpp"
-#include "../common/file_utils.hpp"
-#include "import_resolver.hpp"
 #include <fmt/core.h>
 #include <truk/core/error_display.hpp>
 #include <truk/emitc/emitter.hpp>
+#include <truk/ingestion/import_resolver.hpp>
 #include <truk/ingestion/parser.hpp>
 #include <truk/tcc/tcc.hpp>
 #include <truk/validation/typecheck.hpp>
@@ -24,7 +23,7 @@ int compile(const compile_options_s &opts) {
     fmt::print("Rpath: {}\n", path);
   }
 
-  import_resolver_c resolver;
+  ingestion::import_resolver_c resolver;
   auto resolved = resolver.resolve(opts.input_file);
 
   if (!resolved.success) {

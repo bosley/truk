@@ -1,9 +1,9 @@
 #include "toc.hpp"
-#include "../common/file_utils.hpp"
-#include "import_resolver.hpp"
 #include <fmt/core.h>
 #include <truk/core/error_display.hpp>
 #include <truk/emitc/emitter.hpp>
+#include <truk/ingestion/file_utils.hpp>
+#include <truk/ingestion/import_resolver.hpp>
 #include <truk/ingestion/parser.hpp>
 #include <truk/validation/typecheck.hpp>
 
@@ -14,7 +14,7 @@ int toc(const toc_options_s &opts) {
     fmt::print("Include path: {}\n", path);
   }
 
-  import_resolver_c resolver;
+  ingestion::import_resolver_c resolver;
   auto resolved = resolver.resolve(opts.input_file);
 
   if (!resolved.success) {
@@ -60,7 +60,9 @@ int toc(const toc_options_s &opts) {
     output += chunk;
   }
 
-  if (!common::write_file(opts.output_file, output)) {
+  if (!ingestion::write_file(opts.output_file, output)) {
+    fmt::print(stderr, "Error: Could not write output file '{}'\n",
+               opts.output_file);
     return 1;
   }
 
