@@ -56,7 +56,7 @@ for test_category_dir in "${TEST_DIRS[@]}" ; do
         
         test_name=$(basename "${test_file}" .truk)
         
-        expected_code=$(echo "${test_name}" | grep -oE '[0-9]+$')
+        expected_code=$(echo "${test_name}" | grep -oE '[0-9]+$' || true)
         
         if [ -z "${expected_code}" ]; then
             echo -e "${YELLOW}SKIP${NC} ${category_name}/${test_name} (no exit code in filename)"
@@ -66,13 +66,18 @@ for test_category_dir in "${TEST_DIRS[@]}" ; do
         c_file="${TEMP_DIR}/${test_name}.c"
         bin_file="${TEMP_DIR}/${test_name}.out"
         
-        if ! "${TRUK_BIN}" toc "${test_file}" -o "${c_file}" > /dev/null 2>&1 ; then
+        include_args=""
+        if [ "${category_name}" = "cimport" ]; then
+            include_args="-I ${test_category_dir}"
+        fi
+        
+        if ! "${TRUK_BIN}" toc "${test_file}" -o "${c_file}" ${include_args} > /dev/null 2>&1 ; then
             echo -e "${RED}FAIL${NC} ${category_name}/${test_name} (truk→C compilation failed)"
             failed_tests=$((failed_tests + 1))
             continue
         fi
         
-        if ! "${TRUK_BIN}" tcc "${c_file}" -o "${bin_file}" > /dev/null 2>&1 ; then
+        if ! "${TRUK_BIN}" tcc "${c_file}" -o "${bin_file}" ${include_args} > /dev/null 2>&1 ; then
             echo -e "${RED}FAIL${NC} ${category_name}/${test_name} (TCC C→binary compilation failed)"
             failed_tests=$((failed_tests + 1))
             continue

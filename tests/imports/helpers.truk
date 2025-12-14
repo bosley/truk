@@ -1,0 +1,5 @@
+import "utils.truk";
+
+fn quad(x: i32) : i32 {
+    return dbl(dbl(x));
+}

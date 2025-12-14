@@ -150,15 +150,17 @@ class fn_c : public base_c {
 public:
   fn_c() = delete;
   fn_c(std::size_t source_index, identifier_s name,
-       std::vector<parameter_s> params, type_ptr return_type, base_ptr body)
+       std::vector<parameter_s> params, type_ptr return_type,
+       std::optional<base_ptr> body, bool is_extern = false)
       : base_c(keywords_e::FN, source_index), _name(std::move(name)),
         _params(std::move(params)), _return_type(std::move(return_type)),
-        _body(std::move(body)) {}
+        _body(std::move(body)), _is_extern(is_extern) {}
 
   const identifier_s &name() const { return _name; }
   const std::vector<parameter_s> &params() const { return _params; }
   const type_c *return_type() const { return _return_type.get(); }
-  const base_c *body() const { return _body.get(); }
+  const base_c *body() const { return _body ? _body->get() : nullptr; }
+  bool is_extern() const { return _is_extern; }
 
   void accept(visitor_if &visitor) const override;
 
@@ -166,25 +168,28 @@ private:
   identifier_s _name;
   std::vector<parameter_s> _params;
   type_ptr _return_type;
-  base_ptr _body;
+  std::optional<base_ptr> _body;
+  bool _is_extern{false};
 };
 
 class struct_c : public base_c {
 public:
   struct_c() = delete;
   struct_c(std::size_t source_index, identifier_s name,
-           std::vector<struct_field_s> fields)
+           std::vector<struct_field_s> fields, bool is_extern = false)
       : base_c(keywords_e::STRUCT, source_index), _name(std::move(name)),
-        _fields(std::move(fields)) {}
+        _fields(std::move(fields)), _is_extern(is_extern) {}
 
   const identifier_s &name() const { return _name; }
   const std::vector<struct_field_s> &fields() const { return _fields; }
+  bool is_extern() const { return _is_extern; }
 
   void accept(visitor_if &visitor) const override;
 
 private:
   identifier_s _name;
   std::vector<struct_field_s> _fields;
+  bool _is_extern{false};
 };
 
 class var_c : public base_c {
@@ -598,6 +603,42 @@ public:
 private:
   identifier_s _struct_name;
   std::vector<field_initializer_s> _field_initializers;
+};
+
+class import_c : public base_c {
+public:
+  import_c() = delete;
+  import_c(std::size_t source_index, std::string path)
+      : base_c(keywords_e::IMPORT, source_index), _path(std::move(path)) {}
+
+  const std::string &path() const { return _path; }
+
+  void accept(visitor_if &visitor) const override;
+
+private:
+  std::string _path;
+};
+
+struct c_import_s {
+  std::string path;
+  bool is_angle_bracket;
+};
+
+class cimport_c : public base_c {
+public:
+  cimport_c() = delete;
+  cimport_c(std::size_t source_index, std::string path, bool is_angle_bracket)
+      : base_c(keywords_e::CIMPORT, source_index), _path(std::move(path)),
+        _is_angle_bracket(is_angle_bracket) {}
+
+  const std::string &path() const { return _path; }
+  bool is_angle_bracket() const { return _is_angle_bracket; }
+
+  void accept(visitor_if &visitor) const override;
+
+private:
+  std::string _path;
+  bool _is_angle_bracket;
 };
 
 } // namespace truk::language::nodes

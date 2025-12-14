@@ -1,0 +1,8 @@
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args): i32;
+
+fn main(): i32 {
+    printf("Hello from C!\n");
+    return 10;
+}

@@ -23,6 +23,7 @@ private:
 
 struct parse_result_s {
   std::vector<language::nodes::base_ptr> declarations;
+  std::vector<language::nodes::c_import_s> c_imports;
   bool success{true};
   std::string error_message;
   std::size_t error_line{0};
@@ -62,8 +63,11 @@ private:
 
   std::vector<language::nodes::base_ptr> parse_program();
   language::nodes::base_ptr parse_declaration();
-  language::nodes::base_ptr parse_fn_decl();
-  language::nodes::base_ptr parse_struct_decl();
+  language::nodes::base_ptr parse_import_decl();
+  language::nodes::base_ptr parse_cimport_decl();
+  language::nodes::base_ptr parse_extern_decl();
+  language::nodes::base_ptr parse_fn_decl(bool is_extern = false);
+  language::nodes::base_ptr parse_struct_decl(bool is_extern = false);
   language::nodes::base_ptr parse_var_decl();
   language::nodes::base_ptr parse_const_decl();
 

@@ -1,0 +1,8 @@
+import "math.truk";
+
+fn main() : i32 {
+    var a: i32 = add(10, 20);
+    var b: i32 = multiply(2, 6);
+    var result: i32 = add(a, b);
+    return result;
+}

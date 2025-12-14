@@ -1,0 +1,7 @@
+fn dbl(x: i32) : i32 {
+    return x * 2;
+}
+
+fn triple(x: i32) : i32 {
+    return x * 3;
+}

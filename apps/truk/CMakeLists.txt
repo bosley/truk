@@ -5,7 +5,6 @@ add_executable(truk
     commands/toc.cpp
     commands/tcc.cpp
     common/args.cpp
-    common/file_utils.cpp
 )
 
 target_compile_options(truk PRIVATE

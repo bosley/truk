@@ -51,6 +51,8 @@ public:
   emitter_c &add_declaration(const truk::language::nodes::base_c *decl);
   emitter_c &add_declarations(
       const std::vector<std::unique_ptr<truk::language::nodes::base_c>> &decls);
+  emitter_c &
+  set_c_imports(const std::vector<truk::language::nodes::c_import_s> &imports);
 
   result_c finalize();
 
@@ -83,6 +85,8 @@ public:
   void visit(const truk::language::nodes::array_literal_c &node) override;
   void visit(const truk::language::nodes::struct_literal_c &node) override;
   void visit(const truk::language::nodes::type_param_c &node) override;
+  void visit(const truk::language::nodes::import_c &node) override;
+  void visit(const truk::language::nodes::cimport_c &node) override;
 
 private:
   void collect_declarations(const truk::language::nodes::base_c *root);
@@ -116,6 +120,7 @@ private:
   int _indent_level{0};
   std::unordered_set<std::string> _slice_types_emitted;
   std::unordered_set<std::string> _struct_names;
+  std::unordered_set<std::string> _extern_struct_names;
   std::unordered_set<std::string> _function_names;
   std::unordered_map<std::string, bool> _variable_is_slice;
   bool _in_expression{false};
@@ -125,6 +130,7 @@ private:
   std::vector<const truk::language::nodes::defer_c *> _function_defers;
   emission_phase_e _current_phase{emission_phase_e::COLLECTION};
   std::string _current_node_context;
+  std::vector<truk::language::nodes::c_import_s> _c_imports;
 
   void emit_function_defers();
 };
