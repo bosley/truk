@@ -74,16 +74,18 @@ if(BUILD_TESTS)
     get_property(ALL_TEST_TARGETS GLOBAL PROPERTY TRUK_TEST_TARGETS)
     
     add_custom_target(run_sxs_tests
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -R "^sxs_"
+        COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS ${CMAKE_CTEST_COMMAND} --output-on-failure -R "^sxs_"
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Running sxs runtime tests..."
         DEPENDS ${SXS_TEST_TARGETS}
+        USES_TERMINAL
     )
     
     add_custom_target(run_tests ALL
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+        COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS ${CMAKE_CTEST_COMMAND} --output-on-failure
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Running all tests..."
         DEPENDS ${SXS_TEST_TARGETS} ${ALL_TEST_TARGETS} run_sxs_tests
+        USES_TERMINAL
     )
 endif()
