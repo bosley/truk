@@ -12,7 +12,13 @@ function(embed_sxs_runtime output_file)
         "include/sxs/types.h"
         "include/sxs/runtime.h"
         "include/sxs/sxs.h"
+        "include/sxs/ds/buffer.h"
+        "include/sxs/ds/map.h"
+        "include/sxs/ds/scanner.h"
         "src/runtime.c"
+        "src/ds/buffer.c"
+        "src/ds/map.c"
+        "src/ds/scanner.c"
     )
     
     set(GENERATED_CONTENT "#pragma once\n\n")
