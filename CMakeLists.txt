@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(truk VERSION 0.1.0 LANGUAGES CXX)
+project(truk VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -40,6 +40,8 @@ else()
     message(STATUS "Using system fmt - note: for standalone binary, build from source")
 endif()
 
+include(TrukHelpers)
+
 if(BUILD_TESTS)
     find_package(CppUTest QUIET)
     if(NOT CppUTest_FOUND)
@@ -55,7 +57,7 @@ if(BUILD_TESTS)
     endif()
 endif()
 
-include(TrukHelpers)
+add_subdirectory(runtime/sxs)
 
 add_subdirectory(libs)
 
@@ -68,11 +70,20 @@ if(BUILD_EXPERIMENTS)
 endif()
 
 if(BUILD_TESTS)
+    get_property(SXS_TEST_TARGETS GLOBAL PROPERTY SXS_TEST_TARGETS)
     get_property(ALL_TEST_TARGETS GLOBAL PROPERTY TRUK_TEST_TARGETS)
+    
+    add_custom_target(run_sxs_tests
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -R "^sxs_"
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Running sxs runtime tests..."
+        DEPENDS ${SXS_TEST_TARGETS}
+    )
+    
     add_custom_target(run_tests ALL
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "Running tests..."
-        DEPENDS ${ALL_TEST_TARGETS}
+        COMMENT "Running all tests..."
+        DEPENDS ${SXS_TEST_TARGETS} ${ALL_TEST_TARGETS} run_sxs_tests
     )
 endif()

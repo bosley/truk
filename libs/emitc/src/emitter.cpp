@@ -1,5 +1,6 @@
 #include <language/builtins.hpp>
 #include <language/keywords.hpp>
+#include <set>
 #include <truk/emitc/cdef.hpp>
 #include <truk/emitc/emitter.hpp>
 
@@ -94,21 +95,35 @@ void emitter_c::emit(const base_c *root) {
 
 void emitter_c::internal_finalize() {
   std::stringstream final_header;
-  final_header << cdef::emit_program_header();
 
+  final_header << cdef::emit_system_includes();
+  final_header << cdef::emit_runtime_types();
+  final_header << cdef::emit_runtime_declarations();
+  final_header << cdef::emit_runtime_macros();
+
+  std::set<std::string> system_includes = {"stdbool.h", "stdint.h", "stdlib.h",
+                                           "stdio.h",   "string.h", "stdarg.h"};
+
+  bool has_user_imports = false;
   for (const auto &import : _c_imports) {
+    if (import.is_angle_bracket && system_includes.count(import.path)) {
+      continue;
+    }
+    has_user_imports = true;
     if (import.is_angle_bracket) {
       final_header << "#include <" << import.path << ">\n";
     } else {
       final_header << "#include \"" << import.path << "\"\n";
     }
   }
-  if (!_c_imports.empty()) {
+  if (has_user_imports) {
     final_header << "\n";
   }
 
-  final_header
-      << "typedef struct {\n  void* data;\n  u64 len;\n} truk_slice_void;\n\n";
+  final_header << cdef::emit_runtime_implementation();
+
+  final_header << "typedef struct {\n  __truk_void* data;\n  __truk_u64 "
+                  "len;\n} truk_slice_void;\n\n";
 
   _result.chunks.push_back(final_header.str());
   _result.chunks.push_back(_structs.str());
@@ -130,37 +145,37 @@ void emitter_c::internal_finalize() {
 
 std::string emitter_c::emit_type(const type_c *type) {
   if (!type) {
-    return "void";
+    return "__truk_void";
   }
 
   if (auto prim = dynamic_cast<const primitive_type_c *>(type)) {
     switch (prim->keyword()) {
     case keywords_e::I8:
-      return "i8";
+      return "__truk_i8";
     case keywords_e::I16:
-      return "i16";
+      return "__truk_i16";
     case keywords_e::I32:
-      return "i32";
+      return "__truk_i32";
     case keywords_e::I64:
-      return "i64";
+      return "__truk_i64";
     case keywords_e::U8:
-      return "u8";
+      return "__truk_u8";
     case keywords_e::U16:
-      return "u16";
+      return "__truk_u16";
     case keywords_e::U32:
-      return "u32";
+      return "__truk_u32";
     case keywords_e::U64:
-      return "u64";
+      return "__truk_u64";
     case keywords_e::F32:
-      return "f32";
+      return "__truk_f32";
     case keywords_e::F64:
-      return "f64";
+      return "__truk_f64";
     case keywords_e::BOOL:
-      return "bool";
+      return "__truk_bool";
     case keywords_e::VOID:
-      return "void";
+      return "__truk_void";
     default:
-      return "void";
+      return "__truk_void";
     }
   }
 
@@ -184,12 +199,12 @@ std::string emitter_c::emit_type(const type_c *type) {
     }
   }
 
-  return "void";
+  return "__truk_void";
 }
 
 std::string emitter_c::emit_type_for_sizeof(const type_c *type) {
   if (!type) {
-    return "void";
+    return "__truk_void";
   }
 
   if (auto prim = dynamic_cast<const primitive_type_c *>(type)) {
@@ -213,7 +228,7 @@ std::string emitter_c::emit_type_for_sizeof(const type_c *type) {
     }
   }
 
-  return "void";
+  return "__truk_void";
 }
 
 std::string emitter_c::emit_array_pointer_type(const type_c *array_type,
@@ -276,8 +291,8 @@ void emitter_c::ensure_slice_typedef(const type_c *element_type) {
       if (arr->size().has_value()) {
         std::string pointer_type =
             emit_array_pointer_type(element_type, "data");
-        _header << "typedef struct {\n  " << pointer_type << ";\n  u64 len;\n} "
-                << slice_name << ";\n\n";
+        _header << "typedef struct {\n  " << pointer_type
+                << ";\n  __truk_u64 len;\n} " << slice_name << ";\n\n";
         return;
       }
     }
@@ -787,7 +802,7 @@ void emitter_c::visit(const call_c &node) {
           node.arguments()[0]->accept(*this);
           std::string arg = _current_expr.str();
           std::swap(arg_stream, _current_expr);
-          _current_expr << "free(" << arg << ")";
+          _current_expr << cdef::emit_builtin_free(arg);
 
           if (!_in_expression) {
             _functions << cdef::indent(_indent_level) << _current_expr.str()
@@ -827,10 +842,8 @@ void emitter_c::visit(const call_c &node) {
               cast_type = elem_type_for_sizeof + "*";
             }
 
-            _current_expr << "(" << slice_type << "){(" << cast_type
-                          << ")malloc(sizeof(" << elem_type_for_sizeof
-                          << ") * (" << count_expr << ")), (" << count_expr
-                          << ")}";
+            _current_expr << cdef::emit_builtin_alloc_array(
+                cast_type, elem_type_for_sizeof, count_expr);
             return;
           }
         }
@@ -843,7 +856,7 @@ void emitter_c::visit(const call_c &node) {
           node.arguments()[0]->accept(*this);
           std::string arg = _current_expr.str();
           std::swap(arg_stream, _current_expr);
-          _current_expr << "free((" << arg << ").data)";
+          _current_expr << cdef::emit_builtin_free_array(arg);
 
           if (!_in_expression) {
             _functions << cdef::indent(_indent_level) << _current_expr.str()
@@ -872,7 +885,7 @@ void emitter_c::visit(const call_c &node) {
           if (auto type_param = dynamic_cast<const type_param_c *>(
                   node.arguments()[0].get())) {
             std::string type_str = emit_type_for_sizeof(type_param->type());
-            _current_expr << "sizeof(" << type_str << ")";
+            _current_expr << cdef::emit_builtin_sizeof(type_str);
             return;
           }
         }
@@ -899,19 +912,19 @@ void emitter_c::visit(const call_c &node) {
         break;
       }
       case builtins::builtin_kind_e::VA_ARG_I32: {
-        _current_expr << "va_arg(__truk_va_args, i32)";
+        _current_expr << "va_arg(__truk_va_args, __truk_i32)";
         return;
       }
       case builtins::builtin_kind_e::VA_ARG_I64: {
-        _current_expr << "va_arg(__truk_va_args, i64)";
+        _current_expr << "va_arg(__truk_va_args, __truk_i64)";
         return;
       }
       case builtins::builtin_kind_e::VA_ARG_F64: {
-        _current_expr << "va_arg(__truk_va_args, f64)";
+        _current_expr << "va_arg(__truk_va_args, __truk_f64)";
         return;
       }
       case builtins::builtin_kind_e::VA_ARG_PTR: {
-        _current_expr << "va_arg(__truk_va_args, void*)";
+        _current_expr << "va_arg(__truk_va_args, __truk_void*)";
         return;
       }
       }
@@ -973,9 +986,9 @@ void emitter_c::visit(const index_c &node) {
   }
 
   if (is_slice) {
-    _current_expr << "({ truk_bounds_check(" << idx_expr << ", (" << obj_expr
-                  << ").len); (" << obj_expr << ").data[" << idx_expr
-                  << "]; })";
+    _current_expr << "({ __truk_runtime_sxs_bounds_check(" << idx_expr << ", ("
+                  << obj_expr << ").len); (" << obj_expr << ").data["
+                  << idx_expr << "]; })";
   } else {
     _current_expr << obj_expr << "[" << idx_expr << "]";
   }
@@ -1060,8 +1073,8 @@ void emitter_c::visit(const assignment_c &node) {
       _in_expression = was_in_expr;
 
       _functions << cdef::indent(_indent_level);
-      _functions << "truk_bounds_check(" << idx_expr << ", (" << obj_expr
-                 << ").len);\n";
+      _functions << "__truk_runtime_sxs_bounds_check(" << idx_expr << ", ("
+                 << obj_expr << ").len);\n";
       _functions << cdef::indent(_indent_level);
       _functions << "(" << obj_expr << ").data[" << idx_expr << "] = " << value
                  << ";\n";
@@ -1174,47 +1187,85 @@ std::string result_c::assemble_code() const {
     output += chunk;
   }
 
-  if (metadata.has_multiple_mains()) {
-    std::string mangled_output;
-    int main_index = 0;
-
-    size_t pos = 0;
-    while ((pos = output.find("int main(", pos)) != std::string::npos) {
-      size_t line_start = output.rfind('\n', pos);
-      if (line_start == std::string::npos) {
-        line_start = 0;
-      } else {
-        line_start++;
-      }
-
-      bool is_function_def = true;
-      for (size_t i = line_start; i < pos; ++i) {
-        if (output[i] != ' ' && output[i] != '\t' && output[i] != '\n') {
-          is_function_def = false;
-          break;
-        }
-      }
-
-      if (is_function_def) {
-        mangled_output += output.substr(0, pos);
-        mangled_output += "int truk_main_" + std::to_string(main_index) + "(";
-        output = output.substr(pos + 9);
-        main_index++;
-        pos = 0;
-      } else {
-        pos += 9;
-      }
-    }
-    mangled_output += output;
-
-    mangled_output += "\nint main(int argc, char** argv) {\n";
-    mangled_output += "  return truk_main_0(argc, argv);\n";
-    mangled_output += "}\n";
-
-    return mangled_output;
+  if (!metadata.has_main_function) {
+    return output;
   }
 
-  return output;
+  std::string mangled_output;
+  int main_index = 0;
+  bool has_args = false;
+
+  size_t pos = 0;
+  while ((pos = output.find("__truk_i32 main(", pos)) != std::string::npos) {
+    size_t line_start = output.rfind('\n', pos);
+    if (line_start == std::string::npos) {
+      line_start = 0;
+    } else {
+      line_start++;
+    }
+
+    bool is_function_def = true;
+    for (size_t i = line_start; i < pos; ++i) {
+      if (output[i] != ' ' && output[i] != '\t' && output[i] != '\n') {
+        is_function_def = false;
+        break;
+      }
+    }
+
+    if (is_function_def) {
+      mangled_output += output.substr(0, pos);
+
+      size_t paren_end = output.find(')', pos);
+      std::string params = output.substr(pos + 16, paren_end - (pos + 16));
+      has_args = params.find("argc") != std::string::npos;
+
+      mangled_output +=
+          "__truk_i32 truk_main_" + std::to_string(main_index) + "(";
+      output = output.substr(pos + 16);
+      main_index++;
+      pos = 0;
+    } else {
+      pos += 16;
+    }
+  }
+  mangled_output += output;
+
+  /*
+      NOTE: At one point I would like to add debug information and flags to
+     emitter to inject callbacks that run before/after the user program and
+     potentially pass something hidden to the user's function so we can "poke
+     around" in a debug mode easily
+
+      This is where that would have to happen, naturally as this is where we
+     call into the user's provided main (in the compiled target) to run whatever
+     instructions they provided with truk files
+
+      It would be kind of neat if we were to hash the truk files that we get
+     per-build to make a fingerprint or identity for the app then the runtime
+     could setup a shared memory space on the host env on launch if not exist
+     scoped to the identity of the app, then all individual compiled processes
+     could communicate IPC. If we restrict it to this build fingerprint we can
+     be certain that the "other" instance is the same as us (operationally
+     certain, assumed in good-faith) and that we can freely talk with it
+
+      Eventually if that was a good idea the runtime could do some security
+     shit, but the idea of each app running in parallel and the program being
+     written to interact with itself to solve the task is a big dream of mine
+  */
+  mangled_output += fmt::format(R"(
+int main(int argc, char** argv) {{
+  __truk_runtime_sxs_target_app_s app = {{
+    .entry_fn = (__truk_void*)truk_main_0,
+    .has_args = {},
+    .argc = argc,
+    .argv = (__truk_i8**)argv
+  }};
+  return __truk_runtime_sxs_start(&app);
+}}
+)",
+                                has_args ? "true" : "false");
+
+  return mangled_output;
 }
 
 assembly_result_s result_c::assemble(assembly_type_e type,
@@ -1286,7 +1337,6 @@ assembly_result_s result_c::assemble(assembly_type_e type,
 
   header_content += function_declarations.str();
 
-  source_content += cdef::emit_program_header();
   if (!header_name.empty()) {
     source_content += "#include \"" + header_name + "\"\n\n";
   }
