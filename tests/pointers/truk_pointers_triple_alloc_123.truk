@@ -1,18 +1,18 @@
 fn main() : i32 {
-  var ptr1: *i32 = alloc(@i32);
+  var ptr1: *i32 = make(@i32);
   *ptr1 = 123;
   
-  var ptr2: **i32 = alloc(@*i32);
+  var ptr2: **i32 = make(@*i32);
   *ptr2 = ptr1;
   
-  var ptr3: ***i32 = alloc(@**i32);
+  var ptr3: ***i32 = make(@**i32);
   *ptr3 = ptr2;
   
   var result: i32 = ***ptr3;
   
-  free(ptr3);
-  free(ptr2);
-  free(ptr1);
+  delete(ptr3);
+  delete(ptr2);
+  delete(ptr1);
   
   return result;
 }

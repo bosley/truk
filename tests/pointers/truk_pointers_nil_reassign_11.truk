@@ -1,8 +1,8 @@
 fn main() : i32 {
-  var ptr: *i32 = alloc(@i32);
+  var ptr: *i32 = make(@i32);
   *ptr = 11;
   var result: i32 = *ptr;
-  free(ptr);
+  delete(ptr);
   ptr = nil;
   if ptr == nil {
     return result;

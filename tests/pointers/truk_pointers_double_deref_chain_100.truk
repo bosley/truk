@@ -1,20 +1,20 @@
 fn main() : i32 {
-  var ptr1: *i32 = alloc(@i32);
+  var ptr1: *i32 = make(@i32);
   *ptr1 = 100;
   
-  var ptr2: **i32 = alloc(@*i32);
+  var ptr2: **i32 = make(@*i32);
   *ptr2 = ptr1;
   
   var result1: i32 = **ptr2;
   var result2: i32 = *(*ptr2);
   
   if result1 == result2 {
-    free(ptr2);
-    free(ptr1);
+    delete(ptr2);
+    delete(ptr1);
     return result1;
   }
   
-  free(ptr2);
-  free(ptr1);
+  delete(ptr2);
+  delete(ptr1);
   return 0;
 }

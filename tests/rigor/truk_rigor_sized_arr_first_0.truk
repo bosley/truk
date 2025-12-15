@@ -2,9 +2,9 @@ fn test_i8() : i32 {
   var arr: [5]i8;
   arr[0] = 10;
   
-  var ptr: *i8 = alloc(@i8);
+  var ptr: *i8 = make(@i8);
   *ptr = 42;
-  free(ptr);
+  delete(ptr);
   
   return 0;
 }

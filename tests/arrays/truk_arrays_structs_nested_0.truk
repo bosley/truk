@@ -25,17 +25,17 @@ fn main() : i32 {
   
   var count: u64 = 2;
   
-  var dyn_2d_point: [][3]Point = alloc_array(@[3]Point, count);
+  var dyn_2d_point: [][3]Point = make(@[3]Point, count);
   dyn_2d_point[0][0] = Point{x: 100, y: 200};
   dyn_2d_point[0][2] = Point{x: 300, y: 400};
   dyn_2d_point[1][1] = Point{x: 500, y: 600};
-  free_array(dyn_2d_point);
+  delete(dyn_2d_point);
   
-  var dyn_2d_vec3: [][2]Vec3 = alloc_array(@[2]Vec3, count);
+  var dyn_2d_vec3: [][2]Vec3 = make(@[2]Vec3, count);
   dyn_2d_vec3[0][0] = Vec3{x: 1.5, y: 2.5, z: 3.5};
   dyn_2d_vec3[0][1] = Vec3{x: 4.5, y: 5.5, z: 6.5};
   dyn_2d_vec3[1][0] = Vec3{x: 7.5, y: 8.5, z: 9.5};
-  free_array(dyn_2d_vec3);
+  delete(dyn_2d_vec3);
   
   var arr_3d_point: [2][2][2]Point;
   arr_3d_point[0][0][0] = Point{x: 1, y: 1};
@@ -43,11 +43,11 @@ fn main() : i32 {
   arr_3d_point[1][0][1] = Point{x: 3, y: 3};
   arr_3d_point[1][1][0] = Point{x: 4, y: 4};
   
-  var dyn_3d_point: [][2][3]Point = alloc_array(@[2][3]Point, count);
+  var dyn_3d_point: [][2][3]Point = make(@[2][3]Point, count);
   dyn_3d_point[0][0][0] = Point{x: 10, y: 20};
   dyn_3d_point[0][1][2] = Point{x: 30, y: 40};
   dyn_3d_point[1][1][1] = Point{x: 50, y: 60};
-  free_array(dyn_3d_point);
+  delete(dyn_3d_point);
   
   return 0;
 }

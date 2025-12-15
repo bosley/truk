@@ -4,17 +4,17 @@ struct Point {
 }
 
 fn main() : i32 {
-  var p1: *Point = alloc(@Point);
+  var p1: *Point = make(@Point);
   (*p1).x = 30;
   (*p1).y = 25;
   
-  var p2: **Point = alloc(@*Point);
+  var p2: **Point = make(@*Point);
   *p2 = p1;
   
   var result: i32 = (**p2).x + (**p2).y;
   
-  free(p2);
-  free(p1);
+  delete(p2);
+  delete(p1);
   
   return result;
 }

@@ -14,20 +14,20 @@ fn main() : i32 {
   
   var count: u64 = 3;
   
-  var dyn_f32: [][5]f32 = alloc_array(@[5]f32, count);
+  var dyn_f32: [][5]f32 = make(@[5]f32, count);
   dyn_f32[0][0] = 3.14;
   dyn_f32[0][4] = -2.718;
   dyn_f32[1][2] = 0.0;
   dyn_f32[2][3] = 1000.5;
-  free_array(dyn_f32);
+  delete(dyn_f32);
   
   var count2: u64 = 4;
-  var dyn_f64: [][3]f64 = alloc_array(@[3]f64, count2);
+  var dyn_f64: [][3]f64 = make(@[3]f64, count2);
   dyn_f64[0][0] = 3.141592653589793;
   dyn_f64[0][2] = -2.718281828459045;
   dyn_f64[1][1] = 1000000.123456;
   dyn_f64[3][2] = -999999.987654;
-  free_array(dyn_f64);
+  delete(dyn_f64);
   
   var arr_3d_f32: [2][3][4]f32;
   arr_3d_f32[0][0][0] = 3.14;

@@ -95,7 +95,7 @@
       "patterns": [
         {
           "name": "support.function.builtin.truk",
-          "match": "\\b(alloc|free|alloc_array|free_array|len|sizeof|panic)\\b"
+          "match": "\\b(make|delete|len|sizeof|panic)\\b"
         }
       ]
     },

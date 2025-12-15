@@ -4,10 +4,10 @@ struct Point {
 }
 
 fn main() : i32 {
-  var ptr: *Point = alloc(@Point);
+  var ptr: *Point = make(@Point);
   (*ptr).x = 42;
   (*ptr).y = 10;
   var result: i32 = (*ptr).x;
-  free(ptr);
+  delete(ptr);
   return result;
 }

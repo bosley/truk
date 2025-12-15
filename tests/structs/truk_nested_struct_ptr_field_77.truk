@@ -12,10 +12,10 @@ fn main() : i32 {
   var outer: Outer;
   outer.inner.x = 20;
   outer.inner.y = 15;
-  outer.ptr_inner = alloc(@Inner);
+  outer.ptr_inner = make(@Inner);
   (*outer.ptr_inner).x = 30;
   (*outer.ptr_inner).y = 12;
   var result: i32 = outer.inner.x + outer.inner.y + (*outer.ptr_inner).x + (*outer.ptr_inner).y;
-  free(outer.ptr_inner);
+  delete(outer.ptr_inner);
   return result;
 }

@@ -4,9 +4,9 @@ struct Point {
 }
 
 fn main() : i32 {
-  var ptr: *Point = alloc(@Point);
+  var ptr: *Point = make(@Point);
   (*ptr).x = 100;
   (*ptr).y = 200;
-  free(ptr);
+  delete(ptr);
   return 0;
 }

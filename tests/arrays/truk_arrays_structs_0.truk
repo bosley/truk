@@ -32,23 +32,23 @@ fn main() : i32 {
   
   var count: u64 = 3;
   
-  var dyn_point: []Point = alloc_array(@Point, count);
+  var dyn_point: []Point = make(@Point, count);
   dyn_point[0] = Point{x: 5, y: 10};
   dyn_point[1] = Point{x: 15, y: 25};
   dyn_point[2] = Point{x: 50, y: 75};
-  free_array(dyn_point);
+  delete(dyn_point);
   
-  var dyn_vec3: []Vec3 = alloc_array(@Vec3, count);
+  var dyn_vec3: []Vec3 = make(@Vec3, count);
   dyn_vec3[0] = Vec3{x: 1.1, y: 2.2, z: 3.3};
   dyn_vec3[1] = Vec3{x: 4.4, y: 5.5, z: 6.6};
   dyn_vec3[2] = Vec3{x: 7.7, y: 8.8, z: 9.9};
-  free_array(dyn_vec3);
+  delete(dyn_vec3);
   
-  var dyn_container: []Container = alloc_array(@Container, count);
+  var dyn_container: []Container = make(@Container, count);
   dyn_container[0] = Container{id: 10, active: true};
   dyn_container[1] = Container{id: 20, active: false};
   dyn_container[2] = Container{id: 30, active: true};
-  free_array(dyn_container);
+  delete(dyn_container);
   
   return 0;
 }

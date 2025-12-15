@@ -1,47 +1,47 @@
 fn test_i8() : i32 {
-  var ptr: *i8 = alloc(@i8);
+  var ptr: *i8 = make(@i8);
   *ptr = 42;
-  free(ptr);
+  delete(ptr);
   
   var arr: [5]i8;
   arr[0] = 10;
   
   var count: u64 = 10;
-  var darr: []i8 = alloc_array(@i8, count);
+  var darr: []i8 = make(@i8, count);
   darr[5] = 100;
-  free_array(darr);
+  delete(darr);
   
   return 0;
 }
 
 fn test_i16() : i32 {
-  var ptr: *i16 = alloc(@i16);
+  var ptr: *i16 = make(@i16);
   *ptr = 1000;
-  free(ptr);
+  delete(ptr);
   
   var arr: [5]i16;
   arr[0] = 100;
   
   var count: u64 = 10;
-  var darr: []i16 = alloc_array(@i16, count);
+  var darr: []i16 = make(@i16, count);
   darr[5] = 5000;
-  free_array(darr);
+  delete(darr);
   
   return 0;
 }
 
 fn test_i32() : i32 {
-  var ptr: *i32 = alloc(@i32);
+  var ptr: *i32 = make(@i32);
   *ptr = 100000;
-  free(ptr);
+  delete(ptr);
   
   var arr: [5]i32;
   arr[0] = 1000;
   
   var count: u64 = 10;
-  var darr: []i32 = alloc_array(@i32, count);
+  var darr: []i32 = make(@i32, count);
   darr[5] = 50000;
-  free_array(darr);
+  delete(darr);
   
   return 0;
 }

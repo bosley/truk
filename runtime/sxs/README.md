@@ -12,10 +12,10 @@ sxs is developed as a standard C library in this directory but is **embedded dir
 - Type aliases: `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`
 
 **Memory Operations (inlined):**
-- `sxs_alloc(u64 size)` - Single value allocation
-- `sxs_free(void *ptr)` - Single value deallocation
-- `sxs_alloc_array(u64 elem_size, u64 count)` - Array allocation
-- `sxs_free_array(void *ptr)` - Array deallocation
+- `sxs_alloc(u64 size)` - Single value allocation (internal)
+- `sxs_free(void *ptr)` - Single value deallocation (internal)
+- `sxs_alloc_array(u64 elem_size, u64 count)` - Array allocation (internal)
+- `sxs_free_array(void *ptr)` - Array deallocation (internal)
 
 **Type Operations (inlined):**
 - `sxs_sizeof_type(u64 size)` - Type size query

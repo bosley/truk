@@ -3,7 +3,7 @@ include(EmbedRuntime)
 set(EMBEDDED_RUNTIME_FILE "${CMAKE_BINARY_DIR}/generated/embedded_runtime.hpp")
 embed_sxs_runtime("${EMBEDDED_RUNTIME_FILE}")
 
-add_library(truk_emitc STATIC src/emitter.cpp ${EMBEDDED_RUNTIME_FILE})
+add_library(truk_emitc STATIC src/emitter.cpp)
 
 add_dependencies(truk_emitc sxs)
 

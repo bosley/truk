@@ -784,79 +784,60 @@ void emitter_c::visit(const call_c &node) {
 
     if (builtin) {
       switch (builtin->kind) {
-      case builtins::builtin_kind_e::ALLOC: {
+      case builtins::builtin_kind_e::MAKE: {
         if (!node.arguments().empty()) {
           if (auto type_param = dynamic_cast<const type_param_c *>(
                   node.arguments()[0].get())) {
-            std::string type_str = emit_type(type_param->type());
-            _current_expr << cdef::emit_builtin_alloc(type_str);
-            return;
-          }
-        }
-        break;
-      }
-      case builtins::builtin_kind_e::FREE: {
-        if (!node.arguments().empty()) {
-          std::stringstream arg_stream;
-          std::swap(arg_stream, _current_expr);
-          node.arguments()[0]->accept(*this);
-          std::string arg = _current_expr.str();
-          std::swap(arg_stream, _current_expr);
-          _current_expr << cdef::emit_builtin_free(arg);
+            if (node.arguments().size() == 1) {
+              std::string type_str = emit_type(type_param->type());
+              _current_expr << cdef::emit_builtin_make(type_str);
+              return;
+            } else if (node.arguments().size() == 2) {
+              std::string elem_type_for_sizeof =
+                  emit_type_for_sizeof(type_param->type());
+              ensure_slice_typedef(type_param->type());
 
-          if (!_in_expression) {
-            _functions << cdef::indent(_indent_level) << _current_expr.str()
-                       << ";\n";
-            _current_expr.str("");
-            _current_expr.clear();
-          }
-          return;
-        }
-        break;
-      }
-      case builtins::builtin_kind_e::ALLOC_ARRAY: {
-        if (node.arguments().size() >= 2) {
-          if (auto type_param = dynamic_cast<const type_param_c *>(
-                  node.arguments()[0].get())) {
-            std::string elem_type_for_sizeof =
-                emit_type_for_sizeof(type_param->type());
-            ensure_slice_typedef(type_param->type());
+              std::stringstream count_stream;
+              std::swap(count_stream, _current_expr);
+              node.arguments()[1]->accept(*this);
+              std::string count_expr = _current_expr.str();
+              std::swap(count_stream, _current_expr);
 
-            std::stringstream count_stream;
-            std::swap(count_stream, _current_expr);
-            node.arguments()[1]->accept(*this);
-            std::string count_expr = _current_expr.str();
-            std::swap(count_stream, _current_expr);
+              std::string slice_type = get_slice_type_name(type_param->type());
 
-            std::string slice_type = get_slice_type_name(type_param->type());
-
-            std::string cast_type;
-            if (auto arr =
-                    dynamic_cast<const array_type_c *>(type_param->type())) {
-              if (arr->size().has_value()) {
-                cast_type = emit_array_pointer_type(type_param->type());
+              std::string cast_type;
+              if (auto arr =
+                      dynamic_cast<const array_type_c *>(type_param->type())) {
+                if (arr->size().has_value()) {
+                  cast_type = emit_array_pointer_type(type_param->type());
+                } else {
+                  cast_type = elem_type_for_sizeof + "*";
+                }
               } else {
                 cast_type = elem_type_for_sizeof + "*";
               }
-            } else {
-              cast_type = elem_type_for_sizeof + "*";
-            }
 
-            _current_expr << cdef::emit_builtin_alloc_array(
-                cast_type, elem_type_for_sizeof, count_expr);
-            return;
+              _current_expr << cdef::emit_builtin_make_array(
+                  cast_type, elem_type_for_sizeof, count_expr);
+              return;
+            }
           }
         }
         break;
       }
-      case builtins::builtin_kind_e::FREE_ARRAY: {
+      case builtins::builtin_kind_e::DELETE: {
         if (!node.arguments().empty()) {
           std::stringstream arg_stream;
           std::swap(arg_stream, _current_expr);
           node.arguments()[0]->accept(*this);
           std::string arg = _current_expr.str();
           std::swap(arg_stream, _current_expr);
-          _current_expr << cdef::emit_builtin_free_array(arg);
+
+          if (is_variable_slice(arg)) {
+            _current_expr << cdef::emit_builtin_delete_array(arg);
+          } else {
+            _current_expr << cdef::emit_builtin_delete(arg);
+          }
 
           if (!_in_expression) {
             _functions << cdef::indent(_indent_level) << _current_expr.str()

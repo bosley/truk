@@ -4,9 +4,9 @@ fn main() : i32 {
   while ptr == nil {
     count = count + 1;
     if count == 3 {
-      ptr = alloc(@i32);
+      ptr = make(@i32);
     }
   }
-  free(ptr);
+  delete(ptr);
   return count;
 }

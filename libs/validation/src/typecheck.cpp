@@ -352,6 +352,91 @@ void type_checker_c::validate_builtin_call(const call_c &node,
     return;
   }
 
+  if (func_type.builtin_kind == language::builtins::builtin_kind_e::MAKE) {
+    if (node.arguments().empty()) {
+      report_error("Builtin 'make' requires a type parameter",
+                   node.source_index());
+      return;
+    }
+
+    const auto *first_arg_type_param =
+        dynamic_cast<const type_param_c *>(node.arguments()[0].get());
+    if (!first_arg_type_param) {
+      report_error(
+          "Builtin 'make' requires a type parameter (use @type syntax)",
+          node.source_index());
+      return;
+    }
+
+    const type_c *type_param = first_arg_type_param->type();
+    std::size_t actual_arg_count = node.arguments().size() - 1;
+
+    if (actual_arg_count == 0) {
+      auto pointee = resolve_type(type_param);
+      if (!pointee) {
+        report_error("Failed to resolve type for make", node.source_index());
+        return;
+      }
+      auto return_type =
+          std::make_unique<type_entry_s>(type_kind_e::POINTER, pointee->name);
+      return_type->pointer_depth = pointee->pointer_depth + 1;
+      return_type->pointee_type = std::move(pointee);
+      _current_expression_type = std::move(return_type);
+      return;
+    } else if (actual_arg_count == 1) {
+      node.arguments()[1]->accept(*this);
+      auto count_type = std::move(_current_expression_type);
+      if (!count_type || count_type->name != "u64") {
+        report_error("Builtin 'make' array count must be u64",
+                     node.source_index());
+        return;
+      }
+      auto element = resolve_type(type_param);
+      if (!element) {
+        report_error("Failed to resolve element type for make",
+                     node.source_index());
+        return;
+      }
+      auto return_type =
+          std::make_unique<type_entry_s>(type_kind_e::ARRAY, element->name);
+      return_type->element_type = std::move(element);
+      return_type->array_size = std::nullopt;
+      _current_expression_type = std::move(return_type);
+      return;
+    } else {
+      report_error("Builtin 'make' expects 1 or 2 arguments (type parameter + "
+                   "optional count)",
+                   node.source_index());
+      return;
+    }
+  }
+
+  if (func_type.builtin_kind == language::builtins::builtin_kind_e::DELETE) {
+    if (node.arguments().size() != 1) {
+      report_error("Builtin 'delete' expects 1 argument", node.source_index());
+      return;
+    }
+
+    node.arguments()[0]->accept(*this);
+    auto arg_type = std::move(_current_expression_type);
+
+    if (!arg_type) {
+      report_error("Failed to resolve argument type for delete",
+                   node.source_index());
+      return;
+    }
+
+    if (arg_type->kind != type_kind_e::POINTER &&
+        arg_type->kind != type_kind_e::ARRAY) {
+      report_error("Builtin 'delete' requires pointer or array type",
+                   node.source_index());
+      return;
+    }
+
+    _current_expression_type.reset();
+    return;
+  }
+
   std::size_t expected_arg_start = 0;
   const type_c *type_param = nullptr;
 

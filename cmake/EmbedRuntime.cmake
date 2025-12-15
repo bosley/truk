@@ -1,10 +1,3 @@
-function(read_file_as_string filepath varname)
-    file(READ "${filepath}" file_content)
-    string(REPLACE "\\" "\\\\" file_content "${file_content}")
-    string(REPLACE "\"" "\\\"" file_content "${file_content}")
-    set(${varname} "${file_content}" PARENT_SCOPE)
-endfunction()
-
 function(embed_sxs_runtime output_file)
     set(SXS_ROOT "${CMAKE_SOURCE_DIR}/runtime/sxs")
     

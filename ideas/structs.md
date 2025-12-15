@@ -311,17 +311,17 @@ struct Buffer {
 
 impl Buffer {
   fn create(capacity: u64) : Buffer {
-    var data: []u8 = alloc_array(@u8, capacity);
+    var data: []u8 = make(@u8, capacity);
     return Buffer{data: data, capacity: capacity};
   }
   
   fn destroy() : void {
-    free_array(data);
+    delete(data);
     capacity = 0;
   }
   
   fn resize(new_capacity: u64) : void {
-    var new_data: []u8 = alloc_array(@u8, new_capacity);
+    var new_data: []u8 = make(@u8, new_capacity);
     
     var copy_len: u64 = capacity;
     if new_capacity < copy_len {
@@ -329,7 +329,7 @@ impl Buffer {
     }
     
     memcpy(new_data.data, data.data, copy_len);
-    free_array(data);
+    delete(data);
     
     data = new_data;
     capacity = new_capacity;
@@ -358,7 +358,7 @@ struct Stack_i32 {
 impl Stack_i32 {
   fn create(capacity: u64) : Stack_i32 {
     return Stack_i32{
-      data: alloc_array(@i32, capacity),
+      data: make(@i32, capacity),
       top: 0,
       capacity: capacity
     };

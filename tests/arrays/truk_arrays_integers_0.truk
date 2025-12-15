@@ -41,53 +41,53 @@ fn main() : i32 {
   
   var count: u64 = 5;
   
-  var dyn_i8: []i8 = alloc_array(@i8, count);
+  var dyn_i8: []i8 = make(@i8, count);
   dyn_i8[0] = 10;
   dyn_i8[1] = -20;
   dyn_i8[4] = 127;
-  free_array(dyn_i8);
+  delete(dyn_i8);
   
-  var dyn_i16: []i16 = alloc_array(@i16, count);
+  var dyn_i16: []i16 = make(@i16, count);
   dyn_i16[0] = 1000;
   dyn_i16[1] = -2000;
   dyn_i16[4] = 32000;
-  free_array(dyn_i16);
+  delete(dyn_i16);
   
-  var dyn_i32: []i32 = alloc_array(@i32, count);
+  var dyn_i32: []i32 = make(@i32, count);
   dyn_i32[0] = 100000;
   dyn_i32[1] = -200000;
   dyn_i32[4] = 2000000;
-  free_array(dyn_i32);
+  delete(dyn_i32);
   
-  var dyn_i64: []i64 = alloc_array(@i64, count);
+  var dyn_i64: []i64 = make(@i64, count);
   dyn_i64[0] = 1000000000;
   dyn_i64[1] = -2000000000;
   dyn_i64[4] = 9000000000;
-  free_array(dyn_i64);
+  delete(dyn_i64);
   
-  var dyn_u8: []u8 = alloc_array(@u8, count);
+  var dyn_u8: []u8 = make(@u8, count);
   dyn_u8[0] = 10;
   dyn_u8[1] = 20;
   dyn_u8[4] = 255;
-  free_array(dyn_u8);
+  delete(dyn_u8);
   
-  var dyn_u16: []u16 = alloc_array(@u16, count);
+  var dyn_u16: []u16 = make(@u16, count);
   dyn_u16[0] = 1000;
   dyn_u16[1] = 2000;
   dyn_u16[4] = 65000;
-  free_array(dyn_u16);
+  delete(dyn_u16);
   
-  var dyn_u32: []u32 = alloc_array(@u32, count);
+  var dyn_u32: []u32 = make(@u32, count);
   dyn_u32[0] = 100000;
   dyn_u32[1] = 200000;
   dyn_u32[4] = 4000000000;
-  free_array(dyn_u32);
+  delete(dyn_u32);
   
-  var dyn_u64: []u64 = alloc_array(@u64, count);
+  var dyn_u64: []u64 = make(@u64, count);
   dyn_u64[0] = 1000000000;
   dyn_u64[1] = 2000000000;
   dyn_u64[4] = 18000000000;
-  free_array(dyn_u64);
+  delete(dyn_u64);
   
   return 0;
 }

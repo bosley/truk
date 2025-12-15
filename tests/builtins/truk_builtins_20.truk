@@ -1,10 +1,10 @@
 fn main() : i32 {
   var count: u64 = 5;
-  var arr: []i32 = alloc_array(@i32, count);
+  var arr: []i32 = make(@i32, count);
   arr[0] = 5;
   arr[1] = 7;
   arr[2] = 8;
   var sum: i32 = arr[0] + arr[1] + arr[2];
-  free_array(arr);
+  delete(arr);
   return sum;
 }
