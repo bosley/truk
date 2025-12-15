@@ -339,7 +339,8 @@ void emitter_c::ensure_map_typedef(const type_c *value_type) {
   if (_map_types_emitted.find(map_name) == _map_types_emitted.end()) {
     _map_types_emitted.insert(map_name);
     std::string value_str = emit_type_for_sizeof(value_type);
-    _structs << "typedef map_t(" << value_str << ") " << map_name << ";\n\n";
+    _structs << "typedef __truk_map_t(" << value_str << ") " << map_name
+             << ";\n\n";
   }
 }
 
@@ -853,7 +854,7 @@ void emitter_c::visit(const call_c &node) {
                 std::string map_name =
                     get_map_type_name(map_type->value_type());
                 _current_expr << "({" << map_name
-                              << " __tmp; map_init(&__tmp); __tmp;})";
+                              << " __tmp; __truk_map_init(&__tmp); __tmp;})";
                 return;
               }
 
@@ -924,10 +925,10 @@ void emitter_c::visit(const call_c &node) {
                   _functions << cdef::indent(_indent_level);
                 }
                 if (key_is_slice) {
-                  _current_expr << "map_remove(&(" << obj_expr << "), ("
+                  _current_expr << "__truk_map_remove(&(" << obj_expr << "), ("
                                 << idx_expr << ").data)";
                 } else {
-                  _current_expr << "map_remove(&(" << obj_expr << "), "
+                  _current_expr << "__truk_map_remove(&(" << obj_expr << "), "
                                 << idx_expr << ")";
                 }
 
@@ -948,7 +949,7 @@ void emitter_c::visit(const call_c &node) {
           std::swap(arg_stream, _current_expr);
 
           if (is_variable_map(arg)) {
-            _current_expr << "map_deinit(&(" << arg << "))";
+            _current_expr << "__truk_map_deinit(&(" << arg << "))";
           } else if (is_variable_slice(arg)) {
             _current_expr << cdef::emit_builtin_delete_array(arg);
           } else {
@@ -1091,10 +1092,11 @@ void emitter_c::visit(const index_c &node) {
     }
 
     if (key_is_slice) {
-      _current_expr << "map_get(&(" << obj_expr << "), (" << idx_expr
+      _current_expr << "__truk_map_get(&(" << obj_expr << "), (" << idx_expr
                     << ").data)";
     } else {
-      _current_expr << "map_get(&(" << obj_expr << "), " << idx_expr << ")";
+      _current_expr << "__truk_map_get(&(" << obj_expr << "), " << idx_expr
+                    << ")";
     }
   } else if (is_slice) {
     _current_expr << "({ __truk_runtime_sxs_bounds_check(" << idx_expr << ", ("
@@ -1195,11 +1197,11 @@ void emitter_c::visit(const assignment_c &node) {
       _functions << cdef::indent(_indent_level);
       _functions << "{ (" << obj_expr << ").tmp = " << value << "; ";
       if (key_is_slice) {
-        _functions << "map_set_(&(" << obj_expr << ").base, (" << idx_expr
-                   << ").data, &(" << obj_expr << ").tmp, sizeof((" << obj_expr
-                   << ").tmp)); }\n";
+        _functions << "__truk_map_set_(&(" << obj_expr << ").base, ("
+                   << idx_expr << ").data, &(" << obj_expr << ").tmp, sizeof(("
+                   << obj_expr << ").tmp)); }\n";
       } else {
-        _functions << "map_set_(&(" << obj_expr << ").base, " << idx_expr
+        _functions << "__truk_map_set_(&(" << obj_expr << ").base, " << idx_expr
                    << ", &(" << obj_expr << ").tmp, sizeof((" << obj_expr
                    << ").tmp)); }\n";
       }

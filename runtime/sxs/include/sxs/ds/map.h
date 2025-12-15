@@ -3,62 +3,65 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the MIT license. See LICENSE for details.
+ * - Modified for TRUK by bosley 2025
  */
 
-#ifndef MAP_H
-#define MAP_H
+#ifndef __TRUK_MAP_H
+#define __TRUK_MAP_H
 
 #include <string.h>
 
-#define MAP_VERSION "0.1.0"
+#define __TRUK_MAP_VERSION "0.1.0"
 
-struct map_node_t;
-typedef struct map_node_t map_node_t;
+struct __truk_map_node_t;
+typedef struct __truk_map_node_t __truk_map_node_t;
 
 typedef struct {
-  map_node_t **buckets;
+  __truk_map_node_t **buckets;
   unsigned nbuckets, nnodes;
-} map_base_t;
+} __truk_map_base_t;
 
 typedef struct {
   unsigned bucketidx;
-  map_node_t *node;
-} map_iter_t;
+  __truk_map_node_t *node;
+} __truk_map_iter_t;
 
-#define map_t(T)                                                               \
+#define __truk_map_t(T)                                                        \
   struct {                                                                     \
-    map_base_t base;                                                           \
+    __truk_map_base_t base;                                                    \
     T *ref;                                                                    \
     T tmp;                                                                     \
   }
 
-#define map_init(m) memset(m, 0, sizeof(*(m)))
+#define __truk_map_init(m) memset(m, 0, sizeof(*(m)))
 
-#define map_deinit(m) map_deinit_(&(m)->base)
+#define __truk_map_deinit(m) __truk_map_deinit_(&(m)->base)
 
-#define map_get(m, key) ((m)->ref = map_get_(&(m)->base, key))
+#define __truk_map_get(m, key) ((m)->ref = __truk_map_get_(&(m)->base, key))
 
-#define map_set(m, key, value)                                                 \
-  ((m)->tmp = (value), map_set_(&(m)->base, key, &(m)->tmp, sizeof((m)->tmp)))
+#define __truk_map_set(m, key, value)                                          \
+  ((m)->tmp = (value),                                                         \
+   __truk_map_set_(&(m)->base, key, &(m)->tmp, sizeof((m)->tmp)))
 
-#define map_remove(m, key) map_remove_(&(m)->base, key)
+#define __truk_map_remove(m, key) __truk_map_remove_(&(m)->base, key)
 
-#define map_iter(m) map_iter_()
+#define __truk_map_iter(m) __truk_map_iter_()
 
-#define map_next(m, iter) map_next_(&(m)->base, iter)
+#define __truk_map_next(m, iter) __truk_map_next_(&(m)->base, iter)
 
-void map_deinit_(map_base_t *m);
-void *map_get_(map_base_t *m, const char *key);
-int map_set_(map_base_t *m, const char *key, void *value, int vsize);
-void map_remove_(map_base_t *m, const char *key);
-map_iter_t map_iter_(void);
-const char *map_next_(map_base_t *m, map_iter_t *iter);
+void __truk_map_deinit_(__truk_map_base_t *m);
+void *__truk_map_get_(__truk_map_base_t *m, const char *key);
+int __truk_map_set_(__truk_map_base_t *m, const char *key, void *value,
+                    int vsize);
+void __truk_map_remove_(__truk_map_base_t *m, const char *key);
+__truk_map_iter_t __truk_map_iter_(void);
+const char *__truk_map_next_(__truk_map_base_t *m, __truk_map_iter_t *iter);
 
-typedef map_t(void *) map_void_t;
-typedef map_t(char *) map_str_t;
-typedef map_t(int) map_int_t;
-typedef map_t(char) map_char_t;
-typedef map_t(float) map_float_t;
-typedef map_t(double) map_double_t;
+typedef __truk_map_t(void *) __truk_map_void_t;
+typedef __truk_map_t(char *) __truk_map_str_t;
+typedef __truk_map_t(int) __truk_map_int_t;
+typedef __truk_map_t(char) __truk_map_char_t;
+typedef __truk_map_t(float) __truk_map_float_t;
+typedef __truk_map_t(double) __truk_map_double_t;
 
 #endif
