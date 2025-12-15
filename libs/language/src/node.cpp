@@ -17,6 +17,8 @@ void function_type_c::accept(visitor_if &visitor) const {
   visitor.visit(*this);
 }
 
+void map_type_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
+
 void fn_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void struct_c::accept(visitor_if &visitor) const { visitor.visit(*this); }

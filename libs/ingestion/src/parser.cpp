@@ -401,6 +401,18 @@ language::nodes::type_ptr parser_c::parse_type_internal() {
       case language::keywords_e::BOOL:
       case language::keywords_e::VOID:
         return parse_primitive_type(keyword);
+      case language::keywords_e::MAP: {
+        const auto &map_token = advance();
+        consume(token_type_e::LEFT_BRACKET, "Expected '[' after 'map'");
+        auto value_type = parse_type_internal();
+        if (!value_type) {
+          throw parse_error("Expected value type in map", peek().line,
+                            peek().column);
+        }
+        consume(token_type_e::RIGHT_BRACKET, "Expected ']' after value type");
+        return std::make_unique<language::nodes::map_type_c>(
+            map_token.source_index, std::move(value_type));
+      }
       default:
         break;
       }

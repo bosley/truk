@@ -38,6 +38,7 @@ public:
   void visit(const truk::language::nodes::pointer_type_c &node) override;
   void visit(const truk::language::nodes::array_type_c &node) override;
   void visit(const truk::language::nodes::function_type_c &node) override;
+  void visit(const truk::language::nodes::map_type_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;

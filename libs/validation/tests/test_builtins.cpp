@@ -176,7 +176,7 @@ TEST(BuiltinTests, DeleteRequiresPointerOrArrayArgument) {
 
   auto errors = typecheck_code(code);
   CHECK_FALSE(errors.empty());
-  CHECK_TRUE(errors[0].find("pointer or array") != std::string::npos);
+  CHECK_TRUE(errors[0].find("pointer, array, or map") != std::string::npos);
 }
 
 TEST(BuiltinTests, LenRequiresSliceArgument) {

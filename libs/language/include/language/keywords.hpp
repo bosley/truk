@@ -38,7 +38,8 @@ enum class keywords_e {
   F32,
   F64,
   BOOL,
-  VOID
+  VOID,
+  MAP
 };
 
 class keywords_c {

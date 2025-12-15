@@ -1,0 +1,21 @@
+fn main() : i32 {
+  var m: map[*i32] = make(@map[*i32]);
+  
+  var value: i32 = 10;
+  var ptr: *i32 = &value;
+  
+  m["key"] = ptr;
+  
+  var result_ptr: **i32 = m["key"];
+  if result_ptr != nil {
+    var inner_ptr: *i32 = *result_ptr;
+    if inner_ptr != nil {
+      var result: i32 = *inner_ptr;
+      delete(m);
+      return result;
+    }
+  }
+  
+  delete(m);
+  return 0;
+}

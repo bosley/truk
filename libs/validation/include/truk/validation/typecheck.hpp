@@ -20,7 +20,8 @@ enum class type_kind_e {
   FUNCTION,
   POINTER,
   ARRAY,
-  VOID_TYPE
+  VOID_TYPE,
+  MAP
 };
 
 struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
@@ -38,6 +39,7 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
 
   std::unique_ptr<type_entry_s> pointee_type;
   std::unique_ptr<type_entry_s> element_type;
+  std::unique_ptr<type_entry_s> map_value_type;
 
   bool is_builtin{false};
   std::optional<truk::language::builtins::builtin_kind_e> builtin_kind;
@@ -71,6 +73,10 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
 
     if (other.element_type) {
       element_type = std::make_unique<type_entry_s>(*other.element_type);
+    }
+
+    if (other.map_value_type) {
+      map_value_type = std::make_unique<type_entry_s>(*other.map_value_type);
     }
   }
 
@@ -129,6 +135,7 @@ public:
   void visit(const truk::language::nodes::pointer_type_c &node) override;
   void visit(const truk::language::nodes::array_type_c &node) override;
   void visit(const truk::language::nodes::function_type_c &node) override;
+  void visit(const truk::language::nodes::map_type_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;

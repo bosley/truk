@@ -19,7 +19,8 @@ static const std::unordered_map<std::string, keywords_e> string_to_keyword = {
     {"u8", keywords_e::U8},           {"u16", keywords_e::U16},
     {"u32", keywords_e::U32},         {"u64", keywords_e::U64},
     {"f32", keywords_e::F32},         {"f64", keywords_e::F64},
-    {"bool", keywords_e::BOOL},       {"void", keywords_e::VOID}};
+    {"bool", keywords_e::BOOL},       {"void", keywords_e::VOID},
+    {"map", keywords_e::MAP}};
 
 static const std::unordered_map<keywords_e, std::string> keyword_to_string = {
     {keywords_e::FN, "fn"},           {keywords_e::STRUCT, "struct"},
@@ -37,7 +38,8 @@ static const std::unordered_map<keywords_e, std::string> keyword_to_string = {
     {keywords_e::U8, "u8"},           {keywords_e::U16, "u16"},
     {keywords_e::U32, "u32"},         {keywords_e::U64, "u64"},
     {keywords_e::F32, "f32"},         {keywords_e::F64, "f64"},
-    {keywords_e::BOOL, "bool"},       {keywords_e::VOID, "void"}};
+    {keywords_e::BOOL, "bool"},       {keywords_e::VOID, "void"},
+    {keywords_e::MAP, "map"}};
 
 std::optional<keywords_e> keywords_c::from_string(const std::string &str) {
   auto it = string_to_keyword.find(str);
