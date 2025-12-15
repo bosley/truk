@@ -217,6 +217,13 @@ std::string type_checker_c::get_type_name_from_entry(const type_entry_s *type) {
     return "[" + size_str + "]" + base_name;
   }
 
+  if (type->kind == type_kind_e::MAP) {
+    if (type->map_value_type) {
+      return "map[" + get_type_name_from_entry(type->map_value_type.get()) + "]";
+    }
+    return "map[<unknown>]";
+  }
+
   return base_name;
 }
 
@@ -259,6 +266,12 @@ bool type_checker_c::types_equal(const type_entry_s *a, const type_entry_s *b) {
 
   if (a->kind == type_kind_e::ARRAY && a->element_type && b->element_type) {
     if (!types_equal(a->element_type.get(), b->element_type.get())) {
+      return false;
+    }
+  }
+
+  if (a->kind == type_kind_e::MAP && a->map_value_type && b->map_value_type) {
+    if (!types_equal(a->map_value_type.get(), b->map_value_type.get())) {
       return false;
     }
   }
