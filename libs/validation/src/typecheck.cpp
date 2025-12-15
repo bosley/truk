@@ -191,6 +191,10 @@ std::string type_checker_c::get_type_name_for_error(const type_c *type_node) {
     return "fn";
   }
 
+  if (auto *map = dynamic_cast<const map_type_c *>(type_node)) {
+    return "map[" + get_type_name_for_error(map->value_type()) + "]";
+  }
+
   return "<unknown>";
 }
 
@@ -219,7 +223,8 @@ std::string type_checker_c::get_type_name_from_entry(const type_entry_s *type) {
 
   if (type->kind == type_kind_e::MAP) {
     if (type->map_value_type) {
-      return "map[" + get_type_name_from_entry(type->map_value_type.get()) + "]";
+      return "map[" + get_type_name_from_entry(type->map_value_type.get()) +
+             "]";
     }
     return "map[<unknown>]";
   }
