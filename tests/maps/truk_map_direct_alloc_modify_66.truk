@@ -1,0 +1,27 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+fn main() : i32 {
+  var m: map[*Point] = make(@map[*Point]);
+  
+  m["origin"] = make(@Point);
+  
+  var ptr: **Point = m["origin"];
+  if ptr != nil {
+    if *ptr != nil {
+      (**ptr).x = 33;
+      (**ptr).y = 33;
+      
+      var result: i32 = (**ptr).x + (**ptr).y;
+      
+      delete(*ptr);
+      delete(m);
+      return result;
+    }
+  }
+  
+  delete(m);
+  return 0;
+}

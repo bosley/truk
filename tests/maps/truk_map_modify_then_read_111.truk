@@ -1,0 +1,30 @@
+fn main() : i32 {
+  var m: map[i32] = make(@map[i32]);
+  
+  m["counter"] = 0;
+  
+  var ptr: *i32 = m["counter"];
+  if ptr != nil {
+    *ptr = 37;
+  }
+  
+  ptr = m["counter"];
+  if ptr != nil {
+    *ptr = *ptr + 37;
+  }
+  
+  ptr = m["counter"];
+  if ptr != nil {
+    *ptr = *ptr + 37;
+  }
+  
+  var final_ptr: *i32 = m["counter"];
+  if final_ptr != nil {
+    var result: i32 = *final_ptr;
+    delete(m);
+    return result;
+  }
+  
+  delete(m);
+  return 0;
+}

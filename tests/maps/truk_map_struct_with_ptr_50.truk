@@ -1,0 +1,27 @@
+struct Data {
+  ptr: *i32,
+  value: i32
+}
+
+fn main() : i32 {
+  var m: map[Data] = make(@map[Data]);
+  
+  var x: i32 = 25;
+  var data: Data = Data{ptr: &x, value: 25};
+  
+  m["item"] = data;
+  
+  var ptr: *Data = m["item"];
+  if ptr != nil {
+    var result: i32 = 0;
+    if (*ptr).ptr != nil {
+      result = result + *(*ptr).ptr;
+    }
+    result = result + (*ptr).value;
+    delete(m);
+    return result;
+  }
+  
+  delete(m);
+  return 0;
+}

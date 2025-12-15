@@ -5,7 +5,7 @@ embed_sxs_runtime("${EMBEDDED_RUNTIME_FILE}")
 
 add_library(truk_emitc STATIC src/emitter.cpp)
 
-add_dependencies(truk_emitc sxs)
+add_dependencies(truk_emitc sxs truk_language truk_ingestion)
 
 target_include_directories(truk_emitc
     PUBLIC

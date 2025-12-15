@@ -1,0 +1,28 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+fn main() : i32 {
+  var m: map[Point] = make(@map[Point]);
+  
+  var p1: Point = Point{x: 20, y: 20};
+  var p2: Point = Point{x: 10, y: 10};
+  
+  m["first"] = p1;
+  m["second"] = p2;
+  
+  var ptr1: *Point = m["first"];
+  var ptr2: *Point = m["second"];
+  
+  var result: i32 = 0;
+  if ptr1 != nil {
+    result = result + (*ptr1).x + (*ptr1).y;
+  }
+  if ptr2 != nil {
+    result = result + (*ptr2).x + (*ptr2).y;
+  }
+  
+  delete(m);
+  return result;
+}

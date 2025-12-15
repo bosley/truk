@@ -322,7 +322,7 @@ bool emitter_c::is_slice_type(const type_c *type) {
 }
 
 std::string emitter_c::get_map_type_name(const type_c *value_type) {
-  std::string value_str = emit_type(value_type);
+  std::string value_str = emit_type_for_sizeof(value_type);
   std::string sanitized = value_str;
   for (auto &c : sanitized) {
     if (c == '*')
@@ -338,7 +338,7 @@ void emitter_c::ensure_map_typedef(const type_c *value_type) {
 
   if (_map_types_emitted.find(map_name) == _map_types_emitted.end()) {
     _map_types_emitted.insert(map_name);
-    std::string value_str = emit_type(value_type);
+    std::string value_str = emit_type_for_sizeof(value_type);
     _structs << "typedef map_t(" << value_str << ") " << map_name << ";\n\n";
   }
 }
