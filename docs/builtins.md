@@ -11,6 +11,7 @@ Examples:
 - `@*i32` - pointer to i32
 - `@[5]i32` - sized array of 5 i32s
 - `@[]i32` - unsized array (slice) of i32
+- `@map[i32]` - map with i32 values
 - `@Point` - user-defined struct type
 - `@**Point` - pointer to pointer to Point
 
@@ -61,7 +62,33 @@ var count: u64 = 10;
 var arr: [][5]i32 = make(@[5]i32, count);
 ```
 
-**Note:** The `make` builtin is polymorphic - it allocates a single value when given just a type parameter, or an array when given a type parameter and count. This is similar to Go's `make` function.
+### `make(@map[V]) -> map[V]`
+
+Allocates and initializes a map (hash table) with string keys and values of type V.
+
+**Parameters:**
+- `@map[V]`: Type parameter specifying the map value type
+
+**Returns:** Initialized map
+
+**Example:**
+```truk
+var m: map[i32] = make(@map[i32]);
+m["key"] = 42;
+
+var ptr: *i32 = m["key"];
+if ptr != nil {
+  var value: i32 = *ptr;
+}
+
+delete(m);
+```
+
+**Key types:** Maps accept string-like keys: `*i8`, `*u8`, `[]i8`, `[]u8`
+
+**Indexing semantics:** Map indexing returns `*V` (pointer to value), which is `nil` if the key doesn't exist.
+
+**Note:** The `make` builtin is polymorphic - it allocates a single value, an array, or a map depending on the type parameter. This is similar to Go's `make` function.
 
 ### `delete(ptr: *T) -> void`
 
@@ -94,7 +121,25 @@ var arr: []i32 = make(@i32, count);
 delete(arr);
 ```
 
-**Note:** The `delete` builtin automatically determines whether to free a single value or an array based on the type of its argument. Calling `delete` on already-freed memory or non-heap memory results in undefined behavior.
+### `delete(m: map[V]) -> void`
+
+Frees memory previously allocated with `make` for maps.
+
+**Parameters:**
+- `m`: Map to free
+
+**Returns:** void
+
+**Example:**
+```truk
+var m: map[i32] = make(@map[i32]);
+m["key"] = 42;
+delete(m);
+```
+
+**Note:** `delete` frees the map structure and all internal nodes. If map values contain pointers to heap-allocated data, you must free that data separately before deleting the map.
+
+**Note:** The `delete` builtin automatically determines whether to free a single value, an array, or a map based on the type of its argument. Calling `delete` on already-freed memory or non-heap memory results in undefined behavior.
 
 ## Array Operations
 

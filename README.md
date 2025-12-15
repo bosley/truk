@@ -22,6 +22,11 @@ Arrays:
 - Unsized arrays: `[]i32` (heap allocated slices)
 - Multi-dimensional: `[5][10]i32`
 
+Maps:
+- Hash tables with string keys: `map[i32]`
+- Indexing returns pointer: `m["key"]` returns `*i32`
+- Nil checking: `if m["key"] != nil { ... }`
+
 Pointers:
 - Single: `*i32`
 - Multiple indirection: `**i32`
@@ -58,7 +63,8 @@ Runtime bounds checking on all array accesses. Out-of-bounds access causes a pan
 
 - `make(@type)` - allocate single value on heap
 - `make(@type, count)` - allocate array on heap
-- `delete(ptr)` - free allocated memory (single value or array)
+- `make(@map[V])` - allocate and initialize map
+- `delete(ptr)` - free allocated memory (single value, array, or map)
 - `len(arr)` - get array length
 - `sizeof(@type)` - get type size in bytes
 - `panic(message)` - abort with error message
@@ -91,6 +97,16 @@ fn main() : i32 {
   points[0] = p1;
   points[1] = p2;
   
+  var cache: map[Point] = make(@map[Point]);
+  cache["origin"] = p1;
+  cache["target"] = p2;
+  
+  var ptr: *Point = cache["origin"];
+  if ptr != nil {
+    var x: i32 = (*ptr).x;
+  }
+  
+  delete(cache);
   delete(points);
   return 0;
 }

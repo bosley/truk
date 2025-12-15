@@ -1,0 +1,27 @@
+struct Inner {
+  value: i32
+}
+
+struct Outer {
+  inner: Inner,
+  extra: i32
+}
+
+fn main() : i32 {
+  var m: map[Outer] = make(@map[Outer]);
+  
+  var inner: Inner = Inner{value: 10};
+  var outer: Outer = Outer{inner: inner, extra: 20};
+  
+  m["data"] = outer;
+  
+  var ptr: *Outer = m["data"];
+  if ptr != nil {
+    var total: i32 = (*ptr).inner.value + (*ptr).extra;
+    delete(m);
+    return total;
+  }
+  
+  delete(m);
+  return 0;
+}

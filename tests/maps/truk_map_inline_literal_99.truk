@@ -1,0 +1,19 @@
+struct Item {
+  val: i32
+}
+
+fn main() : i32 {
+  var m: map[Item] = make(@map[Item]);
+  
+  m["test"] = Item{val: 99};
+  
+  var ptr: *Item = m["test"];
+  if ptr != nil {
+    var result: i32 = (*ptr).val;
+    delete(m);
+    return result;
+  }
+  
+  delete(m);
+  return 0;
+}

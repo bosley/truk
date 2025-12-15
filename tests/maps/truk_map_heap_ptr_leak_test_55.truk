@@ -1,0 +1,21 @@
+fn main() : i32 {
+  var m: map[*i32] = make(@map[*i32]);
+  
+  var heap_ptr: *i32 = make(@i32);
+  *heap_ptr = 55;
+  
+  m["key"] = heap_ptr;
+  
+  var retrieved: **i32 = m["key"];
+  if retrieved != nil {
+    if *retrieved != nil {
+      var result: i32 = **retrieved;
+      delete(*retrieved);
+      delete(m);
+      return result;
+    }
+  }
+  
+  delete(m);
+  return 0;
+}

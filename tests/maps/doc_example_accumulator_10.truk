@@ -1,0 +1,20 @@
+fn main() : i32 {
+  var m: map[i32] = make(@map[i32]);
+  
+  m["total"] = 0;
+  
+  var ptr: *i32 = m["total"];
+  if ptr != nil {
+    *ptr = *ptr + 10;
+  }
+  
+  ptr = m["total"];
+  if ptr != nil {
+    var result: i32 = *ptr;
+    delete(m);
+    return result;
+  }
+  
+  delete(m);
+  return 0;
+}

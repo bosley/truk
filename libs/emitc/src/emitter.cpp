@@ -1147,12 +1147,15 @@ void emitter_c::visit(const assignment_c &node) {
       _in_expression = was_in_expr;
 
       _functions << cdef::indent(_indent_level);
+      _functions << "{ (" << obj_expr << ").tmp = " << value << "; ";
       if (key_is_slice) {
-        _functions << "map_set(&(" << obj_expr << "), (" << idx_expr
-                   << ").data, " << value << ");\n";
+        _functions << "map_set_(&(" << obj_expr << ").base, (" << idx_expr
+                   << ").data, &(" << obj_expr << ").tmp, sizeof((" << obj_expr
+                   << ").tmp)); }\n";
       } else {
-        _functions << "map_set(&(" << obj_expr << "), " << idx_expr << ", "
-                   << value << ");\n";
+        _functions << "map_set_(&(" << obj_expr << ").base, " << idx_expr
+                   << ", &(" << obj_expr << ").tmp, sizeof((" << obj_expr
+                   << ").tmp)); }\n";
       }
       return;
     }
