@@ -895,6 +895,52 @@ void emitter_c::visit(const call_c &node) {
       }
       case builtins::builtin_kind_e::DELETE: {
         if (!node.arguments().empty()) {
+          if (auto idx =
+                  dynamic_cast<const index_c *>(node.arguments()[0].get())) {
+            if (auto ident =
+                    dynamic_cast<const identifier_c *>(idx->object())) {
+              if (is_variable_map(ident->id().name)) {
+                std::stringstream obj_stream;
+                std::swap(obj_stream, _current_expr);
+                _in_expression = true;
+                idx->object()->accept(*this);
+                std::string obj_expr = _current_expr.str();
+                std::swap(obj_stream, _current_expr);
+
+                std::stringstream idx_stream;
+                std::swap(idx_stream, _current_expr);
+                idx->index()->accept(*this);
+                std::string idx_expr = _current_expr.str();
+                std::swap(idx_stream, _current_expr);
+                _in_expression = false;
+
+                bool key_is_slice = false;
+                if (auto key_ident =
+                        dynamic_cast<const identifier_c *>(idx->index())) {
+                  key_is_slice = is_variable_slice(key_ident->id().name);
+                }
+
+                if (!_in_expression) {
+                  _functions << cdef::indent(_indent_level);
+                }
+                if (key_is_slice) {
+                  _current_expr << "map_remove(&(" << obj_expr << "), ("
+                                << idx_expr << ").data)";
+                } else {
+                  _current_expr << "map_remove(&(" << obj_expr << "), "
+                                << idx_expr << ")";
+                }
+
+                if (!_in_expression) {
+                  _functions << _current_expr.str() << ";\n";
+                  _current_expr.str("");
+                  _current_expr.clear();
+                }
+                return;
+              }
+            }
+          }
+
           std::stringstream arg_stream;
           std::swap(arg_stream, _current_expr);
           node.arguments()[0]->accept(*this);

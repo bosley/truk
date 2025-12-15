@@ -383,9 +383,23 @@ Integer keys, struct keys, and other types are not supported.
 
 Currently, there is no built-in way to iterate over map keys or values. This is a future enhancement.
 
-### No Key Removal
+### Key Removal
 
-There is no built-in function to remove individual keys from a map. You can only delete the entire map.
+You can remove individual keys from a map using `delete` on the indexed value:
+
+```truk
+var m: map[i32] = make(@map[i32]);
+
+m["key"] = 42;
+delete(m["key"]);
+
+var ptr: *i32 = m["key"];
+if ptr == nil {
+  // Key was removed
+}
+```
+
+This frees the map entry for that key.
 
 ## Comparison with Go
 
