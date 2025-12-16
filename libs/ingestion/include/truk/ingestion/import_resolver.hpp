@@ -31,6 +31,7 @@ struct resolved_imports_s {
   std::vector<truk::language::nodes::c_import_s> c_imports;
   std::unordered_map<const truk::language::nodes::base_c *, std::string>
       decl_to_file;
+  std::unordered_map<std::string, std::vector<std::string>> file_to_shards;
   bool success;
 };
 
@@ -76,6 +77,7 @@ public:
   void visit(const truk::language::nodes::type_param_c &node) override;
   void visit(const truk::language::nodes::import_c &node) override;
   void visit(const truk::language::nodes::cimport_c &node) override;
+  void visit(const truk::language::nodes::shard_c &node) override;
 
 private:
   const std::unordered_map<std::string, const truk::language::nodes::base_c *>
@@ -119,6 +121,7 @@ private:
   std::vector<truk::language::nodes::c_import_s> _c_imports;
   std::unordered_map<const truk::language::nodes::base_c *, std::string>
       _decl_to_file;
+  std::unordered_map<std::string, std::vector<std::string>> _file_to_shards;
 };
 
 } // namespace truk::ingestion

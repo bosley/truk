@@ -43,6 +43,7 @@ public:
   void visit(const language::nodes::type_param_c &node) override;
   void visit(const language::nodes::import_c &node) override;
   void visit(const language::nodes::cimport_c &node) override;
+  void visit(const language::nodes::shard_c &node) override;
 
 private:
   bool _has_control_flow{false};

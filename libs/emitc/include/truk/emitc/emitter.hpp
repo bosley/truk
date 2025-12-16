@@ -99,6 +99,11 @@ public:
     _decl_to_file = map;
     return *this;
   }
+  emitter_c &set_file_to_shards_map(
+      const std::unordered_map<std::string, std::vector<std::string>> &map) {
+    _file_to_shards = map;
+    return *this;
+  }
 
   result_c finalize();
 
@@ -134,6 +139,7 @@ public:
   void visit(const truk::language::nodes::type_param_c &node) override;
   void visit(const truk::language::nodes::import_c &node) override;
   void visit(const truk::language::nodes::cimport_c &node) override;
+  void visit(const truk::language::nodes::shard_c &node) override;
 
 private:
   void collect_declarations(const truk::language::nodes::base_c *root);
@@ -166,6 +172,7 @@ private:
   std::vector<const truk::language::nodes::base_c *> _declarations;
   std::unordered_map<const truk::language::nodes::base_c *, std::string>
       _decl_to_file;
+  std::unordered_map<std::string, std::vector<std::string>> _file_to_shards;
   result_c _result;
   std::stringstream _current_expr;
   std::stringstream _header;

@@ -1,14 +1,131 @@
 # Privacy in Truk
 
-Truk provides file-scoped privacy using a simple naming convention: identifiers starting with an underscore (`_`) are private to the file where they're defined.
+Truk provides flexible privacy using a simple naming convention: identifiers starting with an underscore (`_`) are private. Privacy can be **file-scoped** (default) or **shard-scoped** (opt-in).
 
 ## Overview
 
 Privacy in Truk is:
 - **Convention-based**: Use `_` prefix for private identifiers
-- **File-scoped**: Private items are accessible only within their defining file
+- **File-scoped by default**: Private items accessible only within their defining file
+- **Shard-scoped (opt-in)**: Files declaring the same shard can access each other's private members
 - **Zero runtime cost**: Privacy is enforced at compile-time
 - **C-compatible**: Private functions/globals become `static` in generated C
+
+## Shards: Shared Privacy Boundaries
+
+A **shard** is a named group of files that share access to private members. Files declaring the same shard can access each other's `_` prefixed items.
+
+### Declaring a Shard
+
+```truk
+shard "database_internal";
+```
+
+### Example: Shard-Based Privacy
+
+**connection.truk:**
+```truk
+shard "database_internal";
+
+struct Connection {
+  host: *u8,
+  port: u16,
+  _socket_fd: i32,
+  _is_connected: bool
+}
+
+fn _internal_connect(conn: *Connection) : bool {
+  conn._socket_fd = 42;
+  conn._is_connected = true;
+  return true;
+}
+
+fn connection_new(host: *u8, port: u16) : Connection {
+  var conn: Connection = Connection{
+    host: host,
+    port: port,
+    _socket_fd: -1,
+    _is_connected: false
+  };
+  _internal_connect(&conn);
+  return conn;
+}
+```
+
+**pool.truk:**
+```truk
+shard "database_internal";
+
+import "connection.truk";
+
+fn pool_init(conns: []Connection, count: u64) : void {
+  var i: u64 = 0;
+  while i < count {
+    _internal_connect(&conns[i]);
+    conns[i]._socket_fd = 99;
+    i = i + 1;
+  }
+}
+```
+
+**main.truk:**
+```truk
+import "connection.truk";
+
+fn main() : i32 {
+  var conn: Connection = connection_new("localhost", 5432);
+  return 0;
+}
+```
+
+In this example:
+- `connection.truk` and `pool.truk` both declare `shard "database_internal"`
+- They can access each other's private members (`_socket_fd`, `_internal_connect`)
+- `main.truk` does NOT declare the shard, so it CANNOT access private members
+- Compile error if `main.truk` tries to access `_socket_fd` or call `_internal_connect`
+
+### Multiple Shards
+
+A file can belong to multiple shards:
+
+```truk
+shard "database_internal";
+shard "network_core";
+
+struct Hybrid {
+  _db_stuff: i32,
+  _net_stuff: i32
+}
+```
+
+Now this file can access private members from files in EITHER shard.
+
+### Shard Restrictions
+
+**Shards are NOT allowed in files with a main function:**
+
+```truk
+shard "database_internal";
+
+fn main() : i32 {
+  return 0;
+}
+```
+
+This will produce a compile error:
+```
+error: Shard declarations are not allowed in files containing a main function.
+       Shards are for sharing implementation details between library files,
+       not for application entry points
+```
+
+This restriction ensures that application entry points use public APIs and don't bypass encapsulation by joining internal shards.
+
+### Privacy Levels
+
+1. **Public** (no prefix): Accessible everywhere
+2. **Shard-private** (`_` prefix + shard declared): Accessible within shard
+3. **File-private** (`_` prefix + no shard): Accessible only in defining file
 
 ## Privacy Rules
 
@@ -82,14 +199,17 @@ fn set_max_retries(value: u32) : void {
 
 ## Access Control Table
 
-| Item Type | Visibility | Same File | Different File | Library .h | Library .c |
-|-----------|-----------|-----------|----------------|-----------|-----------|
-| `public_field` | All files | ✅ Read/Write | ✅ Read/Write | ✅ In struct | ✅ In struct |
-| `_private_field` | Defining file only | ✅ Read/Write | ❌ Compile Error | ✅ In struct | ✅ In struct |
-| `public_function` | All files | ✅ Call | ✅ Call | ✅ Declared | ✅ Defined |
-| `_private_function` | Defining file only | ✅ Call | ❌ Compile Error | ❌ Not included | ✅ Defined (static) |
-| `public_global` | All files | ✅ Access | ✅ Access | ✅ Declared (extern) | ✅ Defined |
-| `_private_global` | Defining file only | ✅ Access | ❌ Compile Error | ❌ Not included | ✅ Defined (static) |
+| Item Type | Visibility | Same File | Same Shard | Different File/Shard | Library .h | Library .c |
+|-----------|-----------|-----------|------------|---------------------|-----------|-----------|
+| `public_field` | All files | ✅ Read/Write | ✅ Read/Write | ✅ Read/Write | ✅ In struct | ✅ In struct |
+| `_private_field` (no shard) | Defining file only | ✅ Read/Write | N/A | ❌ Compile Error | ✅ In struct | ✅ In struct |
+| `_private_field` (with shard) | Shard members | ✅ Read/Write | ✅ Read/Write | ❌ Compile Error | ✅ In struct | ✅ In struct |
+| `public_function` | All files | ✅ Call | ✅ Call | ✅ Call | ✅ Declared | ✅ Defined |
+| `_private_function` (no shard) | Defining file only | ✅ Call | N/A | ❌ Compile Error | ❌ Not included | ✅ Defined (static) |
+| `_private_function` (with shard) | Shard members | ✅ Call | ✅ Call | ❌ Compile Error | ❌ Not included | ✅ Defined (static) |
+| `public_global` | All files | ✅ Access | ✅ Access | ✅ Access | ✅ Declared (extern) | ✅ Defined |
+| `_private_global` (no shard) | Defining file only | ✅ Access | N/A | ❌ Compile Error | ❌ Not included | ✅ Defined (static) |
+| `_private_global` (with shard) | Shard members | ✅ Access | ✅ Access | ❌ Compile Error | ❌ Not included | ✅ Defined (static) |
 
 ## Complete Example
 

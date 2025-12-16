@@ -667,4 +667,18 @@ private:
   bool _is_angle_bracket;
 };
 
+class shard_c : public base_c {
+public:
+  shard_c() = delete;
+  shard_c(std::size_t source_index, std::string name)
+      : base_c(keywords_e::SHARD, source_index), _name(std::move(name)) {}
+
+  const std::string &name() const { return _name; }
+
+  void accept(visitor_if &visitor) const override;
+
+private:
+  std::string _name;
+};
+
 } // namespace truk::language::nodes

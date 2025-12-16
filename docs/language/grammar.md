@@ -10,8 +10,11 @@ declaration     ::= fn_decl
                   | var_decl
                   | const_decl
                   | extern_decl
+                  | shard_decl
 
 extern_decl     ::= "extern" (extern_fn_decl | extern_struct_decl | extern_var_decl)
+
+shard_decl      ::= "shard" STRING ";"
 
 extern_fn_decl  ::= "fn" IDENTIFIER "(" param_list? ")" (":" type)? ";"
 

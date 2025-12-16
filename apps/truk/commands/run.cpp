@@ -46,12 +46,18 @@ int run(const run_options_s &opts) {
 
   std::unordered_map<const truk::language::nodes::base_c *, std::string>
       decl_to_file;
+  std::unordered_map<std::string, std::vector<std::string>> file_to_shards;
   for (const auto &decl : parse_result.declarations) {
     decl_to_file[decl.get()] = opts.input_file;
+    if (auto *shard_node =
+            dynamic_cast<const truk::language::nodes::shard_c *>(decl.get())) {
+      file_to_shards[opts.input_file].push_back(shard_node->name());
+    }
   }
 
   validation::type_checker_c type_checker;
   type_checker.set_declaration_file_map(decl_to_file);
+  type_checker.set_file_to_shards_map(file_to_shards);
   for (auto &decl : parse_result.declarations) {
     type_checker.check(decl.get());
   }
@@ -68,6 +74,7 @@ int run(const run_options_s &opts) {
   emitc::emitter_c emitter;
   auto emit_result = emitter.add_declarations(parse_result.declarations)
                          .set_declaration_file_map(decl_to_file)
+                         .set_file_to_shards_map(file_to_shards)
                          .set_c_imports(parse_result.c_imports)
                          .finalize();
 

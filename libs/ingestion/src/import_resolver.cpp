@@ -253,6 +253,8 @@ void dependency_visitor_c::visit(const import_c &) {}
 
 void dependency_visitor_c::visit(const cimport_c &) {}
 
+void dependency_visitor_c::visit(const shard_c &) {}
+
 std::string
 import_resolver_c::resolve_import_path(const std::string &import_path,
                                        const std::string &current_file) {
@@ -281,6 +283,7 @@ resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
   _errors.clear();
   _c_imports.clear();
   _decl_to_file.clear();
+  _file_to_shards.clear();
 
   process_file(entry_file);
 
@@ -294,6 +297,7 @@ resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
 
   result.c_imports = std::move(_c_imports);
   result.decl_to_file = _decl_to_file;
+  result.file_to_shards = _file_to_shards;
 
   return result;
 }
@@ -361,6 +365,8 @@ void import_resolver_c::extract_imports_and_declarations(
       _c_imports.push_back(
           {.path = cimport_node->path(),
            .is_angle_bracket = cimport_node->is_angle_bracket()});
+    } else if (auto *shard_node = dynamic_cast<const shard_c *>(decl.get())) {
+      _file_to_shards[file_path].push_back(shard_node->name());
     } else {
       _decl_to_file[decl.get()] = file_path;
       if (auto name = decl->symbol_name()) {

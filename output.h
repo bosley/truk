@@ -17,7 +17,6 @@ typedef bool __truk_bool;
 
 #define __truk_void void
 typedef struct moot moot;
-struct moot {
-};
+struct moot {};
 
 __truk_void x();

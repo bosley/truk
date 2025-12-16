@@ -1,0 +1,9 @@
+struct Multi {
+  data_a: i32,
+  data_b: i32
+}
+
+fn main() : i32 {
+  var m: Multi = Multi{data_a: 10, data_b: 20};
+  return m.data_a + m.data_b;
+}

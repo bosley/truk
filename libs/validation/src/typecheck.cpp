@@ -1232,9 +1232,10 @@ void type_checker_c::visit(const call_c &node) {
 
   if (!func_name.empty() && is_private_identifier(func_name)) {
     std::string func_file = get_defining_file_for_function(func_name);
-    if (!func_file.empty() && func_file != _current_file) {
+    if (!func_file.empty() && func_file != _current_file &&
+        !files_share_shard(func_file, _current_file)) {
       report_error("Cannot call private function '" + func_name +
-                       "' from outside its defining file",
+                       "' from outside its defining file or shard",
                    node.source_index());
       return;
     }
@@ -1391,10 +1392,11 @@ void type_checker_c::visit(const member_access_c &node) {
 
   if (is_private_identifier(field_name)) {
     std::string struct_file = get_defining_file_for_struct(struct_type->name);
-    if (!struct_file.empty() && struct_file != _current_file) {
+    if (!struct_file.empty() && struct_file != _current_file &&
+        !files_share_shard(struct_file, _current_file)) {
       report_error("Cannot access private field '" + field_name +
                        "' of struct '" + struct_type->name +
-                       "' from outside its defining file",
+                       "' from outside its defining file or shard",
                    node.source_index());
       return;
     }
@@ -1440,9 +1442,10 @@ void type_checker_c::visit(const identifier_c &node) {
 
   if (is_private_identifier(node.id().name)) {
     std::string global_file = get_defining_file_for_global(node.id().name);
-    if (!global_file.empty() && global_file != _current_file) {
+    if (!global_file.empty() && global_file != _current_file &&
+        !files_share_shard(global_file, _current_file)) {
       report_error("Cannot access private global variable '" + node.id().name +
-                       "' from outside its defining file",
+                       "' from outside its defining file or shard",
                    node.source_index());
       return;
     }
@@ -1628,6 +1631,8 @@ void type_checker_c::visit(const import_c &node) {}
 
 void type_checker_c::visit(const cimport_c &node) {}
 
+void type_checker_c::visit(const shard_c &node) {}
+
 bool type_checker_c::is_private_identifier(const std::string &name) const {
   return !name.empty() && name[0] == '_';
 }
@@ -1657,6 +1662,26 @@ std::string type_checker_c::get_defining_file_for_global(
     return it->second;
   }
   return "";
+}
+
+bool type_checker_c::files_share_shard(const std::string &file1,
+                                       const std::string &file2) const {
+  auto it1 = _file_to_shards.find(file1);
+  auto it2 = _file_to_shards.find(file2);
+
+  if (it1 == _file_to_shards.end() || it2 == _file_to_shards.end()) {
+    return false;
+  }
+
+  for (const auto &shard1 : it1->second) {
+    for (const auto &shard2 : it2->second) {
+      if (shard1 == shard2) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 } // namespace truk::validation

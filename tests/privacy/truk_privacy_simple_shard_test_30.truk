@@ -1,0 +1,12 @@
+import "simple_shard_a.truk";
+import "simple_shard_b.truk";
+
+fn main() : i32 {
+  var p: Point = point_new(10, 20);
+  
+  point_set_y(&p, 15);
+  
+  var result: i32 = point_double_y(&p);
+  
+  return result;
+}

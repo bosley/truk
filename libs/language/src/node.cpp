@@ -77,4 +77,6 @@ void import_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void cimport_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
+void shard_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
+
 } // namespace truk::language::nodes

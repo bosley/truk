@@ -168,4 +168,6 @@ void control_flow_checker_c::visit(const import_c &) {}
 
 void control_flow_checker_c::visit(const cimport_c &) {}
 
+void control_flow_checker_c::visit(const shard_c &) {}
+
 } // namespace truk::validation

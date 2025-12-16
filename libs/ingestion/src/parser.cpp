@@ -169,6 +169,9 @@ language::nodes::base_ptr parser_c::parse_declaration() {
   if (check_keyword(language::keywords_e::CIMPORT)) {
     return parse_cimport_decl();
   }
+  if (check_keyword(language::keywords_e::SHARD)) {
+    return parse_shard_decl();
+  }
   if (check_keyword(language::keywords_e::EXTERN)) {
     return parse_extern_decl();
   }
@@ -186,7 +189,7 @@ language::nodes::base_ptr parser_c::parse_declaration() {
   }
   const auto &token = peek();
   throw parse_error("Expected declaration (fn, struct, var, const, import, "
-                    "cimport, or extern)",
+                    "cimport, shard, or extern)",
                     token.line, token.column);
 }
 
@@ -249,6 +252,25 @@ language::nodes::base_ptr parser_c::parse_cimport_decl() {
 
   return std::make_unique<language::nodes::cimport_c>(
       cimport_token.source_index, path, is_angle_bracket);
+}
+
+language::nodes::base_ptr parser_c::parse_shard_decl() {
+  const auto &shard_token =
+      consume_keyword(language::keywords_e::SHARD, "Expected 'shard' keyword");
+
+  const auto &name_token =
+      consume(token_type_e::STRING_LITERAL,
+              "Expected string literal name after 'shard'");
+
+  consume(token_type_e::SEMICOLON, "Expected ';' after shard name");
+
+  std::string name = name_token.lexeme;
+  if (name.size() >= 2 && name.front() == '"' && name.back() == '"') {
+    name = name.substr(1, name.size() - 2);
+  }
+
+  return std::make_unique<language::nodes::shard_c>(shard_token.source_index,
+                                                    name);
 }
 
 language::nodes::base_ptr parser_c::parse_extern_decl() {

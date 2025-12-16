@@ -1,0 +1,14 @@
+struct Local {
+  value: i32,
+  _private: i32
+}
+
+fn _local_helper(x: i32) : i32 {
+  return x + 1;
+}
+
+fn main() : i32 {
+  var l: Local = Local{value: 10, _private: 20};
+  l._private = _local_helper(l._private);
+  return l._private;
+}

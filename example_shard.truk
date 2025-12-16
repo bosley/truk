@@ -1,0 +1,31 @@
+shard "example";
+
+struct Counter {
+  value: i32,
+  _max: i32
+}
+
+fn _increment_internal(c: *Counter) : void {
+  if (*c).value < (*c)._max {
+    (*c).value = (*c).value + 1;
+  }
+}
+
+fn counter_new(max: i32) : Counter {
+  return Counter{value: 0, _max: max};
+}
+
+fn counter_increment(c: *Counter) : void {
+  _increment_internal(c);
+}
+
+fn counter_get(c: *Counter) : i32 {
+  return (*c).value;
+}
+
+fn main() : i32 {
+  var c: Counter = counter_new(10);
+  counter_increment(&c);
+  counter_increment(&c);
+  return counter_get(&c);
+}

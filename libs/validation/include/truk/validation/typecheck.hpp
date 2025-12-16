@@ -132,6 +132,11 @@ public:
     _decl_to_file = map;
   }
 
+  void set_file_to_shards_map(
+      const std::unordered_map<std::string, std::vector<std::string>> &map) {
+    _file_to_shards = map;
+  }
+
   const std::vector<type_error_s> &errors() const { return _detailed_errors; }
   bool has_errors() const { return !_detailed_errors.empty(); }
 
@@ -167,6 +172,7 @@ public:
   void visit(const truk::language::nodes::type_param_c &node) override;
   void visit(const truk::language::nodes::import_c &node) override;
   void visit(const truk::language::nodes::cimport_c &node) override;
+  void visit(const truk::language::nodes::shard_c &node) override;
 
 private:
   truk::core::memory_c<2048> _memory;
@@ -180,6 +186,7 @@ private:
   std::unordered_map<std::string, std::string> _struct_to_file;
   std::unordered_map<std::string, std::string> _function_to_file;
   std::unordered_map<std::string, std::string> _global_to_file;
+  std::unordered_map<std::string, std::vector<std::string>> _file_to_shards;
   std::string _current_file;
 
   void push_scope();
@@ -228,6 +235,8 @@ private:
   get_defining_file_for_function(const std::string &func_name) const;
   std::string
   get_defining_file_for_global(const std::string &global_name) const;
+  bool files_share_shard(const std::string &file1,
+                         const std::string &file2) const;
 };
 
 } // namespace truk::validation

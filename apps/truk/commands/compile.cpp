@@ -57,6 +57,7 @@ int compile(const compile_options_s &opts) {
 
   validation::type_checker_c type_checker;
   type_checker.set_declaration_file_map(resolved.decl_to_file);
+  type_checker.set_file_to_shards_map(resolved.file_to_shards);
   for (auto &decl : resolved.all_declarations) {
     type_checker.check(decl.get());
   }
@@ -73,6 +74,7 @@ int compile(const compile_options_s &opts) {
   emitc::emitter_c emitter;
   auto emit_result = emitter.add_declarations(resolved.all_declarations)
                          .set_declaration_file_map(resolved.decl_to_file)
+                         .set_file_to_shards_map(resolved.file_to_shards)
                          .set_c_imports(resolved.c_imports)
                          .finalize();
 

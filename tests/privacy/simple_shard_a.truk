@@ -1,0 +1,14 @@
+shard "simple";
+
+struct Point {
+  x: i32,
+  _y: i32
+}
+
+fn _helper(p: *Point) : i32 {
+  return (*p)._y * 2;
+}
+
+fn point_new(x: i32, y: i32) : Point {
+  return Point{x: x, _y: y};
+}

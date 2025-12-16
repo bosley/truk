@@ -144,12 +144,32 @@ void emitter_c::internal_finalize() {
   _result.metadata.extern_structs = _extern_struct_names;
 
   _result.metadata.main_function_count = 0;
+  std::string main_file;
   for (const auto &func_name : _function_names) {
     if (func_name == "main") {
       _result.metadata.main_function_count++;
+      for (const auto &[decl, file] : _decl_to_file) {
+        if (auto *fn = dynamic_cast<const fn_c *>(decl)) {
+          if (fn->name().name == "main") {
+            main_file = file;
+            break;
+          }
+        }
+      }
     }
   }
   _result.metadata.has_main_function = _result.metadata.main_function_count > 0;
+
+  if (_result.metadata.has_main_function && !main_file.empty()) {
+    auto shard_it = _file_to_shards.find(main_file);
+    if (shard_it != _file_to_shards.end() && !shard_it->second.empty()) {
+      add_error(
+          "Shard declarations are not allowed in files containing a main "
+          "function. Shards are for sharing implementation details between "
+          "library files, not for application entry points",
+          nullptr);
+    }
+  }
 }
 
 std::string emitter_c::emit_type(const type_c *type) {
@@ -1354,6 +1374,8 @@ void emitter_c::emit_function_defers() {
 void emitter_c::visit(const import_c &node) {}
 
 void emitter_c::visit(const cimport_c &node) {}
+
+void emitter_c::visit(const shard_c &node) {}
 
 std::string result_c::assemble_code() const {
   std::string output;
