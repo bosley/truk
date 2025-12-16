@@ -258,10 +258,12 @@ language::nodes::base_ptr parser_c::parse_extern_decl() {
     return parse_fn_decl(true);
   } else if (check_keyword(language::keywords_e::STRUCT)) {
     return parse_struct_decl(true);
+  } else if (check_keyword(language::keywords_e::VAR)) {
+    return parse_var_decl(true);
   } else {
     const auto &token = peek();
-    throw parse_error("Expected 'fn' or 'struct' after 'extern'", token.line,
-                      token.column);
+    throw parse_error("Expected 'fn', 'struct', or 'var' after 'extern'",
+                      token.line, token.column);
   }
 }
 
@@ -328,7 +330,7 @@ language::nodes::base_ptr parser_c::parse_struct_decl(bool is_extern) {
       struct_token.source_index, std::move(name), std::move(fields), is_extern);
 }
 
-language::nodes::base_ptr parser_c::parse_var_decl() {
+language::nodes::base_ptr parser_c::parse_var_decl(bool is_extern) {
   const auto &var_token =
       consume_keyword(language::keywords_e::VAR, "Expected 'var' keyword");
   const auto &name_token = consume_identifier("Expected variable name");
@@ -338,15 +340,24 @@ language::nodes::base_ptr parser_c::parse_var_decl() {
   auto type = parse_type_annotation();
 
   std::optional<language::nodes::base_ptr> initializer = std::nullopt;
-  if (match(token_type_e::EQUAL)) {
-    initializer = parse_expression();
+
+  if (is_extern) {
+    if (check(token_type_e::EQUAL)) {
+      const auto &token = peek();
+      throw parse_error("extern var cannot have initializer", token.line,
+                        token.column);
+    }
+  } else {
+    if (match(token_type_e::EQUAL)) {
+      initializer = parse_expression();
+    }
   }
 
   consume(token_type_e::SEMICOLON, "Expected ';' after variable declaration");
 
   return std::make_unique<language::nodes::var_c>(
       var_token.source_index, std::move(name), std::move(type),
-      std::move(initializer));
+      std::move(initializer), is_extern);
 }
 
 language::nodes::base_ptr parser_c::parse_const_decl() {

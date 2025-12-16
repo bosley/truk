@@ -542,6 +542,10 @@ void emitter_c::visit(const var_c &node) {
     return;
   }
 
+  if (node.is_extern()) {
+    return;
+  }
+
   register_variable_type(node.name().name, node.type());
 
   if (auto map = dynamic_cast<const map_type_c *>(node.type())) {

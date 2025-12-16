@@ -1,0 +1,11 @@
+cimport <stdio.h>;
+cimport <errno.h>;
+
+extern struct FILE;
+extern var stdin: *FILE;
+extern var errno: i32;
+
+fn main(): i32 {
+    errno = 10;
+    return errno;
+}

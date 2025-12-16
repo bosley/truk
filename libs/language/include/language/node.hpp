@@ -216,15 +216,18 @@ class var_c : public base_c {
 public:
   var_c() = delete;
   var_c(std::size_t source_index, identifier_s name, type_ptr type,
-        std::optional<base_ptr> initializer = std::nullopt)
+        std::optional<base_ptr> initializer = std::nullopt,
+        bool is_extern = false)
       : base_c(keywords_e::VAR, source_index), _name(std::move(name)),
-        _type(std::move(type)), _initializer(std::move(initializer)) {}
+        _type(std::move(type)), _initializer(std::move(initializer)),
+        _is_extern(is_extern) {}
 
   const identifier_s &name() const { return _name; }
   const type_c *type() const { return _type.get(); }
   const base_c *initializer() const {
     return _initializer ? _initializer->get() : nullptr;
   }
+  bool is_extern() const { return _is_extern; }
 
   void accept(visitor_if &visitor) const override;
   std::optional<std::string> symbol_name() const override { return _name.name; }
@@ -233,6 +236,7 @@ private:
   identifier_s _name;
   type_ptr _type;
   std::optional<base_ptr> _initializer;
+  bool _is_extern{false};
 };
 
 class const_c : public base_c {

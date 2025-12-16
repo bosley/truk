@@ -1,0 +1,9 @@
+cimport <errno.h>;
+
+extern var errno: i32;
+
+fn main(): i32 {
+    var ptr: *i32 = &errno;
+    *ptr = 42;
+    return 30;
+}

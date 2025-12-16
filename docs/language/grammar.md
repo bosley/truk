@@ -7,6 +7,15 @@ declaration     ::= fn_decl
                   | struct_decl
                   | var_decl
                   | const_decl
+                  | extern_decl
+
+extern_decl     ::= "extern" (extern_fn_decl | extern_struct_decl | extern_var_decl)
+
+extern_fn_decl  ::= "fn" IDENTIFIER "(" param_list? ")" (":" type)? ";"
+
+extern_struct_decl ::= "struct" IDENTIFIER ("{" field_list? "}" | ";")
+
+extern_var_decl ::= "var" IDENTIFIER type_annotation ";"
 
 fn_decl         ::= "fn" IDENTIFIER "(" param_list? ")" (":" type)? block
 

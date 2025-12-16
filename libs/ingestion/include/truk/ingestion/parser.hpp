@@ -68,7 +68,7 @@ private:
   language::nodes::base_ptr parse_extern_decl();
   language::nodes::base_ptr parse_fn_decl(bool is_extern = false);
   language::nodes::base_ptr parse_struct_decl(bool is_extern = false);
-  language::nodes::base_ptr parse_var_decl();
+  language::nodes::base_ptr parse_var_decl(bool is_extern = false);
   language::nodes::base_ptr parse_const_decl();
 
   language::nodes::type_ptr parse_type_internal();

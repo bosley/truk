@@ -1,5 +1,6 @@
 #include <sstream>
 #include <truk/ingestion/parser.hpp>
+#include <truk/validation/control_flow_checker.hpp>
 #include <truk/validation/typecheck.hpp>
 
 namespace truk::validation {
@@ -830,6 +831,16 @@ void type_checker_c::visit(const var_c &node) {
     return;
   }
 
+  if (node.is_extern()) {
+    if (node.initializer()) {
+      report_error("extern var cannot have initializer", node.source_index());
+    }
+    register_symbol(node.name().name, std::move(var_type), false,
+                    node.source_index());
+    _memory.defer_hoist(node.name().name);
+    return;
+  }
+
   if (node.initializer()) {
     node.initializer()->accept(*this);
 
@@ -1556,37 +1567,9 @@ bool type_checker_c::check_no_control_flow(const base_c *node) {
     return true;
   }
 
-  if (dynamic_cast<const return_c *>(node) ||
-      dynamic_cast<const break_c *>(node) ||
-      dynamic_cast<const continue_c *>(node)) {
-    return false;
-  }
-
-  if (auto block = dynamic_cast<const block_c *>(node)) {
-    for (const auto &stmt : block->statements()) {
-      if (!check_no_control_flow(stmt.get())) {
-        return false;
-      }
-    }
-  } else if (auto if_node = dynamic_cast<const if_c *>(node)) {
-    if (!check_no_control_flow(if_node->then_block())) {
-      return false;
-    }
-    if (if_node->else_block() &&
-        !check_no_control_flow(if_node->else_block())) {
-      return false;
-    }
-  } else if (auto while_node = dynamic_cast<const while_c *>(node)) {
-    if (!check_no_control_flow(while_node->body())) {
-      return false;
-    }
-  } else if (auto for_node = dynamic_cast<const for_c *>(node)) {
-    if (!check_no_control_flow(for_node->body())) {
-      return false;
-    }
-  }
-
-  return true;
+  control_flow_checker_c checker;
+  node->accept(checker);
+  return !checker.has_control_flow();
 }
 
 void type_checker_c::visit(const import_c &node) {}

@@ -1,0 +1,9 @@
+cimport <errno.h>;
+
+extern var errno: i32;
+
+fn main(): i32 {
+    var x: i32 = errno;
+    var y: i32 = x + errno;
+    return 25;
+}
