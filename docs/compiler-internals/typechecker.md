@@ -1,4 +1,10 @@
+[← Back to Documentation Index](../start-here.md)
+
 # Type Checker Architecture
+
+**Compiler Internals:** [Error Handling](error-handling.md) · [Error Flow Diagrams](error-flow-diagram.md) · [C Emitter](emitter.md)
+
+---
 
 ## Overview
 

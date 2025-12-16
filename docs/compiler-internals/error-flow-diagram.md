@@ -1,4 +1,10 @@
+[← Back to Documentation Index](../start-here.md)
+
 # TRUK Error Flow
+
+**Compiler Internals:** [Error Handling](error-handling.md) · [C Emitter](emitter.md) · [Type Checker](typechecker.md)
+
+---
 
 ## Command: `run`
 

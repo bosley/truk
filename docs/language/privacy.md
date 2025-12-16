@@ -1,4 +1,10 @@
+[← Back to Documentation Index](../start-here.md)
+
 # Privacy in Truk
+
+**Language Reference:** [Grammar](grammar.md) · [Builtins](builtins.md) · [Maps](maps.md) · [Defer](defer.md) · [Imports](imports.md) · [Lambdas](lambdas.md) · [Runtime](runtime.md)
+
+---
 
 Truk provides flexible privacy using a simple naming convention: identifiers starting with an underscore (`_`) are private. Privacy can be **file-scoped** (default) or **shard-scoped** (opt-in).
 

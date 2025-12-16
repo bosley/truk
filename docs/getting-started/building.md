@@ -1,3 +1,5 @@
+[← Back to Documentation Index](../start-here.md)
+
 # Building Truk Programs
 
 Truk provides multiple compilation modes to suit different use cases.

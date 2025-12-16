@@ -1,4 +1,10 @@
+[← Back to Documentation Index](../start-here.md)
+
 # Truk Runtime Architecture
+
+**Language Reference:** [Grammar](grammar.md) · [Builtins](builtins.md) · [Maps](maps.md) · [Defer](defer.md) · [Imports](imports.md) · [Lambdas](lambdas.md) · [Privacy](privacy.md)
+
+---
 
 ## Runtime Integration Flow
 

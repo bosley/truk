@@ -198,14 +198,15 @@ truk compiles to C and uses TCC (Tiny C Compiler) internally as the backend. The
 
 ## Documentation
 
-- `docs/language/grammar.md` - Complete language grammar
-- `docs/language/builtins.md` - Builtin function reference
-- `docs/language/maps.md` - Map types and usage
-- `docs/language/defer.md` - Defer statement semantics
-- `docs/language/imports.md` - Import system
-- `docs/language/lambdas.md` - Lambda functions
-- `docs/language/privacy.md` - Privacy and shards
-- `docs/language/runtime.md` - Runtime architecture
+**[📚 Start Here - Complete Documentation Guide](docs/start-here.md)**
+
+The documentation is organized into three sections:
+
+- **Getting Started** - Build and compile truk programs
+- **Language Reference** - Complete language features and syntax
+- **Compiler Internals** - Implementation details for contributors
+
+Visit [docs/start-here.md](docs/start-here.md) for the full documentation index with navigation and examples.
 
 ## Memory Model
 

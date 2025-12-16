@@ -1,4 +1,10 @@
+[← Back to Documentation Index](../start-here.md)
+
 # Imports in Truk
+
+**Language Reference:** [Grammar](grammar.md) · [Builtins](builtins.md) · [Maps](maps.md) · [Defer](defer.md) · [Lambdas](lambdas.md) · [Privacy](privacy.md) · [Runtime](runtime.md)
+
+---
 
 Truk supports two types of imports: Truk module imports and C header imports.
 

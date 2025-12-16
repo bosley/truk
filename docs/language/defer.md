@@ -1,4 +1,10 @@
+[← Back to Documentation Index](../start-here.md)
+
 # Defer Statement
+
+**Language Reference:** [Grammar](grammar.md) · [Builtins](builtins.md) · [Maps](maps.md) · [Imports](imports.md) · [Lambdas](lambdas.md) · [Privacy](privacy.md) · [Runtime](runtime.md)
+
+---
 
 ## Overview
 

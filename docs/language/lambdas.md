@@ -1,4 +1,10 @@
+[← Back to Documentation Index](../start-here.md)
+
 # Lambdas in truk
+
+**Language Reference:** [Grammar](grammar.md) · [Builtins](builtins.md) · [Maps](maps.md) · [Defer](defer.md) · [Imports](imports.md) · [Privacy](privacy.md) · [Runtime](runtime.md)
+
+---
 
 Lambdas are anonymous functions that can be assigned to variables, passed as arguments, and returned from functions. They provide first-class function support for functional programming patterns.
 

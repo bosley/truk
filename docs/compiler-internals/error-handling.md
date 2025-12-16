@@ -1,4 +1,10 @@
+[← Back to Documentation Index](../start-here.md)
+
 # Unified Error Handling System
+
+**Compiler Internals:** [Error Flow Diagrams](error-flow-diagram.md) · [C Emitter](emitter.md) · [Type Checker](typechecker.md)
+
+---
 
 ## Overview
 
@@ -216,14 +222,3 @@ This allows for:
 3. **Clarity**: Error messages are descriptive and actionable
 4. **Completeness**: All errors are collected and reported
 5. **User-friendly**: Visual indicators and color coding improve readability
-
-## Future Enhancements
-
-Potential improvements to the error system:
-
-1. **Error recovery**: Continue parsing/checking after errors to find more issues
-2. **Suggestions**: Provide "did you mean?" suggestions for typos
-3. **Error codes**: Assign unique codes to error types for documentation
-4. **JSON output**: Machine-readable error format for IDE integration
-5. **Warning system**: Distinguish between errors and warnings
-6. **Severity levels**: Support for notes, warnings, errors, and fatal errors

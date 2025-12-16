@@ -1,4 +1,10 @@
+[← Back to Documentation Index](../start-here.md)
+
 # Maps in truk
+
+**Language Reference:** [Grammar](grammar.md) · [Builtins](builtins.md) · [Defer](defer.md) · [Imports](imports.md) · [Lambdas](lambdas.md) · [Privacy](privacy.md) · [Runtime](runtime.md)
+
+---
 
 Maps are hash tables with typed keys and values. They provide O(1) average-case lookup, insertion, and deletion.
 

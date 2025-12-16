@@ -1,4 +1,10 @@
+[← Back to Documentation Index](../start-here.md)
+
 # truk Builtin Functions
+
+**Language Reference:** [Grammar](grammar.md) · [Maps](maps.md) · [Defer](defer.md) · [Imports](imports.md) · [Lambdas](lambdas.md) · [Privacy](privacy.md) · [Runtime](runtime.md)
+
+---
 
 This document describes the builtin functions available in truk. Builtins provide essential functionality for memory management, array operations, and error handling.
 
