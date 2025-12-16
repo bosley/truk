@@ -165,8 +165,7 @@ type_registry_c::get_array_pointer_type(const type_c *array_type,
   return result;
 }
 
-std::string
-type_registry_c::get_slice_type_name(const type_c *element_type) {
+std::string type_registry_c::get_slice_type_name(const type_c *element_type) {
   std::string elem_type_str = get_c_type_for_sizeof(element_type);
   std::string slice_name = "truk_slice_" + elem_type_str;
   for (auto &c : slice_name) {
@@ -188,8 +187,7 @@ void type_registry_c::ensure_slice_typedef(const type_c *element_type,
 
     if (auto arr = dynamic_cast<const array_type_c *>(element_type)) {
       if (arr->size().has_value()) {
-        std::string pointer_type =
-            get_array_pointer_type(element_type, "data");
+        std::string pointer_type = get_array_pointer_type(element_type, "data");
         header_stream << "typedef struct {\n  " << pointer_type
                       << ";\n  __truk_u64 len;\n} " << slice_name << ";\n\n";
         return;

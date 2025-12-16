@@ -13,8 +13,7 @@ public:
   ~type_registry_c() = default;
 
   std::string get_c_type(const truk::language::nodes::type_c *type);
-  std::string
-  get_c_type_for_sizeof(const truk::language::nodes::type_c *type);
+  std::string get_c_type_for_sizeof(const truk::language::nodes::type_c *type);
   std::string
   get_array_pointer_type(const truk::language::nodes::type_c *array_type,
                          const std::string &identifier = "");

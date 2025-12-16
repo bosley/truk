@@ -37,12 +37,12 @@ const char *emission_phase_name(emission_phase_e phase);
 
 struct defer_scope_s {
   enum class scope_type_e { FUNCTION, LAMBDA, BLOCK, LOOP };
-  
+
   std::vector<const truk::language::nodes::defer_c *> defers;
   scope_type_e type;
   const truk::language::nodes::base_c *owner_node;
   defer_scope_s *parent;
-  
+
   defer_scope_s(scope_type_e t, const truk::language::nodes::base_c *owner,
                 defer_scope_s *p)
       : type(t), owner_node(owner), parent(p) {}
@@ -194,6 +194,25 @@ private:
   bool is_variable_slice(const std::string &name);
   bool is_variable_map(const std::string &name);
   bool is_private_identifier(const std::string &name) const;
+
+  std::string emit_expression(const truk::language::nodes::base_c *node);
+  std::string
+  emit_expr_binary_op(const truk::language::nodes::binary_op_c &node);
+  std::string emit_expr_unary_op(const truk::language::nodes::unary_op_c &node);
+  std::string emit_expr_cast(const truk::language::nodes::cast_c &node);
+  std::string emit_expr_call(const truk::language::nodes::call_c &node);
+  std::string emit_expr_index(const truk::language::nodes::index_c &node);
+  std::string
+  emit_expr_member_access(const truk::language::nodes::member_access_c &node);
+  std::string emit_expr_literal(const truk::language::nodes::literal_c &node);
+  std::string
+  emit_expr_identifier(const truk::language::nodes::identifier_c &node);
+  std::string
+  emit_expr_array_literal(const truk::language::nodes::array_literal_c &node);
+  std::string
+  emit_expr_struct_literal(const truk::language::nodes::struct_literal_c &node);
+  std::string get_binary_op_string(truk::language::nodes::binary_op_e op);
+  std::string get_unary_op_string(truk::language::nodes::unary_op_e op);
 
   std::vector<const truk::language::nodes::base_c *> _declarations;
   std::unordered_map<const truk::language::nodes::base_c *, std::string>

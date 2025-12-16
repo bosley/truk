@@ -408,7 +408,7 @@ void emitter_c::visit(const fn_c &node) {
       _functions << "}\n";
     } else {
       push_defer_scope(defer_scope_s::scope_type_e::FUNCTION, &node);
-      
+
       if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
         _functions << "{\n";
         _indent_level++;
@@ -422,7 +422,7 @@ void emitter_c::visit(const fn_c &node) {
         node.body()->accept(*this);
         emit_scope_defers(_current_defer_scope);
       }
-      
+
       pop_defer_scope();
     }
   }
@@ -535,7 +535,7 @@ void emitter_c::visit(const lambda_c &node) {
   if (node.body()) {
     _functions << " ";
     push_defer_scope(defer_scope_s::scope_type_e::LAMBDA, &node);
-    
+
     if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
       _functions << "{\n";
       _indent_level++;
@@ -549,7 +549,7 @@ void emitter_c::visit(const lambda_c &node) {
       node.body()->accept(*this);
       emit_scope_defers(_current_defer_scope);
     }
-    
+
     pop_defer_scope();
   }
 
@@ -691,13 +691,8 @@ void emitter_c::visit(const var_c &node) {
   }
 
   if (node.initializer()) {
-    _functions << " = ";
-    _in_expression = true;
-    node.initializer()->accept(*this);
-    _in_expression = false;
-    _functions << _current_expr.str();
-    _current_expr.str("");
-    _current_expr.clear();
+    std::string init = emit_expression(node.initializer());
+    _functions << " = " << init;
   }
 
   _functions << ";\n";
@@ -729,25 +724,13 @@ void emitter_c::visit(const const_c &node) {
     }
   }
 
-  _functions << " = ";
-  _in_expression = true;
-  node.value()->accept(*this);
-  _in_expression = false;
-  _functions << _current_expr.str();
-  _current_expr.str("");
-  _current_expr.clear();
-  _functions << ";\n";
+  std::string value = emit_expression(node.value());
+  _functions << " = " << value << ";\n";
 }
 
 void emitter_c::visit(const if_c &node) {
-  _functions << cdef::indent(_indent_level) << "if (";
-  _in_expression = true;
-  node.condition()->accept(*this);
-  _in_expression = false;
-  _functions << _current_expr.str();
-  _current_expr.str("");
-  _current_expr.clear();
-  _functions << ") ";
+  std::string condition = emit_expression(node.condition());
+  _functions << cdef::indent(_indent_level) << "if (" << condition << ") ";
 
   node.then_block()->accept(*this);
 
@@ -760,17 +743,11 @@ void emitter_c::visit(const if_c &node) {
 }
 
 void emitter_c::visit(const while_c &node) {
-  _functions << cdef::indent(_indent_level) << "while (";
-  _in_expression = true;
-  node.condition()->accept(*this);
-  _in_expression = false;
-  _functions << _current_expr.str();
-  _current_expr.str("");
-  _current_expr.clear();
-  _functions << ") ";
+  std::string condition = emit_expression(node.condition());
+  _functions << cdef::indent(_indent_level) << "while (" << condition << ") ";
 
   push_defer_scope(defer_scope_s::scope_type_e::LOOP, &node);
-  
+
   if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
     _functions << "{\n";
     _indent_level++;
@@ -784,9 +761,9 @@ void emitter_c::visit(const while_c &node) {
     node.body()->accept(*this);
     emit_scope_defers(_current_defer_scope);
   }
-  
+
   pop_defer_scope();
-  
+
   _functions << "\n";
 }
 
@@ -812,39 +789,27 @@ void emitter_c::visit(const for_c &node) {
       }
       _functions << init_str;
     } else {
-      _in_expression = true;
-      node.init()->accept(*this);
-      _in_expression = false;
-      _functions << _current_expr.str();
-      _current_expr.str("");
-      _current_expr.clear();
+      std::string init_expr = emit_expression(node.init());
+      _functions << init_expr;
     }
   }
   _functions << "; ";
 
   if (node.condition()) {
-    _in_expression = true;
-    node.condition()->accept(*this);
-    _in_expression = false;
-    _functions << _current_expr.str();
-    _current_expr.str("");
-    _current_expr.clear();
+    std::string cond_expr = emit_expression(node.condition());
+    _functions << cond_expr;
   }
   _functions << "; ";
 
   if (node.post()) {
-    _in_expression = true;
-    node.post()->accept(*this);
-    _in_expression = false;
-    _functions << _current_expr.str();
-    _current_expr.str("");
-    _current_expr.clear();
+    std::string post_expr = emit_expression(node.post());
+    _functions << post_expr;
   }
 
   _functions << ") ";
 
   push_defer_scope(defer_scope_s::scope_type_e::LOOP, &node);
-  
+
   if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
     _functions << "{\n";
     _indent_level++;
@@ -858,9 +823,9 @@ void emitter_c::visit(const for_c &node) {
     node.body()->accept(*this);
     emit_scope_defers(_current_defer_scope);
   }
-  
+
   pop_defer_scope();
-  
+
   _functions << "\n";
 }
 
@@ -870,13 +835,8 @@ void emitter_c::visit(const return_c &node) {
   _functions << cdef::indent(_indent_level) << "return";
 
   if (node.expression()) {
-    _functions << " ";
-    _in_expression = true;
-    node.expression()->accept(*this);
-    _in_expression = false;
-    _functions << _current_expr.str();
-    _current_expr.str("");
-    _current_expr.clear();
+    std::string expr = emit_expression(node.expression());
+    _functions << " " << expr;
   }
 
   _functions << ";\n";
@@ -884,25 +844,25 @@ void emitter_c::visit(const return_c &node) {
 
 void emitter_c::visit(const break_c &node) {
   defer_scope_s *loop_scope = find_enclosing_loop_scope();
-  
+
   defer_scope_s *scope = _current_defer_scope;
   while (scope && scope != loop_scope) {
     emit_scope_defers(scope);
     scope = scope->parent;
   }
-  
+
   _functions << cdef::indent(_indent_level) << "break;\n";
 }
 
 void emitter_c::visit(const continue_c &node) {
   defer_scope_s *loop_scope = find_enclosing_loop_scope();
-  
+
   defer_scope_s *scope = _current_defer_scope;
   while (scope && scope != loop_scope) {
     emit_scope_defers(scope);
     scope = scope->parent;
   }
-  
+
   _functions << cdef::indent(_indent_level) << "continue;\n";
 }
 
@@ -913,144 +873,281 @@ void emitter_c::visit(const defer_c &node) {
 }
 
 void emitter_c::visit(const binary_op_c &node) {
-  _current_expr << "(";
-  node.left()->accept(*this);
-
-  switch (node.op()) {
-  case binary_op_e::ADD:
-    _current_expr << " + ";
-    break;
-  case binary_op_e::SUB:
-    _current_expr << " - ";
-    break;
-  case binary_op_e::MUL:
-    _current_expr << " * ";
-    break;
-  case binary_op_e::DIV:
-    _current_expr << " / ";
-    break;
-  case binary_op_e::MOD:
-    _current_expr << " % ";
-    break;
-  case binary_op_e::EQ:
-    _current_expr << " == ";
-    break;
-  case binary_op_e::NE:
-    _current_expr << " != ";
-    break;
-  case binary_op_e::LT:
-    _current_expr << " < ";
-    break;
-  case binary_op_e::LE:
-    _current_expr << " <= ";
-    break;
-  case binary_op_e::GT:
-    _current_expr << " > ";
-    break;
-  case binary_op_e::GE:
-    _current_expr << " >= ";
-    break;
-  case binary_op_e::AND:
-    _current_expr << " && ";
-    break;
-  case binary_op_e::OR:
-    _current_expr << " || ";
-    break;
-  case binary_op_e::BITWISE_AND:
-    _current_expr << " & ";
-    break;
-  case binary_op_e::BITWISE_OR:
-    _current_expr << " | ";
-    break;
-  case binary_op_e::BITWISE_XOR:
-    _current_expr << " ^ ";
-    break;
-  case binary_op_e::LEFT_SHIFT:
-    _current_expr << " << ";
-    break;
-  case binary_op_e::RIGHT_SHIFT:
-    _current_expr << " >> ";
-    break;
-  }
-
-  node.right()->accept(*this);
-  _current_expr << ")";
+  _current_expr << emit_expr_binary_op(node);
 }
 
 void emitter_c::visit(const unary_op_c &node) {
-  switch (node.op()) {
-  case unary_op_e::NEG:
-    _current_expr << "(-";
-    break;
-  case unary_op_e::NOT:
-    _current_expr << "(!";
-    break;
-  case unary_op_e::BITWISE_NOT:
-    _current_expr << "(~";
-    break;
-  case unary_op_e::ADDRESS_OF:
-    _current_expr << "(&";
-    break;
-  case unary_op_e::DEREF:
-    _current_expr << "(*";
-    break;
-  }
-
-  node.operand()->accept(*this);
-  _current_expr << ")";
+  _current_expr << emit_expr_unary_op(node);
 }
 
 void emitter_c::visit(const cast_c &node) {
-  _current_expr << "((" << emit_type(node.target_type()) << ")";
-  node.expression()->accept(*this);
-  _current_expr << ")";
+  _current_expr << emit_expr_cast(node);
 }
 
 void emitter_c::visit(const call_c &node) {
-  if (auto ident = dynamic_cast<const identifier_c *>(node.callee())) {
-    const std::string &func_name = ident->id().name;
-    
-    if (auto *handler = _builtin_registry.get_handler(func_name)) {
-      handler->emit_call(node, *this);
-      return;
-    }
-  }
-
-  bool was_in_expr = _in_expression;
-  _in_expression = true;
-
-  node.callee()->accept(*this);
-  _current_expr << "(";
-
-  for (size_t i = 0; i < node.arguments().size(); ++i) {
-    if (i > 0)
-      _current_expr << ", ";
-    node.arguments()[i]->accept(*this);
-  }
-
-  _current_expr << ")";
-
-  _in_expression = was_in_expr;
-
-  if (!_in_expression) {
-    _functions << cdef::indent(_indent_level) << _current_expr.str() << ";\n";
-    _current_expr.str("");
-    _current_expr.clear();
+  if (_in_expression) {
+    _current_expr << emit_expr_call(node);
+  } else {
+    std::string call_expr = emit_expr_call(node);
+    _functions << cdef::indent(_indent_level) << call_expr << ";\n";
   }
 }
 
 void emitter_c::visit(const index_c &node) {
-  std::stringstream obj_stream;
-  std::swap(obj_stream, _current_expr);
-  node.object()->accept(*this);
-  std::string obj_expr = _current_expr.str();
-  std::swap(obj_stream, _current_expr);
+  _current_expr << emit_expr_index(node);
+}
 
-  std::stringstream idx_stream;
-  std::swap(idx_stream, _current_expr);
-  node.index()->accept(*this);
-  std::string idx_expr = _current_expr.str();
-  std::swap(idx_stream, _current_expr);
+void emitter_c::visit(const member_access_c &node) {
+  _current_expr << emit_expr_member_access(node);
+}
+
+void emitter_c::visit(const literal_c &node) {
+  _current_expr << emit_expr_literal(node);
+}
+
+void emitter_c::visit(const identifier_c &node) {
+  _current_expr << emit_expr_identifier(node);
+}
+
+void emitter_c::visit(const assignment_c &node) {
+  bool was_in_expr = _in_expression;
+
+  if (auto idx = dynamic_cast<const index_c *>(node.target())) {
+    bool is_slice = false;
+    bool is_map = false;
+    if (auto ident = dynamic_cast<const identifier_c *>(idx->object())) {
+      is_slice = is_variable_slice(ident->id().name);
+      is_map = is_variable_map(ident->id().name);
+    } else if (auto inner_idx = dynamic_cast<const index_c *>(idx->object())) {
+      is_slice = false;
+      is_map = false;
+    } else {
+      is_slice = false;
+      is_map = false;
+    }
+
+    if (is_map && !was_in_expr) {
+      std::string obj_expr = emit_expression(idx->object());
+      std::string idx_expr = emit_expression(idx->index());
+      std::string value = emit_expression(node.value());
+
+      bool key_is_slice = false;
+      if (auto key_ident = dynamic_cast<const identifier_c *>(idx->index())) {
+        key_is_slice = is_variable_slice(key_ident->id().name);
+      }
+
+      _functions << cdef::indent(_indent_level);
+      _functions << "{ (" << obj_expr << ").tmp = " << value << "; ";
+      if (key_is_slice) {
+        _functions << "__truk_map_set_(&(" << obj_expr << ").base, ("
+                   << idx_expr << ").data, &(" << obj_expr << ").tmp, sizeof(("
+                   << obj_expr << ").tmp)); }\n";
+      } else {
+        _functions << "__truk_map_set_(&(" << obj_expr << ").base, " << idx_expr
+                   << ", &(" << obj_expr << ").tmp, sizeof((" << obj_expr
+                   << ").tmp)); }\n";
+      }
+      return;
+    }
+
+    if (is_slice && !was_in_expr) {
+      std::string obj_expr = emit_expression(idx->object());
+      std::string idx_expr = emit_expression(idx->index());
+      std::string value = emit_expression(node.value());
+
+      _functions << cdef::indent(_indent_level);
+      _functions << "__truk_runtime_sxs_bounds_check(" << idx_expr << ", ("
+                 << obj_expr << ").len);\n";
+      _functions << cdef::indent(_indent_level);
+      _functions << "(" << obj_expr << ").data[" << idx_expr << "] = " << value
+                 << ";\n";
+      return;
+    }
+  }
+
+  std::string target = emit_expression(node.target());
+  std::string value = emit_expression(node.value());
+
+  if (was_in_expr) {
+    _current_expr << target << " = " << value;
+  } else {
+    _functions << cdef::indent(_indent_level) << target << " = " << value
+               << ";\n";
+  }
+}
+
+void emitter_c::visit(const block_c &node) {
+  _functions << "{\n";
+  _indent_level++;
+
+  push_defer_scope(defer_scope_s::scope_type_e::BLOCK, &node);
+
+  for (const auto &stmt : node.statements()) {
+    stmt->accept(*this);
+  }
+
+  emit_scope_defers(_current_defer_scope);
+  pop_defer_scope();
+
+  _indent_level--;
+  _functions << cdef::indent(_indent_level) << "}";
+}
+
+void emitter_c::visit(const array_literal_c &node) {
+  _current_expr << emit_expr_array_literal(node);
+}
+
+void emitter_c::visit(const struct_literal_c &node) {
+  _current_expr << emit_expr_struct_literal(node);
+}
+
+void emitter_c::visit(const type_param_c &node) {}
+
+std::string emitter_c::get_binary_op_string(binary_op_e op) {
+  switch (op) {
+  case binary_op_e::ADD:
+    return "+";
+  case binary_op_e::SUB:
+    return "-";
+  case binary_op_e::MUL:
+    return "*";
+  case binary_op_e::DIV:
+    return "/";
+  case binary_op_e::MOD:
+    return "%";
+  case binary_op_e::EQ:
+    return "==";
+  case binary_op_e::NE:
+    return "!=";
+  case binary_op_e::LT:
+    return "<";
+  case binary_op_e::LE:
+    return "<=";
+  case binary_op_e::GT:
+    return ">";
+  case binary_op_e::GE:
+    return ">=";
+  case binary_op_e::AND:
+    return "&&";
+  case binary_op_e::OR:
+    return "||";
+  case binary_op_e::BITWISE_AND:
+    return "&";
+  case binary_op_e::BITWISE_OR:
+    return "|";
+  case binary_op_e::BITWISE_XOR:
+    return "^";
+  case binary_op_e::LEFT_SHIFT:
+    return "<<";
+  case binary_op_e::RIGHT_SHIFT:
+    return ">>";
+  }
+  return "";
+}
+
+std::string emitter_c::get_unary_op_string(unary_op_e op) {
+  switch (op) {
+  case unary_op_e::NEG:
+    return "-";
+  case unary_op_e::NOT:
+    return "!";
+  case unary_op_e::BITWISE_NOT:
+    return "~";
+  case unary_op_e::ADDRESS_OF:
+    return "&";
+  case unary_op_e::DEREF:
+    return "*";
+  }
+  return "";
+}
+
+std::string emitter_c::emit_expr_binary_op(const binary_op_c &node) {
+  std::string left = emit_expression(node.left());
+  std::string right = emit_expression(node.right());
+  std::string op = get_binary_op_string(node.op());
+  return "(" + left + " " + op + " " + right + ")";
+}
+
+std::string emitter_c::emit_expr_unary_op(const unary_op_c &node) {
+  std::string operand = emit_expression(node.operand());
+  std::string op = get_unary_op_string(node.op());
+  return "(" + op + operand + ")";
+}
+
+std::string emitter_c::emit_expr_cast(const cast_c &node) {
+  std::string expr = emit_expression(node.expression());
+  std::string type = emit_type(node.target_type());
+  return "((" + type + ")" + expr + ")";
+}
+
+std::string emitter_c::emit_expr_literal(const literal_c &node) {
+  switch (node.type()) {
+  case literal_type_e::INTEGER: {
+    const std::string &val = node.value();
+    if (val.size() >= 2 && val[0] == '0' && val[1] == 'b') {
+      unsigned long long result = 0;
+      for (size_t i = 2; i < val.size(); ++i) {
+        result = (result << 1) | (val[i] - '0');
+      }
+      return std::to_string(result);
+    } else if (val.size() >= 2 && val[0] == '0' && val[1] == 'o') {
+      unsigned long long result = 0;
+      for (size_t i = 2; i < val.size(); ++i) {
+        result = (result << 3) | (val[i] - '0');
+      }
+      return std::to_string(result);
+    } else {
+      return val;
+    }
+  }
+  case literal_type_e::FLOAT:
+    return node.value();
+  case literal_type_e::STRING:
+    return node.value();
+  case literal_type_e::BOOL:
+    return (node.value() == "true" ? "true" : "false");
+  case literal_type_e::NIL:
+    return "NULL";
+  }
+  return "";
+}
+
+std::string emitter_c::emit_expr_identifier(const identifier_c &node) {
+  return node.id().name;
+}
+
+std::string emitter_c::emit_expr_member_access(const member_access_c &node) {
+  std::string obj = emit_expression(node.object());
+  return obj + "." + node.field().name;
+}
+
+std::string emitter_c::emit_expr_array_literal(const array_literal_c &node) {
+  std::string result = "{";
+  for (size_t i = 0; i < node.elements().size(); ++i) {
+    if (i > 0)
+      result += ", ";
+    result += emit_expression(node.elements()[i].get());
+  }
+  result += "}";
+  return result;
+}
+
+std::string emitter_c::emit_expr_struct_literal(const struct_literal_c &node) {
+  std::string result = "(" + node.struct_name().name + "){";
+  for (size_t i = 0; i < node.field_initializers().size(); ++i) {
+    if (i > 0)
+      result += ", ";
+    const auto &field_init = node.field_initializers()[i];
+    result += "." + field_init.field_name.name + " = ";
+    result += emit_expression(field_init.value.get());
+  }
+  result += "}";
+  return result;
+}
+
+std::string emitter_c::emit_expr_index(const index_c &node) {
+  std::string obj_expr = emit_expression(node.object());
+  std::string idx_expr = emit_expression(node.index());
 
   bool is_slice = false;
   bool is_map = false;
@@ -1079,223 +1176,95 @@ void emitter_c::visit(const index_c &node) {
     }
 
     if (key_is_slice) {
-      _current_expr << "__truk_map_get(&(" << obj_expr << "), (" << idx_expr
-                    << ").data)";
+      return "__truk_map_get(&(" + obj_expr + "), (" + idx_expr + ").data)";
     } else {
-      _current_expr << "__truk_map_get(&(" << obj_expr << "), " << idx_expr
-                    << ")";
+      return "__truk_map_get(&(" + obj_expr + "), " + idx_expr + ")";
     }
   } else if (is_slice) {
-    _current_expr << "({ __truk_runtime_sxs_bounds_check(" << idx_expr << ", ("
-                  << obj_expr << ").len); (" << obj_expr << ").data["
-                  << idx_expr << "]; })";
+    return "({ __truk_runtime_sxs_bounds_check(" + idx_expr + ", (" + obj_expr +
+           ").len); (" + obj_expr + ").data[" + idx_expr + "]; })";
   } else {
-    _current_expr << obj_expr << "[" << idx_expr << "]";
+    return obj_expr + "[" + idx_expr + "]";
   }
 }
 
-void emitter_c::visit(const member_access_c &node) {
-  node.object()->accept(*this);
-  _current_expr << "." << node.field().name;
-}
-
-void emitter_c::visit(const literal_c &node) {
-  switch (node.type()) {
-  case literal_type_e::INTEGER: {
-    const std::string &val = node.value();
-    if (val.size() >= 2 && val[0] == '0' && val[1] == 'b') {
-      unsigned long long result = 0;
-      for (size_t i = 2; i < val.size(); ++i) {
-        result = (result << 1) | (val[i] - '0');
-      }
-      _current_expr << result;
-    } else if (val.size() >= 2 && val[0] == '0' && val[1] == 'o') {
-      unsigned long long result = 0;
-      for (size_t i = 2; i < val.size(); ++i) {
-        result = (result << 3) | (val[i] - '0');
-      }
-      _current_expr << result;
-    } else {
-      _current_expr << val;
-    }
-    break;
-  }
-  case literal_type_e::FLOAT:
-    _current_expr << node.value();
-    break;
-  case literal_type_e::STRING:
-    _current_expr << node.value();
-    break;
-  case literal_type_e::BOOL:
-    _current_expr << (node.value() == "true" ? "true" : "false");
-    break;
-  case literal_type_e::NIL:
-    _current_expr << "NULL";
-    break;
-  }
-}
-
-void emitter_c::visit(const identifier_c &node) {
-  _current_expr << node.id().name;
-}
-
-void emitter_c::visit(const assignment_c &node) {
-  bool was_in_expr = _in_expression;
-
-  if (auto idx = dynamic_cast<const index_c *>(node.target())) {
-    bool is_slice = false;
-    bool is_map = false;
-    if (auto ident = dynamic_cast<const identifier_c *>(idx->object())) {
-      is_slice = is_variable_slice(ident->id().name);
-      is_map = is_variable_map(ident->id().name);
-    } else if (auto inner_idx = dynamic_cast<const index_c *>(idx->object())) {
-      is_slice = false;
-      is_map = false;
-    } else {
-      is_slice = false;
-      is_map = false;
-    }
-
-    if (is_map && !was_in_expr) {
-      std::stringstream obj_stream;
-      std::swap(obj_stream, _current_expr);
-      _in_expression = true;
-      idx->object()->accept(*this);
-      std::string obj_expr = _current_expr.str();
-      std::swap(obj_stream, _current_expr);
-
-      std::stringstream idx_stream;
-      std::swap(idx_stream, _current_expr);
-      idx->index()->accept(*this);
-      std::string idx_expr = _current_expr.str();
-      std::swap(idx_stream, _current_expr);
-
-      bool key_is_slice = false;
-      if (auto key_ident = dynamic_cast<const identifier_c *>(idx->index())) {
-        key_is_slice = is_variable_slice(key_ident->id().name);
-      }
-
-      node.value()->accept(*this);
-      std::string value = _current_expr.str();
-      _current_expr.str("");
-      _current_expr.clear();
-      _in_expression = was_in_expr;
-
-      _functions << cdef::indent(_indent_level);
-      _functions << "{ (" << obj_expr << ").tmp = " << value << "; ";
-      if (key_is_slice) {
-        _functions << "__truk_map_set_(&(" << obj_expr << ").base, ("
-                   << idx_expr << ").data, &(" << obj_expr << ").tmp, sizeof(("
-                   << obj_expr << ").tmp)); }\n";
-      } else {
-        _functions << "__truk_map_set_(&(" << obj_expr << ").base, " << idx_expr
-                   << ", &(" << obj_expr << ").tmp, sizeof((" << obj_expr
-                   << ").tmp)); }\n";
-      }
-      return;
-    }
-
-    if (is_slice && !was_in_expr) {
-      std::stringstream obj_stream;
-      std::swap(obj_stream, _current_expr);
-      _in_expression = true;
-      idx->object()->accept(*this);
-      std::string obj_expr = _current_expr.str();
-      std::swap(obj_stream, _current_expr);
-
-      std::stringstream idx_stream;
-      std::swap(idx_stream, _current_expr);
-      idx->index()->accept(*this);
-      std::string idx_expr = _current_expr.str();
-      std::swap(idx_stream, _current_expr);
-
-      node.value()->accept(*this);
-      std::string value = _current_expr.str();
-      _current_expr.str("");
-      _current_expr.clear();
-      _in_expression = was_in_expr;
-
-      _functions << cdef::indent(_indent_level);
-      _functions << "__truk_runtime_sxs_bounds_check(" << idx_expr << ", ("
-                 << obj_expr << ").len);\n";
-      _functions << cdef::indent(_indent_level);
-      _functions << "(" << obj_expr << ").data[" << idx_expr << "] = " << value
-                 << ";\n";
-      return;
+std::string emitter_c::emit_expr_call(const call_c &node) {
+  if (auto ident = dynamic_cast<const identifier_c *>(node.callee())) {
+    if (auto *handler = _builtin_registry.get_handler(ident->id().name)) {
+      std::stringstream temp_expr;
+      std::swap(temp_expr, _current_expr);
+      handler->emit_call(node, *this);
+      std::string result = _current_expr.str();
+      std::swap(temp_expr, _current_expr);
+      return result;
     }
   }
 
-  if (!was_in_expr) {
-    _functions << cdef::indent(_indent_level);
-  }
+  std::string callee = emit_expression(node.callee());
+  std::string result = callee + "(";
 
-  _in_expression = true;
-  node.target()->accept(*this);
-  std::string target = _current_expr.str();
-  _current_expr.str("");
-  _current_expr.clear();
-
-  node.value()->accept(*this);
-  std::string value = _current_expr.str();
-  _current_expr.str("");
-  _current_expr.clear();
-  _in_expression = was_in_expr;
-
-  if (was_in_expr) {
-    _current_expr << target << " = " << value;
-  } else {
-    _functions << target << " = " << value << ";\n";
-  }
-}
-
-void emitter_c::visit(const block_c &node) {
-  _functions << "{\n";
-  _indent_level++;
-
-  push_defer_scope(defer_scope_s::scope_type_e::BLOCK, &node);
-
-  for (const auto &stmt : node.statements()) {
-    stmt->accept(*this);
-  }
-
-  emit_scope_defers(_current_defer_scope);
-  pop_defer_scope();
-
-  _indent_level--;
-  _functions << cdef::indent(_indent_level) << "}";
-}
-
-void emitter_c::visit(const array_literal_c &node) {
-  _current_expr << "{";
-
-  for (size_t i = 0; i < node.elements().size(); ++i) {
+  for (size_t i = 0; i < node.arguments().size(); ++i) {
     if (i > 0)
-      _current_expr << ", ";
-    node.elements()[i]->accept(*this);
+      result += ", ";
+    result += emit_expression(node.arguments()[i].get());
   }
 
-  _current_expr << "}";
+  result += ")";
+  return result;
 }
 
-void emitter_c::visit(const struct_literal_c &node) {
-  _current_expr << "(" << node.struct_name().name << "){";
+std::string emitter_c::emit_expression(const base_c *node) {
+  if (!node)
+    return "";
 
-  for (size_t i = 0; i < node.field_initializers().size(); ++i) {
-    if (i > 0)
-      _current_expr << ", ";
-    const auto &field_init = node.field_initializers()[i];
-    _current_expr << "." << field_init.field_name.name << " = ";
-    field_init.value->accept(*this);
+  /*
+
+      TODO: Make a new class that is a visitor specifically for this
+     decomposiition
+
+  */
+
+  if (auto *bin_op = dynamic_cast<const binary_op_c *>(node))
+    return emit_expr_binary_op(*bin_op);
+  if (auto *un_op = dynamic_cast<const unary_op_c *>(node))
+    return emit_expr_unary_op(*un_op);
+  if (auto *call = dynamic_cast<const call_c *>(node))
+    return emit_expr_call(*call);
+  if (auto *idx = dynamic_cast<const index_c *>(node))
+    return emit_expr_index(*idx);
+  if (auto *member = dynamic_cast<const member_access_c *>(node))
+    return emit_expr_member_access(*member);
+  if (auto *lit = dynamic_cast<const literal_c *>(node))
+    return emit_expr_literal(*lit);
+  if (auto *ident = dynamic_cast<const identifier_c *>(node))
+    return emit_expr_identifier(*ident);
+  if (auto *arr_lit = dynamic_cast<const array_literal_c *>(node))
+    return emit_expr_array_literal(*arr_lit);
+  if (auto *struct_lit = dynamic_cast<const struct_literal_c *>(node))
+    return emit_expr_struct_literal(*struct_lit);
+  if (auto *cast = dynamic_cast<const cast_c *>(node))
+    return emit_expr_cast(*cast);
+  if (auto *assign = dynamic_cast<const assignment_c *>(node)) {
+    std::string target = emit_expression(assign->target());
+    std::string value = emit_expression(assign->value());
+    return target + " = " + value;
+  }
+  if (auto *lambda = dynamic_cast<const lambda_c *>(node)) {
+    std::stringstream temp_expr;
+    std::swap(temp_expr, _current_expr);
+    lambda->accept(*this);
+    std::string result = _current_expr.str();
+    std::swap(temp_expr, _current_expr);
+    return result;
   }
 
-  _current_expr << "}";
+  return "";
 }
-
-void emitter_c::visit(const type_param_c &node) {}
 
 void emitter_c::push_defer_scope(defer_scope_s::scope_type_e type,
-                                  const base_c *owner) {
-  auto scope = std::make_unique<defer_scope_s>(type, owner, _current_defer_scope);
+                                 const base_c *owner) {
+  auto scope =
+      std::make_unique<defer_scope_s>(type, owner, _current_defer_scope);
   _current_defer_scope = scope.get();
   _defer_scope_stack.push_back(std::move(scope));
 }
@@ -1303,9 +1272,8 @@ void emitter_c::push_defer_scope(defer_scope_s::scope_type_e type,
 void emitter_c::pop_defer_scope() {
   if (!_defer_scope_stack.empty()) {
     _defer_scope_stack.pop_back();
-    _current_defer_scope = _defer_scope_stack.empty() 
-        ? nullptr 
-        : _defer_scope_stack.back().get();
+    _current_defer_scope =
+        _defer_scope_stack.empty() ? nullptr : _defer_scope_stack.back().get();
   }
 }
 
@@ -1313,7 +1281,7 @@ void emitter_c::emit_scope_defers(defer_scope_s *scope) {
   if (!scope) {
     return;
   }
-  
+
   for (auto it = scope->defers.rbegin(); it != scope->defers.rend(); ++it) {
     const auto *defer_node = *it;
     if (defer_node->deferred_code()) {
@@ -1327,14 +1295,8 @@ void emitter_c::emit_scope_defers(defer_scope_s *scope) {
         _indent_level--;
         _functions << cdef::indent(_indent_level) << "}\n";
       } else {
-        _functions << cdef::indent(_indent_level);
-        _in_expression = true;
-        defer_node->deferred_code()->accept(*this);
-        _in_expression = false;
-        _functions << _current_expr.str();
-        _current_expr.str("");
-        _current_expr.clear();
-        _functions << ";\n";
+        std::string expr = emit_expression(defer_node->deferred_code());
+        _functions << cdef::indent(_indent_level) << expr << ";\n";
       }
     }
   }
@@ -1343,12 +1305,12 @@ void emitter_c::emit_scope_defers(defer_scope_s *scope) {
 void emitter_c::emit_all_remaining_defers() {
   std::vector<defer_scope_s *> scopes_to_emit;
   defer_scope_s *scope = _current_defer_scope;
-  
+
   while (scope) {
     scopes_to_emit.push_back(scope);
     scope = scope->parent;
   }
-  
+
   for (auto *s : scopes_to_emit) {
     emit_scope_defers(s);
   }
@@ -1356,14 +1318,14 @@ void emitter_c::emit_all_remaining_defers() {
 
 defer_scope_s *emitter_c::find_enclosing_loop_scope() {
   defer_scope_s *scope = _current_defer_scope;
-  
+
   while (scope) {
     if (scope->type == defer_scope_s::scope_type_e::LOOP) {
       return scope;
     }
     scope = scope->parent;
   }
-  
+
   return nullptr;
 }
 

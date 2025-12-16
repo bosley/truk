@@ -21,8 +21,9 @@ public:
 
             std::string map_name =
                 emitter.get_map_type_name(map_type->value_type());
-            emitter._current_expr << "({" << map_name
-                                  << " __tmp; __truk_map_init(&__tmp); __tmp;})";
+            emitter._current_expr
+                << "({" << map_name
+                << " __tmp; __truk_map_init(&__tmp); __tmp;})";
             return;
           }
 
@@ -34,11 +35,8 @@ public:
               emitter.emit_type_for_sizeof(type_param->type());
           emitter.ensure_slice_typedef(type_param->type());
 
-          std::stringstream count_stream;
-          std::swap(count_stream, emitter._current_expr);
-          node.arguments()[1]->accept(emitter);
-          std::string count_expr = emitter._current_expr.str();
-          std::swap(count_stream, emitter._current_expr);
+          std::string count_expr =
+              emitter.emit_expression(node.arguments()[1].get());
 
           std::string slice_type =
               emitter.get_slice_type_name(type_param->type());
@@ -68,23 +66,11 @@ class delete_builtin_handler_c : public builtin_handler_if {
 public:
   void emit_call(const call_c &node, emitter_c &emitter) override {
     if (!node.arguments().empty()) {
-      if (auto idx =
-              dynamic_cast<const index_c *>(node.arguments()[0].get())) {
+      if (auto idx = dynamic_cast<const index_c *>(node.arguments()[0].get())) {
         if (auto ident = dynamic_cast<const identifier_c *>(idx->object())) {
           if (emitter.is_variable_map(ident->id().name)) {
-            std::stringstream obj_stream;
-            std::swap(obj_stream, emitter._current_expr);
-            emitter._in_expression = true;
-            idx->object()->accept(emitter);
-            std::string obj_expr = emitter._current_expr.str();
-            std::swap(obj_stream, emitter._current_expr);
-
-            std::stringstream idx_stream;
-            std::swap(idx_stream, emitter._current_expr);
-            idx->index()->accept(emitter);
-            std::string idx_expr = emitter._current_expr.str();
-            std::swap(idx_stream, emitter._current_expr);
-            emitter._in_expression = false;
+            std::string obj_expr = emitter.emit_expression(idx->object());
+            std::string idx_expr = emitter.emit_expression(idx->index());
 
             bool key_is_slice = false;
             if (auto key_ident =
@@ -92,9 +78,6 @@ public:
               key_is_slice = emitter.is_variable_slice(key_ident->id().name);
             }
 
-            if (!emitter._in_expression) {
-              emitter._functions << cdef::indent(emitter._indent_level);
-            }
             if (key_is_slice) {
               emitter._current_expr << "__truk_map_remove(&(" << obj_expr
                                     << "), (" << idx_expr << ").data)";
@@ -102,22 +85,12 @@ public:
               emitter._current_expr << "__truk_map_remove(&(" << obj_expr
                                     << "), " << idx_expr << ")";
             }
-
-            if (!emitter._in_expression) {
-              emitter._functions << emitter._current_expr.str() << ";\n";
-              emitter._current_expr.str("");
-              emitter._current_expr.clear();
-            }
             return;
           }
         }
       }
 
-      std::stringstream arg_stream;
-      std::swap(arg_stream, emitter._current_expr);
-      node.arguments()[0]->accept(emitter);
-      std::string arg = emitter._current_expr.str();
-      std::swap(arg_stream, emitter._current_expr);
+      std::string arg = emitter.emit_expression(node.arguments()[0].get());
 
       if (emitter.is_variable_map(arg)) {
         emitter._current_expr << "__truk_map_deinit(&(" << arg << "))";
@@ -125,13 +98,6 @@ public:
         emitter._current_expr << cdef::emit_builtin_delete_array(arg);
       } else {
         emitter._current_expr << cdef::emit_builtin_delete(arg);
-      }
-
-      if (!emitter._in_expression) {
-        emitter._functions << cdef::indent(emitter._indent_level)
-                           << emitter._current_expr.str() << ";\n";
-        emitter._current_expr.str("");
-        emitter._current_expr.clear();
       }
       return;
     }
@@ -142,11 +108,7 @@ class len_builtin_handler_c : public builtin_handler_if {
 public:
   void emit_call(const call_c &node, emitter_c &emitter) override {
     if (!node.arguments().empty()) {
-      std::stringstream arg_stream;
-      std::swap(arg_stream, emitter._current_expr);
-      node.arguments()[0]->accept(emitter);
-      std::string arg = emitter._current_expr.str();
-      std::swap(arg_stream, emitter._current_expr);
+      std::string arg = emitter.emit_expression(node.arguments()[0].get());
       emitter._current_expr << "(" << arg << ").len";
       return;
     }
@@ -171,20 +133,9 @@ class panic_builtin_handler_c : public builtin_handler_if {
 public:
   void emit_call(const call_c &node, emitter_c &emitter) override {
     if (!node.arguments().empty()) {
-      std::stringstream arg_stream;
-      std::swap(arg_stream, emitter._current_expr);
-      node.arguments()[0]->accept(emitter);
-      std::string arg = emitter._current_expr.str();
-      std::swap(arg_stream, emitter._current_expr);
+      std::string arg = emitter.emit_expression(node.arguments()[0].get());
       emitter._current_expr << "TRUK_PANIC((" << arg << ").data, (" << arg
                             << ").len)";
-
-      if (!emitter._in_expression) {
-        emitter._functions << cdef::indent(emitter._indent_level)
-                           << emitter._current_expr.str() << ";\n";
-        emitter._current_expr.str("");
-        emitter._current_expr.clear();
-      }
       return;
     }
   }
@@ -203,38 +154,29 @@ public:
         is_map = emitter.is_variable_map(ident->id().name);
       }
 
-      std::stringstream collection_stream;
-      std::swap(collection_stream, emitter._current_expr);
-      node.arguments()[0]->accept(emitter);
-      std::string collection_var = emitter._current_expr.str();
-      std::swap(collection_stream, emitter._current_expr);
-
-      std::stringstream context_stream;
-      std::swap(context_stream, emitter._current_expr);
-      node.arguments()[1]->accept(emitter);
-      std::string context_var = emitter._current_expr.str();
-      std::swap(context_stream, emitter._current_expr);
+      std::string collection_var =
+          emitter.emit_expression(node.arguments()[0].get());
+      std::string context_var =
+          emitter.emit_expression(node.arguments()[1].get());
 
       if (auto lambda =
               dynamic_cast<const lambda_c *>(node.arguments()[2].get())) {
-        node.arguments()[2]->accept(emitter);
-        std::string callback_func = emitter._current_expr.str();
-        emitter._current_expr.str("");
-        emitter._current_expr.clear();
+        std::string callback_func =
+            emitter.emit_expression(node.arguments()[2].get());
 
         emitter._functions << cdef::indent(emitter._indent_level) << "{\n";
         emitter._indent_level++;
 
         if (is_slice) {
+          emitter._functions << cdef::indent(emitter._indent_level)
+                             << "for (__truk_u64 __truk_idx = 0; __truk_idx < ("
+                             << collection_var << ").len; __truk_idx++) {\n";
+          emitter._indent_level++;
           emitter._functions
               << cdef::indent(emitter._indent_level)
-              << "for (__truk_u64 __truk_idx = 0; __truk_idx < ("
-              << collection_var << ").len; __truk_idx++) {\n";
-          emitter._indent_level++;
-          emitter._functions << cdef::indent(emitter._indent_level)
-                             << "__truk_bool __truk_continue = " << callback_func
-                             << "(&(" << collection_var
-                             << ").data[__truk_idx], " << context_var << ");\n";
+              << "__truk_bool __truk_continue = " << callback_func << "(&("
+              << collection_var << ").data[__truk_idx], " << context_var
+              << ");\n";
           emitter._functions << cdef::indent(emitter._indent_level)
                              << "if (!__truk_continue) break;\n";
           emitter._indent_level--;
@@ -247,13 +189,14 @@ public:
                              << "const char* __truk_key;\n";
           emitter._functions << cdef::indent(emitter._indent_level)
                              << "while ((__truk_key = __truk_map_next(&("
-                             << collection_var << "), &__truk_iter)) != NULL) {\n";
+                             << collection_var
+                             << "), &__truk_iter)) != NULL) {\n";
           emitter._indent_level++;
-          emitter._functions << cdef::indent(emitter._indent_level)
-                             << "__truk_bool __truk_continue = " << callback_func
-                             << "((__truk_u8*)__truk_key, __truk_map_get(&("
-                             << collection_var << "), __truk_key), "
-                             << context_var << ");\n";
+          emitter._functions
+              << cdef::indent(emitter._indent_level)
+              << "__truk_bool __truk_continue = " << callback_func
+              << "((__truk_u8*)__truk_key, __truk_map_get(&(" << collection_var
+              << "), __truk_key), " << context_var << ");\n";
           emitter._functions << cdef::indent(emitter._indent_level)
                              << "if (!__truk_continue) break;\n";
           emitter._indent_level--;
@@ -263,25 +206,22 @@ public:
         emitter._indent_level--;
         emitter._functions << cdef::indent(emitter._indent_level) << "}\n";
       } else {
-        std::stringstream callback_stream;
-        std::swap(callback_stream, emitter._current_expr);
-        node.arguments()[2]->accept(emitter);
-        std::string callback_func = emitter._current_expr.str();
-        std::swap(callback_stream, emitter._current_expr);
+        std::string callback_func =
+            emitter.emit_expression(node.arguments()[2].get());
 
         emitter._functions << cdef::indent(emitter._indent_level) << "{\n";
         emitter._indent_level++;
 
         if (is_slice) {
+          emitter._functions << cdef::indent(emitter._indent_level)
+                             << "for (__truk_u64 __truk_idx = 0; __truk_idx < ("
+                             << collection_var << ").len; __truk_idx++) {\n";
+          emitter._indent_level++;
           emitter._functions
               << cdef::indent(emitter._indent_level)
-              << "for (__truk_u64 __truk_idx = 0; __truk_idx < ("
-              << collection_var << ").len; __truk_idx++) {\n";
-          emitter._indent_level++;
-          emitter._functions << cdef::indent(emitter._indent_level)
-                             << "__truk_bool __truk_continue = " << callback_func
-                             << "(&(" << collection_var
-                             << ").data[__truk_idx], " << context_var << ");\n";
+              << "__truk_bool __truk_continue = " << callback_func << "(&("
+              << collection_var << ").data[__truk_idx], " << context_var
+              << ");\n";
           emitter._functions << cdef::indent(emitter._indent_level)
                              << "if (!__truk_continue) break;\n";
           emitter._indent_level--;
@@ -294,13 +234,14 @@ public:
                              << "const char* __truk_key;\n";
           emitter._functions << cdef::indent(emitter._indent_level)
                              << "while ((__truk_key = __truk_map_next(&("
-                             << collection_var << "), &__truk_iter)) != NULL) {\n";
+                             << collection_var
+                             << "), &__truk_iter)) != NULL) {\n";
           emitter._indent_level++;
-          emitter._functions << cdef::indent(emitter._indent_level)
-                             << "__truk_bool __truk_continue = " << callback_func
-                             << "((__truk_u8*)__truk_key, __truk_map_get(&("
-                             << collection_var << "), __truk_key), "
-                             << context_var << ");\n";
+          emitter._functions
+              << cdef::indent(emitter._indent_level)
+              << "__truk_bool __truk_continue = " << callback_func
+              << "((__truk_u8*)__truk_key, __truk_map_get(&(" << collection_var
+              << "), __truk_key), " << context_var << ");\n";
           emitter._functions << cdef::indent(emitter._indent_level)
                              << "if (!__truk_continue) break;\n";
           emitter._indent_level--;
@@ -348,8 +289,7 @@ public:
 };
 
 void register_builtin_handlers(builtin_registry_c &registry) {
-  registry.register_handler("make",
-                            std::make_unique<make_builtin_handler_c>());
+  registry.register_handler("make", std::make_unique<make_builtin_handler_c>());
   registry.register_handler("delete",
                             std::make_unique<delete_builtin_handler_c>());
   registry.register_handler("len", std::make_unique<len_builtin_handler_c>());
@@ -357,8 +297,7 @@ void register_builtin_handlers(builtin_registry_c &registry) {
                             std::make_unique<sizeof_builtin_handler_c>());
   registry.register_handler("panic",
                             std::make_unique<panic_builtin_handler_c>());
-  registry.register_handler("each",
-                            std::make_unique<each_builtin_handler_c>());
+  registry.register_handler("each", std::make_unique<each_builtin_handler_c>());
   registry.register_handler("__TRUK_VA_ARG_I32",
                             std::make_unique<va_arg_builtin_handler_c>());
   registry.register_handler("__TRUK_VA_ARG_I64",
