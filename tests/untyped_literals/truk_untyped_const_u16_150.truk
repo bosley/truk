@@ -1,0 +1,5 @@
+fn main(): i32 {
+  const x: u16 = 150;
+  return x;
+}
+

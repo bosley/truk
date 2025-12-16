@@ -21,7 +21,9 @@ enum class type_kind_e {
   POINTER,
   ARRAY,
   VOID_TYPE,
-  MAP
+  MAP,
+  UNTYPED_INTEGER,
+  UNTYPED_FLOAT
 };
 
 struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
@@ -205,6 +207,10 @@ private:
   bool check_no_control_flow(const truk::language::nodes::base_c *node);
 
   void report_error(const std::string &message, std::size_t source_index);
+
+  std::unique_ptr<type_entry_s>
+  resolve_untyped_literal(const type_entry_s *literal_type,
+                          const type_entry_s *target_type);
 };
 
 } // namespace truk::validation

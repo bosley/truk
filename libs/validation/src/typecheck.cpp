@@ -253,6 +253,13 @@ bool type_checker_c::types_equal(const type_entry_s *a, const type_entry_s *b) {
     return false;
   }
 
+  if (a->kind == type_kind_e::UNTYPED_INTEGER ||
+      a->kind == type_kind_e::UNTYPED_FLOAT ||
+      b->kind == type_kind_e::UNTYPED_INTEGER ||
+      b->kind == type_kind_e::UNTYPED_FLOAT) {
+    return false;
+  }
+
   if (a->kind != b->kind) {
     return false;
   }
@@ -359,6 +366,41 @@ void type_checker_c::report_error(const std::string &message,
   oss << "[" << source_index << "] " << message;
   _errors.push_back(oss.str());
   _detailed_errors.emplace_back(message, source_index);
+}
+
+std::unique_ptr<type_entry_s>
+type_checker_c::resolve_untyped_literal(const type_entry_s *literal_type,
+                                        const type_entry_s *target_type) {
+
+  if (!literal_type)
+    return nullptr;
+
+  if (literal_type->kind != type_kind_e::UNTYPED_INTEGER &&
+      literal_type->kind != type_kind_e::UNTYPED_FLOAT) {
+    return std::make_unique<type_entry_s>(*literal_type);
+  }
+
+  if (!target_type) {
+    if (literal_type->kind == type_kind_e::UNTYPED_INTEGER) {
+      return std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "i32");
+    } else {
+      return std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "f64");
+    }
+  }
+
+  if (literal_type->kind == type_kind_e::UNTYPED_INTEGER) {
+    if (is_numeric_type(target_type) || is_integer_type(target_type)) {
+      return std::make_unique<type_entry_s>(*target_type);
+    }
+  } else if (literal_type->kind == type_kind_e::UNTYPED_FLOAT) {
+    if (is_numeric_type(target_type)) {
+      return std::make_unique<type_entry_s>(*target_type);
+    }
+  }
+
+  return literal_type->kind == type_kind_e::UNTYPED_INTEGER
+             ? std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "i32")
+             : std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "f64");
 }
 
 bool type_checker_c::is_type_identifier(const identifier_c *id_node) {
@@ -794,11 +836,14 @@ void type_checker_c::visit(const var_c &node) {
   if (node.initializer()) {
     node.initializer()->accept(*this);
 
-    if (_current_expression_type &&
-        !is_compatible_for_assignment(var_type.get(),
-                                      _current_expression_type.get())) {
-      report_error("Type mismatch in variable initialization",
-                   node.source_index());
+    if (_current_expression_type) {
+      _current_expression_type = resolve_untyped_literal(
+          _current_expression_type.get(), var_type.get());
+      if (!is_compatible_for_assignment(var_type.get(),
+                                        _current_expression_type.get())) {
+        report_error("Type mismatch in variable initialization",
+                     node.source_index());
+      }
     }
   }
 
@@ -818,11 +863,14 @@ void type_checker_c::visit(const const_c &node) {
   if (node.value()) {
     node.value()->accept(*this);
 
-    if (_current_expression_type &&
-        !is_compatible_for_assignment(const_type.get(),
-                                      _current_expression_type.get())) {
-      report_error("Type mismatch in constant initialization",
-                   node.source_index());
+    if (_current_expression_type) {
+      _current_expression_type = resolve_untyped_literal(
+          _current_expression_type.get(), const_type.get());
+      if (!is_compatible_for_assignment(const_type.get(),
+                                        _current_expression_type.get())) {
+        report_error("Type mismatch in constant initialization",
+                     node.source_index());
+      }
     }
   }
 
@@ -908,10 +956,14 @@ void type_checker_c::visit(const return_c &node) {
     if (_current_function_return_type) {
       if (!_current_expression_type) {
         report_error("Return expression has no type", node.source_index());
-      } else if (!is_compatible_for_assignment(
-                     _current_function_return_type.get(),
-                     _current_expression_type.get())) {
-        report_error("Return type mismatch", node.source_index());
+      } else {
+        _current_expression_type =
+            resolve_untyped_literal(_current_expression_type.get(),
+                                    _current_function_return_type.get());
+        if (!is_compatible_for_assignment(_current_function_return_type.get(),
+                                          _current_expression_type.get())) {
+          report_error("Return type mismatch", node.source_index());
+        }
       }
     }
   } else {
@@ -954,6 +1006,15 @@ void type_checker_c::visit(const binary_op_c &node) {
   if (!left_type || !right_type) {
     report_error("Binary operation on invalid types", node.source_index());
     return;
+  }
+
+  if (left_type->kind == type_kind_e::UNTYPED_INTEGER ||
+      left_type->kind == type_kind_e::UNTYPED_FLOAT) {
+    left_type = resolve_untyped_literal(left_type.get(), right_type.get());
+  }
+  if (right_type->kind == type_kind_e::UNTYPED_INTEGER ||
+      right_type->kind == type_kind_e::UNTYPED_FLOAT) {
+    right_type = resolve_untyped_literal(right_type.get(), left_type.get());
   }
 
   switch (node.op()) {
@@ -1058,6 +1119,9 @@ void type_checker_c::visit(const unary_op_c &node) {
     return;
   }
 
+  _current_expression_type =
+      resolve_untyped_literal(_current_expression_type.get(), nullptr);
+
   switch (node.op()) {
   case unary_op_e::NEG:
     if (!is_numeric_type(_current_expression_type.get())) {
@@ -1161,11 +1225,15 @@ void type_checker_c::visit(const call_c &node) {
     node.arguments()[i]->accept(*this);
 
     if (i < min_args) {
-      if (_current_expression_type &&
-          !is_compatible_for_assignment(
-              func_type->function_param_types[i].get(),
-              _current_expression_type.get())) {
-        report_error("Argument type mismatch", node.source_index());
+      if (_current_expression_type) {
+        _current_expression_type =
+            resolve_untyped_literal(_current_expression_type.get(),
+                                    func_type->function_param_types[i].get());
+        if (!is_compatible_for_assignment(
+                func_type->function_param_types[i].get(),
+                _current_expression_type.get())) {
+          report_error("Argument type mismatch", node.source_index());
+        }
       }
     }
   }
@@ -1231,6 +1299,17 @@ void type_checker_c::visit(const index_c &node) {
     return;
   }
 
+  if (index_type) {
+    if (index_type->kind == type_kind_e::UNTYPED_INTEGER) {
+      auto u64_type = lookup_type("u64");
+      if (u64_type) {
+        index_type = std::make_unique<type_entry_s>(*u64_type);
+      } else {
+        index_type = resolve_untyped_literal(index_type.get(), nullptr);
+      }
+    }
+  }
+
   if (!index_type || !is_integer_type(index_type.get())) {
     report_error("Index must be integer type", node.source_index());
     return;
@@ -1277,12 +1356,12 @@ void type_checker_c::visit(const member_access_c &node) {
 void type_checker_c::visit(const literal_c &node) {
   switch (node.type()) {
   case literal_type_e::INTEGER:
-    _current_expression_type =
-        std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "i32");
+    _current_expression_type = std::make_unique<type_entry_s>(
+        type_kind_e::UNTYPED_INTEGER, "untyped_int");
     break;
   case literal_type_e::FLOAT:
-    _current_expression_type =
-        std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "f64");
+    _current_expression_type = std::make_unique<type_entry_s>(
+        type_kind_e::UNTYPED_FLOAT, "untyped_float");
     break;
   case literal_type_e::STRING:
     _current_expression_type =
@@ -1361,6 +1440,8 @@ void type_checker_c::visit(const assignment_c &node) {
         return;
       }
 
+      value_type = resolve_untyped_literal(value_type.get(), map_value_type);
+
       if (!is_compatible_for_assignment(map_value_type, value_type.get())) {
         report_error("Assignment type mismatch", node.source_index());
       }
@@ -1380,6 +1461,8 @@ void type_checker_c::visit(const assignment_c &node) {
     report_error("Assignment with invalid types", node.source_index());
     return;
   }
+
+  value_type = resolve_untyped_literal(value_type.get(), target_type.get());
 
   if (!is_compatible_for_assignment(target_type.get(), value_type.get())) {
     report_error("Assignment type mismatch", node.source_index());
@@ -1408,10 +1491,16 @@ void type_checker_c::visit(const array_literal_c &node) {
   }
 
   node.elements()[0]->accept(*this);
-  auto element_type = std::make_unique<type_entry_s>(*_current_expression_type);
+  auto element_type =
+      resolve_untyped_literal(_current_expression_type.get(), nullptr);
 
   for (std::size_t i = 1; i < node.elements().size(); ++i) {
     node.elements()[i]->accept(*this);
+
+    if (_current_expression_type) {
+      _current_expression_type = resolve_untyped_literal(
+          _current_expression_type.get(), element_type.get());
+    }
 
     if (!types_equal(element_type.get(), _current_expression_type.get())) {
       report_error("Array literal elements have inconsistent types",
@@ -1447,11 +1536,14 @@ void type_checker_c::visit(const struct_literal_c &node) {
 
     field_init.value->accept(*this);
 
-    if (_current_expression_type &&
-        !is_compatible_for_assignment(it->second.get(),
-                                      _current_expression_type.get())) {
-      report_error("Field initializer type mismatch for: " + field_name,
-                   node.source_index());
+    if (_current_expression_type) {
+      _current_expression_type = resolve_untyped_literal(
+          _current_expression_type.get(), it->second.get());
+      if (!is_compatible_for_assignment(it->second.get(),
+                                        _current_expression_type.get())) {
+        report_error("Field initializer type mismatch for: " + field_name,
+                     node.source_index());
+      }
     }
   }
 
