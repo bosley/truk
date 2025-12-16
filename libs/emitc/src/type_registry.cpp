@@ -1,0 +1,260 @@
+#include <language/keywords.hpp>
+#include <truk/emitc/cdef.hpp>
+#include <truk/emitc/type_registry.hpp>
+
+namespace truk::emitc {
+
+using namespace truk::language;
+using namespace truk::language::nodes;
+
+std::string type_registry_c::get_c_type(const type_c *type) {
+  if (!type) {
+    return "__truk_void";
+  }
+
+  if (auto prim = dynamic_cast<const primitive_type_c *>(type)) {
+    switch (prim->keyword()) {
+    case keywords_e::I8:
+      return "__truk_i8";
+    case keywords_e::I16:
+      return "__truk_i16";
+    case keywords_e::I32:
+      return "__truk_i32";
+    case keywords_e::I64:
+      return "__truk_i64";
+    case keywords_e::U8:
+      return "__truk_u8";
+    case keywords_e::U16:
+      return "__truk_u16";
+    case keywords_e::U32:
+      return "__truk_u32";
+    case keywords_e::U64:
+      return "__truk_u64";
+    case keywords_e::F32:
+      return "__truk_f32";
+    case keywords_e::F64:
+      return "__truk_f64";
+    case keywords_e::BOOL:
+      return "__truk_bool";
+    case keywords_e::VOID:
+      return "__truk_void";
+    default:
+      return "__truk_void";
+    }
+  }
+
+  if (auto named = dynamic_cast<const named_type_c *>(type)) {
+    const std::string &name = named->name().name;
+    if (_extern_struct_names.count(name)) {
+      return "struct " + name;
+    }
+    return name;
+  }
+
+  if (auto ptr = dynamic_cast<const pointer_type_c *>(type)) {
+    return get_c_type(ptr->pointee_type()) + "*";
+  }
+
+  if (auto arr = dynamic_cast<const array_type_c *>(type)) {
+    if (arr->size().has_value()) {
+      return get_c_type(arr->element_type());
+    } else {
+      return get_slice_type_name(arr->element_type());
+    }
+  }
+
+  if (auto map = dynamic_cast<const map_type_c *>(type)) {
+    return get_map_type_name(map->value_type());
+  }
+
+  if (auto func = dynamic_cast<const function_type_c *>(type)) {
+    std::string ret_type = get_c_type(func->return_type());
+    std::string func_type = ret_type + " (*)(";
+
+    const auto &param_types = func->param_types();
+    for (size_t i = 0; i < param_types.size(); ++i) {
+      if (i > 0) {
+        func_type += ", ";
+      }
+      func_type += get_c_type(param_types[i].get());
+    }
+
+    if (param_types.empty()) {
+      func_type += "void";
+    }
+
+    if (func->has_variadic()) {
+      if (!param_types.empty()) {
+        func_type += ", ";
+      }
+      func_type += "...";
+    }
+
+    func_type += ")";
+    return func_type;
+  }
+
+  return "__truk_void";
+}
+
+std::string type_registry_c::get_c_type_for_sizeof(const type_c *type) {
+  if (!type) {
+    return "__truk_void";
+  }
+
+  if (auto prim = dynamic_cast<const primitive_type_c *>(type)) {
+    return get_c_type(prim);
+  }
+
+  if (auto named = dynamic_cast<const named_type_c *>(type)) {
+    return named->name().name;
+  }
+
+  if (auto ptr = dynamic_cast<const pointer_type_c *>(type)) {
+    return get_c_type_for_sizeof(ptr->pointee_type()) + "*";
+  }
+
+  if (auto arr = dynamic_cast<const array_type_c *>(type)) {
+    if (arr->size().has_value()) {
+      std::string base = get_c_type_for_sizeof(arr->element_type());
+      return base + "[" + std::to_string(arr->size().value()) + "]";
+    } else {
+      return get_slice_type_name(arr->element_type());
+    }
+  }
+
+  return "__truk_void";
+}
+
+std::string
+type_registry_c::get_array_pointer_type(const type_c *array_type,
+                                        const std::string &identifier) {
+  if (!array_type) {
+    return "";
+  }
+
+  auto arr = dynamic_cast<const array_type_c *>(array_type);
+  if (!arr || !arr->size().has_value()) {
+    return "";
+  }
+
+  std::string base_type;
+  std::vector<size_t> dimensions;
+
+  const type_c *current = array_type;
+  while (auto current_arr = dynamic_cast<const array_type_c *>(current)) {
+    if (current_arr->size().has_value()) {
+      dimensions.push_back(current_arr->size().value());
+      current = current_arr->element_type();
+    } else {
+      break;
+    }
+  }
+
+  base_type = get_c_type(current);
+
+  std::string result = base_type + " (*";
+  if (!identifier.empty()) {
+    result += identifier;
+  }
+  result += ")";
+  for (size_t dim : dimensions) {
+    result += "[" + std::to_string(dim) + "]";
+  }
+
+  return result;
+}
+
+std::string
+type_registry_c::get_slice_type_name(const type_c *element_type) {
+  std::string elem_type_str = get_c_type_for_sizeof(element_type);
+  std::string slice_name = "truk_slice_" + elem_type_str;
+  for (auto &c : slice_name) {
+    if (c == '*')
+      c = 'p';
+    if (c == '[' || c == ']')
+      c = '_';
+  }
+  return slice_name;
+}
+
+void type_registry_c::ensure_slice_typedef(const type_c *element_type,
+                                           std::stringstream &header_stream,
+                                           std::stringstream &structs_stream) {
+  std::string slice_name = get_slice_type_name(element_type);
+  if (_slice_types_emitted.find(slice_name) == _slice_types_emitted.end()) {
+    _slice_types_emitted.insert(slice_name);
+    std::string elem_type_for_sizeof = get_c_type_for_sizeof(element_type);
+
+    if (auto arr = dynamic_cast<const array_type_c *>(element_type)) {
+      if (arr->size().has_value()) {
+        std::string pointer_type =
+            get_array_pointer_type(element_type, "data");
+        header_stream << "typedef struct {\n  " << pointer_type
+                      << ";\n  __truk_u64 len;\n} " << slice_name << ";\n\n";
+        return;
+      }
+    }
+
+    header_stream << cdef::emit_slice_typedef(elem_type_for_sizeof, slice_name);
+  }
+}
+
+bool type_registry_c::is_slice_type(const type_c *type) {
+  if (auto arr = dynamic_cast<const array_type_c *>(type)) {
+    return !arr->size().has_value();
+  }
+  return false;
+}
+
+std::string type_registry_c::get_map_type_name(const type_c *value_type) {
+  std::string value_str = get_c_type_for_sizeof(value_type);
+  std::string sanitized = value_str;
+  for (auto &c : sanitized) {
+    if (c == '*')
+      c = 'p';
+    if (c == '[' || c == ']' || c == ' ')
+      c = '_';
+  }
+  return "__truk_map_" + sanitized;
+}
+
+void type_registry_c::ensure_map_typedef(const type_c *value_type,
+                                         std::stringstream &structs_stream) {
+  std::string map_name = get_map_type_name(value_type);
+
+  if (_map_types_emitted.find(map_name) == _map_types_emitted.end()) {
+    _map_types_emitted.insert(map_name);
+    std::string value_str = get_c_type_for_sizeof(value_type);
+    structs_stream << "typedef __truk_map_t(" << value_str << ") " << map_name
+                   << ";\n\n";
+  }
+}
+
+bool type_registry_c::is_map_type(const type_c *type) {
+  return dynamic_cast<const map_type_c *>(type) != nullptr;
+}
+
+void type_registry_c::register_struct_name(const std::string &name) {
+  _struct_names.insert(name);
+}
+
+void type_registry_c::register_extern_struct_name(const std::string &name) {
+  _extern_struct_names.insert(name);
+}
+
+bool type_registry_c::is_extern_struct(const std::string &name) const {
+  return _extern_struct_names.count(name) > 0;
+}
+
+const std::unordered_set<std::string> &
+type_registry_c::get_struct_names() const {
+  return _struct_names;
+}
+
+const std::unordered_set<std::string> &
+type_registry_c::get_extern_struct_names() const {
+  return _extern_struct_names;
+}
+
+} // namespace truk::emitc

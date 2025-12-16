@@ -22,7 +22,12 @@ add_custom_command(
 
 set_source_files_properties("${EMBEDDED_RUNTIME_FILE}" PROPERTIES GENERATED TRUE)
 
-add_library(truk_emitc STATIC src/emitter.cpp)
+add_library(truk_emitc STATIC 
+    src/emitter.cpp
+    src/type_registry.cpp
+    src/variable_registry.cpp
+    src/output_buffer.cpp
+)
 
 set_source_files_properties(src/emitter.cpp PROPERTIES 
     OBJECT_DEPENDS "${EMBEDDED_RUNTIME_FILE}"

@@ -3,6 +3,8 @@
 #include <language/node.hpp>
 #include <language/visitor.hpp>
 #include <truk/core/exceptions.hpp>
+#include <truk/emitc/type_registry.hpp>
+#include <truk/emitc/variable_registry.hpp>
 
 #include <memory>
 #include <sstream>
@@ -194,13 +196,9 @@ private:
   std::stringstream _structs;
   std::stringstream _functions;
   int _indent_level{0};
-  std::unordered_set<std::string> _slice_types_emitted;
-  std::unordered_set<std::string> _map_types_emitted;
-  std::unordered_set<std::string> _struct_names;
-  std::unordered_set<std::string> _extern_struct_names;
   std::unordered_set<std::string> _function_names;
-  std::unordered_map<std::string, bool> _variable_is_slice;
-  std::unordered_map<std::string, bool> _variable_is_map;
+  type_registry_c _type_registry;
+  variable_registry_c _variable_registry;
   bool _in_expression{false};
   bool _collecting_declarations{false};
   bool _skip_lambda_generation{false};
