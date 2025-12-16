@@ -53,7 +53,10 @@ void control_flow_checker_c::visit(const while_c &node) {
   if (_has_control_flow)
     return;
 
+  bool prev_in_loop = _in_loop;
+  _in_loop = true;
   check_node(node.body());
+  _in_loop = prev_in_loop;
 }
 
 void control_flow_checker_c::visit(const for_c &node) {
@@ -69,7 +72,10 @@ void control_flow_checker_c::visit(const for_c &node) {
   if (_has_control_flow)
     return;
 
+  bool prev_in_loop = _in_loop;
+  _in_loop = true;
   check_node(node.body());
+  _in_loop = prev_in_loop;
 }
 
 void control_flow_checker_c::visit(const return_c &) {
@@ -78,10 +84,16 @@ void control_flow_checker_c::visit(const return_c &) {
 
 void control_flow_checker_c::visit(const break_c &) {
   _has_control_flow = true;
+  if (!_in_loop) {
+    _has_break_or_continue = true;
+  }
 }
 
 void control_flow_checker_c::visit(const continue_c &) {
   _has_control_flow = true;
+  if (!_in_loop) {
+    _has_break_or_continue = true;
+  }
 }
 
 void control_flow_checker_c::visit(const defer_c &node) {

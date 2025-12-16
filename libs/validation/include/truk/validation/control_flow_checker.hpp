@@ -10,6 +10,9 @@ public:
   control_flow_checker_c() = default;
 
   bool has_control_flow() const { return _has_control_flow; }
+  bool has_break_or_continue() const { return _has_break_or_continue; }
+
+  void set_in_loop(bool in_loop) { _in_loop = in_loop; }
 
   void visit(const language::nodes::primitive_type_c &node) override;
   void visit(const language::nodes::named_type_c &node) override;
@@ -48,6 +51,8 @@ public:
 
 private:
   bool _has_control_flow{false};
+  bool _has_break_or_continue{false};
+  bool _in_loop{false};
 
   void check_node(const language::nodes::base_c *node);
 };

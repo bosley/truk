@@ -1,0 +1,23 @@
+fn main() : i32 {
+  var m: map[i32] = make(@map[i32]);
+  m["a"] = 10;
+  m["b"] = 20;
+  
+  var total: i32 = 0;
+  each(m, &total, fn(key: *u8, val: *i32, ctx: *i32) : bool {
+    if val != nil {
+      var i: i32 = 0;
+      while i < *val {
+        if i == 5 {
+          break;
+        }
+        *ctx = *ctx + 1;
+        i = i + 1;
+      }
+    }
+    return true;
+  });
+  
+  delete(m);
+  return total + 20;
+}

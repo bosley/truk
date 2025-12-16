@@ -224,6 +224,7 @@ private:
                              const type_entry_s &func_type);
 
   bool check_no_control_flow(const truk::language::nodes::base_c *node);
+  bool check_no_break_or_continue(const truk::language::nodes::base_c *node);
 
   void report_error(const std::string &message, std::size_t source_index);
 

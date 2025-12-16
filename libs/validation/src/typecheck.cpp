@@ -997,6 +997,10 @@ void type_checker_c::visit(const lambda_c &node) {
   }
 
   if (node.body()) {
+    if (!check_no_break_or_continue(node.body())) {
+      report_error("Lambda cannot contain break or continue statements",
+                   node.source_index());
+    }
     node.body()->accept(*this);
   }
 
@@ -1840,6 +1844,16 @@ bool type_checker_c::check_no_control_flow(const base_c *node) {
   control_flow_checker_c checker;
   node->accept(checker);
   return !checker.has_control_flow();
+}
+
+bool type_checker_c::check_no_break_or_continue(const base_c *node) {
+  if (!node) {
+    return true;
+  }
+
+  control_flow_checker_c checker;
+  node->accept(checker);
+  return !checker.has_break_or_continue();
 }
 
 void type_checker_c::visit(const import_c &node) {}
