@@ -179,11 +179,7 @@ struct lambda_capture_result_s {
 };
 
 class symbol_collector_c;
-class type_resolver_c;
-class control_flow_analyzer_c;
 class lambda_capture_validator_c;
-class type_checking_visitor_c;
-class final_validator_c;
 
 class type_checker_c : public truk::language::nodes::visitor_if {
 public:

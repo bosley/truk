@@ -2,7 +2,7 @@
 
 ## Overview
 
-The type checker implements a multi-stage validation architecture that processes the Abstract Syntax Tree (AST) through distinct phases. Each stage focuses on a specific concern, building upon the results of previous stages to provide comprehensive validation.
+The type checker implements a multi-stage validation architecture that processes the Abstract Syntax Tree (AST) through distinct phases. The implementation uses three specialized visitor classes and inline control flow checking to provide comprehensive validation. Each stage focuses on a specific concern, building upon the results of previous stages.
 
 ## High-Level Process Flow
 
@@ -10,18 +10,12 @@ The type checker implements a multi-stage validation architecture that processes
 flowchart TD
     Start[AST Root Node] --> Init[Initialize Type Checker]
     Init --> Stage1[Stage 1: Symbol Collection]
-    Stage1 --> Check1{Errors?}
-    Check1 -->|Yes| Collect[Collect Errors]
-    Check1 -->|No| Stage2[Stage 2: Type Resolution]
+    Stage1 --> Stage2[Stage 2: Lambda Capture Validation]
+    Stage2 --> Stage3[Stage 3: Type Checking]
+    Stage3 --> Aggregate[Aggregate All Errors]
     
-    Stage2 --> Stage3[Stage 3: Control Flow Analysis]
-    Stage3 --> Stage4[Stage 4: Lambda Capture Validation]
-    Stage4 --> Stage5[Stage 5: Type Checking]
-    Stage5 --> Stage6[Stage 6: Final Validation]
-    
-    Collect --> Report[Report All Errors]
-    Stage6 --> HasErrors{Has Errors?}
-    HasErrors -->|Yes| Report
+    Aggregate --> HasErrors{Has Errors?}
+    HasErrors -->|Yes| Report[Report All Errors]
     HasErrors -->|No| Success[Validation Complete]
     
     Report --> End[End]
@@ -36,8 +30,6 @@ sequenceDiagram
     participant TC as Type Checker
     participant SC as Symbol Collector
     participant LV as Lambda Validator
-    participant CF as Control Flow Checker
-    participant TV as Type Validator
     
     Client->>TC: check(AST root)
     activate TC
@@ -51,19 +43,7 @@ sequenceDiagram
     SC-->>TC: symbol_collection_result
     deactivate SC
     
-    Note over TC: Stage 2: Type Resolution
-    TC->>TC: resolve_types(root, symbols)
-    TC->>TC: Return type_resolution_result
-    
-    Note over TC: Stage 3: Control Flow
-    TC->>CF: analyze_control_flow(root)
-    activate CF
-    CF->>CF: Visit AST nodes
-    CF->>CF: Check control flow validity
-    CF-->>TC: control_flow_result
-    deactivate CF
-    
-    Note over TC: Stage 4: Lambda Capture
+    Note over TC: Stage 2: Lambda Capture
     TC->>LV: validate_lambda_captures(root, symbols)
     activate LV
     LV->>LV: Visit each lambda
@@ -72,18 +52,15 @@ sequenceDiagram
     LV-->>TC: lambda_capture_result
     deactivate LV
     
-    Note over TC: Stage 5: Type Checking
-    TC->>TV: perform_type_checking(root, symbols, types)
-    activate TV
-    TV->>TV: Validate type compatibility
-    TV->>TV: Check assignments
-    TV->>TV: Validate operations
-    TV-->>TC: type errors
-    deactivate TV
+    Note over TC: Stage 3: Type Checking
+    TC->>TC: Visit AST nodes (self)
+    TC->>TC: Validate type compatibility
+    TC->>TC: Check assignments
+    TC->>TC: Validate operations
+    TC->>TC: Inline control flow checks
     
-    Note over TC: Stage 6: Final Validation
-    TC->>TC: final_validation(all results)
-    TC->>TC: Aggregate all errors
+    Note over TC: Aggregate all errors
+    TC->>TC: Collect errors from all stages
     
     TC-->>Client: validation complete
     deactivate TC
@@ -266,22 +243,11 @@ flowchart TD
 
 ```mermaid
 graph LR
-    SC[Symbol Collection] --> TR[Type Resolution]
-    SC --> LV[Lambda Validation]
+    SC[Symbol Collection] --> LV[Lambda Validation]
     SC --> TC[Type Checking]
     
-    TR --> TC
-    
-    CF[Control Flow] --> FV[Final Validation]
-    LV --> FV
-    TC --> FV
-    TR --> FV
-    
-    style SC fill:#e1f5ff
-    style LV fill:#ffe1f5
-    style CF fill:#fff4e1
-    style TC fill:#e1ffe1
-    style FV fill:#f0f0f0
+    LV --> Errors[Error Aggregation]
+    TC --> Errors
 ```
 
 ## Error Aggregation Flow
@@ -290,25 +256,13 @@ graph LR
 flowchart TD
     Start[Start Validation] --> S1[Stage 1: Symbol Collection]
     S1 --> E1[Collect Errors]
-    E1 --> S2[Stage 2: Type Resolution]
+    E1 --> S2[Stage 2: Lambda Capture]
     S2 --> E2[Collect Errors]
-    E2 --> S3[Stage 3: Control Flow]
+    E2 --> S3[Stage 3: Type Checking]
     S3 --> E3[Collect Errors]
-    E3 --> S4[Stage 4: Lambda Capture]
-    S4 --> E4[Collect Errors]
-    E4 --> S5[Stage 5: Type Checking]
-    S5 --> E5[Collect Errors]
-    E5 --> S6[Stage 6: Final Validation]
-    S6 --> Aggregate[Aggregate All Errors]
+    E3 --> Aggregate[Aggregate All Errors]
     Aggregate --> Report[Report to Compiler]
     Report --> End[End]
-    
-    style E1 fill:#FFE4E1
-    style E2 fill:#FFE4E1
-    style E3 fill:#FFE4E1
-    style E4 fill:#FFE4E1
-    style E5 fill:#FFE4E1
-    style Aggregate fill:#FF6B6B
 ```
 
 ## Key Design Principles
@@ -317,11 +271,10 @@ flowchart TD
 Each validation stage focuses on a single aspect of correctness:
 - Symbol collection builds the scope hierarchy
 - Lambda validation enforces non-capturing semantics
-- Control flow ensures proper use of control structures
-- Type checking validates type compatibility
+- Type checking validates type compatibility and performs inline control flow checks
 
 ### Visitor Pattern
-All stages use the visitor pattern to traverse the AST, allowing clean separation between the AST structure and validation logic.
+All stages use the visitor pattern to traverse the AST, allowing clean separation between the AST structure and validation logic. The type checker itself acts as a visitor for type validation.
 
 ### Incremental Error Collection
 Errors are collected throughout all stages rather than stopping at the first error, providing comprehensive feedback to the developer.
@@ -329,13 +282,33 @@ Errors are collected throughout all stages rather than stopping at the first err
 ### Scope-Based Validation
 The explicit scope hierarchy enables precise validation of symbol visibility and lambda capture rules.
 
+### Inline Control Flow Checking
+Control flow validation is performed inline during type checking using the `control_flow_checker_c` helper class. The type checker calls `check_no_control_flow()` and `check_no_break_or_continue()` as needed to validate control flow constraints in specific contexts like defer blocks and lambdas.
+
+## Implementation Architecture
+
+### Visitor Classes
+
+The type checker uses three main visitor classes:
+
+1. **`symbol_collector_c`**: Traverses the AST to build the scope hierarchy and register all symbols. It creates `scope_info_s` structures for functions, lambdas, and blocks, and populates them with `symbol_entry_s` entries. Lambda parameters are correctly classified as `PARAMETER` scope kind.
+
+2. **`lambda_capture_validator_c`**: Validates that lambdas do not capture variables from enclosing scopes. It tracks the current lambda context and checks each identifier reference against the scope hierarchy to ensure only global symbols and lambda-local symbols are accessed.
+
+3. **`type_checker_c`**: The main type checker class acts as its own visitor for type validation. It traverses the AST, validates type compatibility, checks assignments, and validates operations. It uses the `control_flow_checker_c` helper inline when needed.
+
+### Control Flow Checking
+
+Control flow validation is performed inline using the `control_flow_checker_c` helper class. The type checker calls:
+- `check_no_control_flow()`: Validates that a code block contains no return, break, or continue statements (used for defer blocks)
+- `check_no_break_or_continue()`: Validates that a code block contains no break or continue statements (used for lambda bodies)
+
+This approach is more efficient than a separate analysis stage, as control flow checks are only performed where needed.
+
 ## Lambda Capture Validation Rationale
 
 Lambdas in Truk compile to static C functions and cannot capture variables from enclosing scopes. The lambda capture validator enforces this constraint by:
 
-1. Building a complete scope hierarchy during symbol collection
+1. Using the complete scope hierarchy built during symbol collection
 2. Tracking which lambda context is currently active during validation
 3. Checking each identifier reference to determine if it violates capture rules
-4. Providing clear error messages that guide developers to use context parameters instead
-
-This approach catches capture violations at type-check time rather than during C compilation, providing better error messages and faster feedback.

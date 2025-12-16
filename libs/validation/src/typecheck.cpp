@@ -2083,7 +2083,7 @@ void symbol_collector_c::visit(const lambda_c &node) {
       auto symbol = std::make_unique<symbol_entry_s>(
           param.name.name, std::move(param_type), true,
           param.name.source_index);
-      symbol->scope_kind = symbol_scope_e::LAMBDA_LOCAL;
+      symbol->scope_kind = symbol_scope_e::PARAMETER;
       symbol->declaring_node = &node;
 
       auto *symbol_ptr = symbol.get();
