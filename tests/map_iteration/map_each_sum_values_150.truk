@@ -1,0 +1,16 @@
+fn main() : i32 {
+  var m: map[i32] = make(@map[i32]);
+  m["first"] = 30;
+  m["second"] = 50;
+  m["third"] = 70;
+  
+  var sum: i32 = 0;
+  each(m, &sum, fn(key: *u8, val: *i32, ctx: *i32) : void {
+    if val != nil {
+      *ctx = *ctx + *val;
+    }
+  });
+  
+  delete(m);
+  return sum;
+}

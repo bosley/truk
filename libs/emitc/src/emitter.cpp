@@ -232,6 +232,33 @@ std::string emitter_c::emit_type(const type_c *type) {
     return get_map_type_name(map->value_type());
   }
 
+  if (auto func = dynamic_cast<const function_type_c *>(type)) {
+    std::string ret_type = emit_type(func->return_type());
+    std::string func_type = ret_type + " (*)(";
+
+    const auto &param_types = func->param_types();
+    for (size_t i = 0; i < param_types.size(); ++i) {
+      if (i > 0) {
+        func_type += ", ";
+      }
+      func_type += emit_type(param_types[i].get());
+    }
+
+    if (param_types.empty()) {
+      func_type += "void";
+    }
+
+    if (func->has_variadic()) {
+      if (!param_types.empty()) {
+        func_type += ", ";
+      }
+      func_type += "...";
+    }
+
+    func_type += ")";
+    return func_type;
+  }
+
   return "__truk_void";
 }
 
@@ -431,13 +458,25 @@ void emitter_c::visit(const fn_c &node) {
   bool is_private = is_private_identifier(node.name().name);
   bool is_library = _result.metadata.is_library();
 
-  std::string return_type = emit_type(node.return_type());
+  if (auto func_return =
+          dynamic_cast<const function_type_c *>(node.return_type())) {
+    // Function returning a function pointer - needs special syntax
+    std::string ret_type = emit_type(func_return->return_type());
 
-  if (is_private && is_library) {
-    _functions << "static ";
+    if (is_private && is_library) {
+      _functions << "static ";
+    }
+
+    _functions << ret_type << " (*" << node.name().name << "(";
+  } else {
+    std::string return_type = emit_type(node.return_type());
+
+    if (is_private && is_library) {
+      _functions << "static ";
+    }
+
+    _functions << return_type << " " << node.name().name << "(";
   }
-
-  _functions << return_type << " " << node.name().name << "(";
 
   bool has_variadic = false;
   std::string variadic_name;
@@ -458,8 +497,34 @@ void emitter_c::visit(const fn_c &node) {
         _functions << ", ";
       register_variable_type(param.name.name, param.type.get());
 
-      std::string param_type = emit_type(param.type.get());
-      _functions << param_type << " " << param.name.name;
+      if (auto func = dynamic_cast<const function_type_c *>(param.type.get())) {
+        std::string ret_type = emit_type(func->return_type());
+        _functions << ret_type << " (*" << param.name.name << ")(";
+
+        const auto &func_param_types = func->param_types();
+        for (size_t j = 0; j < func_param_types.size(); ++j) {
+          if (j > 0) {
+            _functions << ", ";
+          }
+          _functions << emit_type(func_param_types[j].get());
+        }
+
+        if (func_param_types.empty()) {
+          _functions << "void";
+        }
+
+        if (func->has_variadic()) {
+          if (!func_param_types.empty()) {
+            _functions << ", ";
+          }
+          _functions << "...";
+        }
+
+        _functions << ")";
+      } else {
+        std::string param_type = emit_type(param.type.get());
+        _functions << param_type << " " << param.name.name;
+      }
 
       const type_c *current_type = param.type.get();
       while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
@@ -476,6 +541,33 @@ void emitter_c::visit(const fn_c &node) {
   }
 
   _functions << ")";
+
+  // If returning a function pointer, add the return type parameters
+  if (auto func_return =
+          dynamic_cast<const function_type_c *>(node.return_type())) {
+    _functions << ")(";
+
+    const auto &ret_param_types = func_return->param_types();
+    for (size_t i = 0; i < ret_param_types.size(); ++i) {
+      if (i > 0) {
+        _functions << ", ";
+      }
+      _functions << emit_type(ret_param_types[i].get());
+    }
+
+    if (ret_param_types.empty()) {
+      _functions << "void";
+    }
+
+    if (func_return->has_variadic()) {
+      if (!ret_param_types.empty()) {
+        _functions << ", ";
+      }
+      _functions << "...";
+    }
+
+    _functions << ")";
+  }
 
   _current_function_name = node.name().name;
   _current_function_return_type = node.return_type();
@@ -514,6 +606,125 @@ void emitter_c::visit(const fn_c &node) {
   _function_defers.clear();
   _current_function_name = "";
 
+  _current_phase = saved_phase;
+  _current_node_context = saved_context;
+}
+
+void emitter_c::visit(const lambda_c &node) {
+  if (_collecting_declarations) {
+    return;
+  }
+
+  // Skip lambda generation if it's going to be inlined (e.g., in each())
+  if (_skip_lambda_generation) {
+    return;
+  }
+
+  emission_phase_e saved_phase = _current_phase;
+  std::string saved_context = _current_node_context;
+  std::string saved_function_name = _current_function_name;
+  const type_c *saved_return_type = _current_function_return_type;
+  std::stringstream saved_functions;
+
+  std::string lambda_name =
+      "__truk_lambda_" + std::to_string(++_lambda_counter);
+  _current_node_context = "lambda '" + lambda_name + "'";
+
+  std::string return_type = emit_type(node.return_type());
+
+  _header << "static " << return_type << " " << lambda_name << "(";
+
+  saved_functions.swap(_functions);
+  _functions.str("");
+  _functions.clear();
+
+  _functions << "static " << return_type << " " << lambda_name << "(";
+
+  for (size_t i = 0; i < node.params().size(); ++i) {
+    const auto &param = node.params()[i];
+    if (i > 0) {
+      _header << ", ";
+      _functions << ", ";
+    }
+
+    register_variable_type(param.name.name, param.type.get());
+
+    if (auto func = dynamic_cast<const function_type_c *>(param.type.get())) {
+      std::string ret_type = emit_type(func->return_type());
+      std::string func_param = ret_type + " (*" + param.name.name + ")(";
+
+      const auto &func_param_types = func->param_types();
+      for (size_t j = 0; j < func_param_types.size(); ++j) {
+        if (j > 0) {
+          func_param += ", ";
+        }
+        func_param += emit_type(func_param_types[j].get());
+      }
+
+      if (func_param_types.empty()) {
+        func_param += "void";
+      }
+
+      if (func->has_variadic()) {
+        if (!func_param_types.empty()) {
+          func_param += ", ";
+        }
+        func_param += "...";
+      }
+
+      func_param += ")";
+
+      _header << func_param;
+      _functions << func_param;
+    } else {
+      std::string param_type = emit_type(param.type.get());
+      _header << param_type << " " << param.name.name;
+      _functions << param_type << " " << param.name.name;
+    }
+
+    const type_c *current_type = param.type.get();
+    while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+      if (arr->size().has_value()) {
+        _header << "[" << arr->size().value() << "]";
+        _functions << "[" << arr->size().value() << "]";
+        current_type = arr->element_type();
+      } else {
+        ensure_slice_typedef(arr->element_type());
+        break;
+      }
+    }
+  }
+
+  if (node.params().empty()) {
+    _header << "void";
+    _functions << "void";
+  }
+
+  _header << ");\n";
+  _functions << ")";
+
+  _current_phase = emission_phase_e::FUNCTION_DEFINITION;
+  _current_function_name = lambda_name;
+  _current_function_return_type = node.return_type();
+  _function_defers.clear();
+
+  if (node.body()) {
+    _functions << " ";
+    node.body()->accept(*this);
+  }
+
+  _functions << "\n";
+
+  std::string lambda_def = _functions.str();
+  _functions.swap(saved_functions);
+  _header << lambda_def;
+
+  _function_defers.clear();
+
+  _current_expr << lambda_name;
+
+  _current_function_name = saved_function_name;
+  _current_function_return_type = saved_return_type;
   _current_phase = saved_phase;
   _current_node_context = saved_context;
 }
@@ -583,16 +794,51 @@ void emitter_c::visit(const var_c &node) {
   bool is_private = is_private_identifier(node.name().name);
   bool is_library = _result.metadata.is_library();
 
-  std::string type_str = emit_type(node.type());
+  if (auto func = dynamic_cast<const function_type_c *>(node.type())) {
+    std::string ret_type = emit_type(func->return_type());
+    std::string func_decl = ret_type + " (*" + node.name().name + ")(";
 
-  if (_indent_level == 0) {
-    if (is_private && is_library) {
-      _functions << "static ";
+    const auto &param_types = func->param_types();
+    for (size_t i = 0; i < param_types.size(); ++i) {
+      if (i > 0) {
+        func_decl += ", ";
+      }
+      func_decl += emit_type(param_types[i].get());
     }
-    _functions << type_str << " " << node.name().name;
+
+    if (param_types.empty()) {
+      func_decl += "void";
+    }
+
+    if (func->has_variadic()) {
+      if (!param_types.empty()) {
+        func_decl += ", ";
+      }
+      func_decl += "...";
+    }
+
+    func_decl += ")";
+
+    if (_indent_level == 0) {
+      if (is_private && is_library) {
+        _functions << "static ";
+      }
+      _functions << func_decl;
+    } else {
+      _functions << cdef::indent(_indent_level) << func_decl;
+    }
   } else {
-    _functions << cdef::indent(_indent_level) << type_str << " "
-               << node.name().name;
+    std::string type_str = emit_type(node.type());
+
+    if (_indent_level == 0) {
+      if (is_private && is_library) {
+        _functions << "static ";
+      }
+      _functions << type_str << " " << node.name().name;
+    } else {
+      _functions << cdef::indent(_indent_level) << type_str << " "
+                 << node.name().name;
+    }
   }
 
   const type_c *current_type = node.type();
@@ -1043,6 +1289,83 @@ void emitter_c::visit(const call_c &node) {
             _current_expr.str("");
             _current_expr.clear();
           }
+          return;
+        }
+        break;
+      }
+      case builtins::builtin_kind_e::EACH: {
+        if (node.arguments().size() == 3) {
+          std::stringstream map_stream;
+          std::swap(map_stream, _current_expr);
+          node.arguments()[0]->accept(*this);
+          std::string map_var = _current_expr.str();
+          std::swap(map_stream, _current_expr);
+
+          std::stringstream context_stream;
+          std::swap(context_stream, _current_expr);
+          node.arguments()[1]->accept(*this);
+          std::string context_var = _current_expr.str();
+          std::swap(context_stream, _current_expr);
+
+          // Check if the callback is a lambda literal
+          if (auto lambda =
+                  dynamic_cast<const lambda_c *>(node.arguments()[2].get())) {
+            // Generate the lambda as a normal function
+            node.arguments()[2]->accept(*this);
+            std::string callback_func = _current_expr.str();
+            _current_expr.str("");
+            _current_expr.clear();
+
+            _functions << cdef::indent(_indent_level) << "{\n";
+            _indent_level++;
+            _functions
+                << cdef::indent(_indent_level)
+                << "__truk_map_iter_t __truk_iter = __truk_map_iter();\n";
+            _functions << cdef::indent(_indent_level)
+                       << "const char* __truk_key;\n";
+            _functions << cdef::indent(_indent_level)
+                       << "while ((__truk_key = __truk_map_next(&(" << map_var
+                       << "), &__truk_iter)) != NULL) {\n";
+            _indent_level++;
+            _functions << cdef::indent(_indent_level) << callback_func
+                       << "((__truk_u8*)__truk_key, __truk_map_get(&("
+                       << map_var << "), __truk_key), " << context_var
+                       << ");\n";
+            _indent_level--;
+            _functions << cdef::indent(_indent_level) << "}\n";
+            _indent_level--;
+            _functions << cdef::indent(_indent_level) << "}\n";
+          } else {
+            // Callback is a variable or expression
+            std::stringstream callback_stream;
+            std::swap(callback_stream, _current_expr);
+            node.arguments()[2]->accept(*this);
+            std::string callback_func = _current_expr.str();
+            std::swap(callback_stream, _current_expr);
+
+            _functions << cdef::indent(_indent_level) << "{\n";
+            _indent_level++;
+            _functions
+                << cdef::indent(_indent_level)
+                << "__truk_map_iter_t __truk_iter = __truk_map_iter();\n";
+            _functions << cdef::indent(_indent_level)
+                       << "const char* __truk_key;\n";
+            _functions << cdef::indent(_indent_level)
+                       << "while ((__truk_key = __truk_map_next(&(" << map_var
+                       << "), &__truk_iter)) != NULL) {\n";
+            _indent_level++;
+            _functions << cdef::indent(_indent_level) << callback_func
+                       << "((__truk_u8*)__truk_key, __truk_map_get(&("
+                       << map_var << "), __truk_key), " << context_var
+                       << ");\n";
+            _indent_level--;
+            _functions << cdef::indent(_indent_level) << "}\n";
+            _indent_level--;
+            _functions << cdef::indent(_indent_level) << "}\n";
+          }
+
+          _current_expr.str("");
+          _current_expr.clear();
           return;
         }
         break;

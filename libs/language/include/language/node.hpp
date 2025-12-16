@@ -191,6 +191,29 @@ private:
   bool _is_extern{false};
 };
 
+class lambda_c : public base_c {
+public:
+  lambda_c() = delete;
+  lambda_c(std::size_t source_index, std::vector<parameter_s> params,
+           type_ptr return_type, base_ptr body, bool is_capturing = false)
+      : base_c(keywords_e::FN, source_index), _params(std::move(params)),
+        _return_type(std::move(return_type)), _body(std::move(body)),
+        _is_capturing(is_capturing) {}
+
+  const std::vector<parameter_s> &params() const { return _params; }
+  const type_c *return_type() const { return _return_type.get(); }
+  const base_c *body() const { return _body.get(); }
+  bool is_capturing() const { return _is_capturing; }
+
+  void accept(visitor_if &visitor) const override;
+
+private:
+  std::vector<parameter_s> _params;
+  type_ptr _return_type;
+  base_ptr _body;
+  bool _is_capturing{false};
+};
+
 class struct_c : public base_c {
 public:
   struct_c() = delete;

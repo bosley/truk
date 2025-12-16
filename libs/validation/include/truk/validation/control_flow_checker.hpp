@@ -18,6 +18,7 @@ public:
   void visit(const language::nodes::function_type_c &node) override;
   void visit(const language::nodes::map_type_c &node) override;
   void visit(const language::nodes::fn_c &node) override;
+  void visit(const language::nodes::lambda_c &node) override;
   void visit(const language::nodes::struct_c &node) override;
   void visit(const language::nodes::var_c &node) override;
   void visit(const language::nodes::const_c &node) override;

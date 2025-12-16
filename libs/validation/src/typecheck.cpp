@@ -358,6 +358,32 @@ bool type_checker_c::is_compatible_for_assignment(const type_entry_s *target,
     }
   }
 
+  if (target->kind == type_kind_e::FUNCTION &&
+      source->kind == type_kind_e::FUNCTION) {
+    if (target->function_param_types.size() !=
+        source->function_param_types.size()) {
+      return false;
+    }
+
+    for (size_t i = 0; i < target->function_param_types.size(); ++i) {
+      if (!types_equal(target->function_param_types[i].get(),
+                       source->function_param_types[i].get())) {
+        return false;
+      }
+    }
+
+    if (!types_equal(target->function_return_type.get(),
+                     source->function_return_type.get())) {
+      return false;
+    }
+
+    if (target->is_variadic != source->is_variadic) {
+      return false;
+    }
+
+    return true;
+  }
+
   return false;
 }
 
@@ -511,6 +537,45 @@ void type_checker_c::validate_builtin_call(const call_c &node,
     }
 
     _current_expression_type.reset();
+    return;
+  }
+
+  if (func_type.builtin_kind == language::builtins::builtin_kind_e::EACH) {
+    if (node.arguments().size() != 3) {
+      report_error(
+          "Builtin 'each' expects 3 arguments (map, context, and callback)",
+          node.source_index());
+      return;
+    }
+
+    node.arguments()[0]->accept(*this);
+    auto map_type = std::move(_current_expression_type);
+    if (!map_type || map_type->kind != type_kind_e::MAP) {
+      report_error("First argument to 'each' must be a map",
+                   node.source_index());
+      return;
+    }
+
+    node.arguments()[1]->accept(*this);
+    auto context_type = std::move(_current_expression_type);
+
+    node.arguments()[2]->accept(*this);
+    auto callback_type = std::move(_current_expression_type);
+    if (!callback_type || callback_type->kind != type_kind_e::FUNCTION) {
+      report_error("Third argument to 'each' must be a function",
+                   node.source_index());
+      return;
+    }
+
+    if (callback_type->function_param_types.size() != 3) {
+      report_error("Callback to 'each' must take 3 parameters (key, value "
+                   "pointer, and context)",
+                   node.source_index());
+      return;
+    }
+
+    _current_expression_type =
+        std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "void");
     return;
   }
 
@@ -797,6 +862,58 @@ void type_checker_c::visit(const fn_c &node) {
   _current_function_return_type.reset();
 
   pop_scope();
+}
+
+void type_checker_c::visit(const lambda_c &node) {
+  auto return_type = resolve_type(node.return_type());
+  if (!return_type) {
+    report_error("Unknown return type in lambda: " +
+                     get_type_name_for_error(node.return_type()),
+                 node.source_index());
+    return;
+  }
+
+  auto lambda_type =
+      std::make_unique<type_entry_s>(type_kind_e::FUNCTION, "<lambda>");
+  lambda_type->function_return_type =
+      std::make_unique<type_entry_s>(*return_type);
+
+  for (const auto &param : node.params()) {
+    if (param.is_variadic) {
+      lambda_type->is_variadic = true;
+    } else {
+      auto param_type = resolve_type(param.type.get());
+      if (!param_type) {
+        report_error("Unknown parameter type in lambda: " +
+                         get_type_name_for_error(param.type.get()),
+                     param.name.source_index);
+        continue;
+      }
+      lambda_type->function_param_types.push_back(std::move(param_type));
+    }
+  }
+
+  push_scope();
+
+  _current_function_return_type = std::move(return_type);
+
+  for (const auto &param : node.params()) {
+    auto param_type = resolve_type(param.type.get());
+    if (param_type) {
+      register_symbol(param.name.name, std::move(param_type), true,
+                      param.name.source_index);
+    }
+  }
+
+  if (node.body()) {
+    node.body()->accept(*this);
+  }
+
+  _current_function_return_type.reset();
+
+  pop_scope();
+
+  _current_expression_type = std::move(lambda_type);
 }
 
 void type_checker_c::visit(const struct_c &node) {

@@ -60,6 +60,23 @@ void dependency_visitor_c::visit(const fn_c &node) {
   }
 }
 
+void dependency_visitor_c::visit(const lambda_c &node) {
+  if (node.return_type()) {
+    node.return_type()->accept(*this);
+  }
+
+  for (const auto &param : node.params()) {
+    if (param.type) {
+      param.type->accept(*this);
+    }
+    _local_scope.insert(param.name.name);
+  }
+
+  if (node.body()) {
+    node.body()->accept(*this);
+  }
+}
+
 void dependency_visitor_c::visit(const struct_c &node) {
   for (const auto &field : node.fields()) {
     if (field.type) {

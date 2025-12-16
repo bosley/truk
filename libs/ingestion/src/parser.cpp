@@ -327,6 +327,43 @@ language::nodes::base_ptr parser_c::parse_fn_decl(bool is_extern) {
       std::move(return_type), std::move(body), is_extern);
 }
 
+language::nodes::base_ptr parser_c::parse_lambda() {
+  const auto &fn_token = previous();
+
+  consume(token_type_e::LEFT_PAREN, "Expected '(' after 'fn' in lambda");
+
+  std::vector<language::nodes::parameter_s> params;
+  if (!check(token_type_e::RIGHT_PAREN)) {
+    params = parse_param_list();
+  }
+
+  consume(token_type_e::RIGHT_PAREN, "Expected ')' after lambda parameters");
+
+  language::nodes::type_ptr return_type;
+  if (check(token_type_e::COLON)) {
+    return_type = parse_type_annotation();
+  } else {
+    return_type = std::make_unique<language::nodes::primitive_type_c>(
+        language::keywords_e::VOID, fn_token.source_index);
+  }
+
+  language::nodes::base_ptr body;
+  if (check(token_type_e::LEFT_BRACE)) {
+    body = parse_block();
+  } else {
+    auto expr = parse_expression();
+    std::vector<language::nodes::base_ptr> statements;
+    statements.push_back(std::make_unique<language::nodes::return_c>(
+        expr->source_index(), std::move(expr)));
+    body = std::make_unique<language::nodes::block_c>(fn_token.source_index,
+                                                      std::move(statements));
+  }
+
+  return std::make_unique<language::nodes::lambda_c>(
+      fn_token.source_index, std::move(params), std::move(return_type),
+      std::move(body), false);
+}
+
 language::nodes::base_ptr parser_c::parse_struct_decl(bool is_extern) {
   const auto &struct_token = consume_keyword(language::keywords_e::STRUCT,
                                              "Expected 'struct' keyword");
@@ -1227,6 +1264,10 @@ language::nodes::base_ptr parser_c::parse_primary() {
 
   if (check(token_type_e::LEFT_BRACKET)) {
     return parse_array_literal();
+  }
+
+  if (match_keyword(language::keywords_e::FN)) {
+    return parse_lambda();
   }
 
   const auto &token = peek();

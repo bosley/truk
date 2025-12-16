@@ -1,0 +1,14 @@
+fn main() : i32 {
+  var m: map[i32] = make(@map[i32]);
+  m["one"] = 1;
+  m["two"] = 2;
+  m["three"] = 3;
+  
+  var count: i32 = 0;
+  each(m, &count, fn(key: *u8, val: *i32, ctx: *i32) : void {
+    *ctx = *ctx + 1;
+  });
+  
+  delete(m);
+  return count;
+}

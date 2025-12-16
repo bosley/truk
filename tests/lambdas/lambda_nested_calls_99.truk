@@ -1,0 +1,17 @@
+fn main() : i32 {
+  var add: fn(i32, i32) : i32 = fn(x: i32, y: i32) : i32 {
+    return x + y;
+  };
+  
+  var mul: fn(i32, i32) : i32 = fn(x: i32, y: i32) : i32 {
+    return x * y;
+  };
+  
+  // Non-capturing lambdas can't access outer variables add/mul
+  // So we need to compute directly or pass as parameters
+  var compose: fn(i32, i32, i32) : i32 = fn(a: i32, b: i32, c: i32) : i32 {
+    return (a * b) + c;  // Direct computation instead of calling add/mul
+  };
+  
+  return compose(9, 10, 9);
+}

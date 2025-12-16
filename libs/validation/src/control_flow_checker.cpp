@@ -24,6 +24,8 @@ void control_flow_checker_c::visit(const map_type_c &) {}
 
 void control_flow_checker_c::visit(const fn_c &) {}
 
+void control_flow_checker_c::visit(const lambda_c &) {}
+
 void control_flow_checker_c::visit(const struct_c &) {}
 
 void control_flow_checker_c::visit(const var_c &node) {

@@ -134,6 +134,44 @@ static type_ptr build_va_arg_ptr_signature(const type_c *type_param) {
                                            std::move(return_type));
 }
 
+static type_ptr build_each_signature(const type_c *type_param) {
+  // each takes: map, context pointer, callback
+  // callback takes: key, value, context pointer
+  // This is just a dummy - the actual validation happens in typecheck.cpp
+  std::vector<type_ptr> params;
+
+  // Map parameter
+  params.push_back(std::make_unique<map_type_c>(
+      0, std::make_unique<primitive_type_c>(keywords_e::VOID, 0)));
+
+  // Context parameter (void* as placeholder)
+  auto void_type = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
+  params.push_back(std::make_unique<pointer_type_c>(0, std::move(void_type)));
+
+  // Callback parameter
+  std::vector<type_ptr> callback_params;
+  auto u8_type = std::make_unique<primitive_type_c>(keywords_e::U8, 0);
+  callback_params.push_back(
+      std::make_unique<pointer_type_c>(0, std::move(u8_type)));
+
+  auto void_type2 = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
+  callback_params.push_back(
+      std::make_unique<pointer_type_c>(0, std::move(void_type2)));
+
+  auto void_type3 = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
+  callback_params.push_back(
+      std::make_unique<pointer_type_c>(0, std::move(void_type3)));
+
+  auto void_return = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
+  auto callback_type = std::make_unique<function_type_c>(
+      0, std::move(callback_params), std::move(void_return));
+  params.push_back(std::move(callback_type));
+
+  auto return_type = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
+  return std::make_unique<function_type_c>(0, std::move(params),
+                                           std::move(return_type));
+}
+
 static std::vector<builtin_signature_s> builtin_registry = {
     {"make", builtin_kind_e::MAKE, true, false, {}, build_make_signature},
     {"delete",
@@ -150,6 +188,12 @@ static std::vector<builtin_signature_s> builtin_registry = {
      false,
      {"message"},
      build_panic_signature},
+    {"each",
+     builtin_kind_e::EACH,
+     false,
+     false,
+     {"map", "context", "callback"},
+     build_each_signature},
     {"__TRUK_VA_ARG_I32",
      builtin_kind_e::VA_ARG_I32,
      false,

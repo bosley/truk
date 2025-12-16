@@ -114,6 +114,7 @@ public:
   void visit(const truk::language::nodes::function_type_c &node) override;
   void visit(const truk::language::nodes::map_type_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
+  void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
@@ -189,8 +190,10 @@ private:
   std::unordered_map<std::string, bool> _variable_is_map;
   bool _in_expression{false};
   bool _collecting_declarations{false};
+  bool _skip_lambda_generation{false};
   std::string _current_function_name;
   const truk::language::nodes::type_c *_current_function_return_type{nullptr};
+  int _lambda_counter{0};
   std::vector<const truk::language::nodes::defer_c *> _function_defers;
   emission_phase_e _current_phase{emission_phase_e::COLLECTION};
   std::string _current_node_context;

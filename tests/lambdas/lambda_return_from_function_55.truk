@@ -1,0 +1,15 @@
+fn make_adder(n: i32) : fn(i32) : i32 {
+  if n == 10 {
+    return fn(x: i32) : i32 {
+      return x + 10;
+    };
+  }
+  return fn(x: i32) : i32 {
+    return x + 5;
+  };
+}
+
+fn main() : i32 {
+  var add10: fn(i32) : i32 = make_adder(10);
+  return add10(45);
+}
