@@ -78,22 +78,22 @@ Maps support multiple key types:
 
 **Integers:**
 ```truk
-var m1: map[*u8, i32, *u8] = make(@map[*u8, i32, *u8]);
+var m1: map[i32, *u8] = make(@map[i32, *u8]);
 m1[42] = "answer";
 
-var m2: map[*u8, u64, bool] = make(@map[*u8, u64, bool]);
+var m2: map[u64, bool] = make(@map[u64, bool]);
 m2[12345] = true;
 ```
 
 **Floats:**
 ```truk
-var m: map[*u8, f32, i32] = make(@map[*u8, f32, i32]);
+var m: map[f32, i32] = make(@map[f32, i32]);
 m[3.14] = 100;
 ```
 
 **Booleans:**
 ```truk
-var m: map[*u8, bool, *u8] = make(@map[*u8, bool, *u8]);
+var m: map[bool, *u8] = make(@map[bool, *u8]);
 m[true] = "yes";
 m[false] = "no";
 ```
@@ -102,7 +102,7 @@ m[false] = "no";
 
 **String Literals:**
 ```truk
-var m: map[*u8, *u8, i32] = make(@map[*u8, *u8, i32]);
+var m: map[*u8, i32] = make(@map[*u8, i32]);
 m["literal"] = 42;
 ```
 
@@ -110,7 +110,7 @@ String literals are `*u8` type.
 
 **String Variables:**
 ```truk
-var m: map[*u8, *u8, i32] = make(@map[*u8, *u8, i32]);
+var m: map[*u8, i32] = make(@map[*u8, i32]);
 var key1: *u8 = "hello";
 var key2: *i8 = "world";
 m[key1] = 1;
@@ -120,7 +120,7 @@ Both `*u8` and `*i8` work as keys.
 
 **Slice Keys:**
 ```truk
-var m: map[*u8, *u8, i32] = make(@map[*u8, *u8, i32]);
+var m: map[*u8, i32] = make(@map[*u8, i32]);
 var size: u64 = 10;
 var key: []u8 = make(@u8, size);
 m[key] = 42;
@@ -160,9 +160,9 @@ Maps can store any type as values.
 ### Primitives
 
 ```truk
-var m1: map[*u8, *u8, i32] = make(@map[*u8, *u8, i32]);
-var m2: map[*u8, *u8, f64] = make(@map[*u8, *u8, f64]);
-var m3: map[*u8, *u8, bool] = make(@map[*u8, *u8, bool]);
+var m1: map[*u8, i32] = make(@map[*u8, i32]);
+var m2: map[*u8, f64] = make(@map[*u8, f64]);
+var m3: map[*u8, bool] = make(@map[*u8, bool]);
 
 m1["count"] = 42;
 m2["pi"] = 3.14;
@@ -172,7 +172,7 @@ m3["flag"] = true;
 ### Pointers
 
 ```truk
-var m: map[*u8, *u8, *i32] = make(@map[*u8, *u8, *i32]);
+var m: map[*u8, *i32] = make(@map[*u8, *i32]);
 
 var x: i32 = 100;
 m["ptr"] = &x;
@@ -193,7 +193,7 @@ struct Point {
   y: i32
 }
 
-var m: map[*u8, *u8, Point] = make(@map[*u8, *u8, Point]);
+var m: map[*u8, Point] = make(@map[*u8, Point]);
 
 var p: Point = Point{x: 10, y: 20};
 m["origin"] = p;
@@ -427,9 +427,46 @@ Maps support the following key types:
 
 Struct keys, array keys, and other complex types are not supported.
 
-### No Iteration
+### Iteration with each
 
-Currently, there is no built-in way to iterate over map keys or values. This is a future enhancement.
+Maps can be iterated using the `each` builtin. See [each builtin documentation](builtins.md#each) for full details.
+
+**Example with string keys:**
+```truk
+var m: map[*u8, i32] = make(@map[*u8, i32]);
+m["one"] = 1;
+m["two"] = 2;
+m["three"] = 3;
+
+var count: i32 = 0;
+each(m, &count, fn(key: *u8, val: *i32, ctx: *i32) : bool {
+  *ctx = *ctx + 1;
+  return true;
+});
+
+delete(m);
+```
+
+**Example with integer keys:**
+```truk
+var m: map[i32, i32] = make(@map[i32, i32]);
+m[1] = 10;
+m[2] = 20;
+
+var sum: i32 = 0;
+each(m, &sum, fn(key: i32, val: *i32, ctx: *i32) : bool {
+  *ctx = *ctx + *val;
+  return true;
+});
+
+delete(m);
+```
+
+The callback receives:
+- `key`: The key (type matches the map's key type K)
+- `val`: Pointer to the value (*V)
+- `ctx`: Context pointer for passing state
+- Returns `bool`: `true` to continue, `false` to stop early
 
 ### Key Removal
 
@@ -455,13 +492,15 @@ truk maps are similar to Go maps with some differences:
 
 | Feature | Go | truk |
 |---------|-----|------|
-| Syntax | `map[string]int` | `map[*u8, i32]` or `map[i32, i32]` |
+| Syntax | `map[K]V` | `map[K, V]` |
 | Keys | Any comparable type | Primitives + string pointers |
 | Indexing | Returns value + ok | Returns `*V` (nil if missing) |
 | Creation | `make(map[K]V)` | `make(@map[K, V])` |
-| Deletion | `delete(m, key)` | No key removal |
+| Deletion | `delete(m, key)` | `delete(m["key"])` for keys, `delete(m)` for map |
 | Iteration | `for k, v := range m` | `each(m, ctx, callback)` |
 | Memory | Garbage collected | Manual with `delete(m)` |
+
+Examples: `map[*u8, i32]` (string keys), `map[i32, i32]` (integer keys), `map[bool, *u8]` (boolean keys)
 
 ## Best Practices
 

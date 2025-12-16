@@ -154,7 +154,32 @@ delete(m);
 
 **Note:** `delete` frees the map structure and all internal nodes. If map values contain pointers to heap-allocated data, you must free that data separately before deleting the map.
 
-**Note:** The `delete` builtin automatically determines whether to free a single value, an array, or a map based on the type of its argument. Calling `delete` on already-freed memory or non-heap memory results in undefined behavior.
+### `delete(m[key]) -> void`
+
+Removes a specific key-value pair from a map.
+
+**Parameters:**
+- `m[key]`: Map indexing expression specifying the key to remove
+
+**Returns:** void
+
+**Example:**
+```truk
+var m: map[*u8, i32] = make(@map[*u8, i32]);
+m["key"] = 42;
+delete(m["key"]);
+
+var ptr: *i32 = m["key"];
+if ptr == nil {
+  // Key was removed
+}
+
+delete(m);
+```
+
+**Note:** After deleting a key, accessing it returns `nil`.
+
+**Note:** The `delete` builtin automatically determines whether to free a single value, an array, a map, or a map key based on the type of its argument. Calling `delete` on already-freed memory or non-heap memory results in undefined behavior.
 
 ## Array Operations
 
