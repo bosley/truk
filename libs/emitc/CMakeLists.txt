@@ -27,6 +27,9 @@ add_library(truk_emitc STATIC
     src/type_registry.cpp
     src/variable_registry.cpp
     src/output_buffer.cpp
+    src/builtin_registry.cpp
+    src/builtin_handlers.cpp
+    src/emission_context.cpp
 )
 
 set_source_files_properties(src/emitter.cpp PROPERTIES 

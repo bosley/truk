@@ -3,6 +3,7 @@
 #include <language/node.hpp>
 #include <language/visitor.hpp>
 #include <truk/core/exceptions.hpp>
+#include <truk/emitc/builtin_handler.hpp>
 #include <truk/emitc/type_registry.hpp>
 #include <truk/emitc/variable_registry.hpp>
 
@@ -99,6 +100,15 @@ struct result_c {
 };
 
 class emitter_c : public truk::language::nodes::visitor_if {
+  friend class builtin_handler_if;
+  friend class make_builtin_handler_c;
+  friend class delete_builtin_handler_c;
+  friend class len_builtin_handler_c;
+  friend class sizeof_builtin_handler_c;
+  friend class panic_builtin_handler_c;
+  friend class each_builtin_handler_c;
+  friend class va_arg_builtin_handler_c;
+
 public:
   emitter_c();
   ~emitter_c() override = default;
@@ -199,6 +209,7 @@ private:
   std::unordered_set<std::string> _function_names;
   type_registry_c _type_registry;
   variable_registry_c _variable_registry;
+  builtin_registry_c _builtin_registry;
   bool _in_expression{false};
   bool _collecting_declarations{false};
   bool _skip_lambda_generation{false};
