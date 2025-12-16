@@ -1,0 +1,25 @@
+fn main() : i32 {
+  var m: map[i16, i32] = make(@map[i16, i32]);
+  
+  var k1: i16 = 10;
+  var k2: i16 = 20;
+  var k3: i16 = 30;
+  var k4: i16 = 40;
+  
+  m[k1] = 1;
+  m[k2] = 2;
+  m[k3] = 3;
+  m[k4] = 4;
+  
+  var count: i32 = 0;
+  each(m, &count, fn(key: i16, val: *i32, ctx: *i32) : bool {
+    *ctx = *ctx + 1;
+    if *ctx == 2 {
+      return false;
+    }
+    return true;
+  });
+  
+  delete(m);
+  return count;
+}

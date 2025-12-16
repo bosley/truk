@@ -1,0 +1,26 @@
+fn main() : i32 {
+  var m: map[u32, i32] = make(@map[u32, i32]);
+  
+  var k1: u32 = 5;
+  var k2: u32 = 10;
+  var k3: u32 = 15;
+  var k4: u32 = 20;
+  
+  m[k1] = 5;
+  m[k2] = 10;
+  m[k3] = 15;
+  m[k4] = 20;
+  
+  var sum: i32 = 0;
+  each(m, &sum, fn(key: u32, val: *i32, ctx: *i32) : bool {
+    if val != nil {
+      if key < 20 {
+        *ctx = *ctx + *val;
+      }
+    }
+    return true;
+  });
+  
+  delete(m);
+  return sum;
+}

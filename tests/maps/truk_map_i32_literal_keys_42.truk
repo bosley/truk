@@ -1,0 +1,17 @@
+fn main() : i32 {
+  var m: map[i32, i32] = make(@map[i32, i32]);
+  
+  m[1] = 10;
+  m[2] = 20;
+  m[99] = 42;
+  
+  var ptr: *i32 = m[99];
+  if ptr != nil {
+    var result: i32 = *ptr;
+    delete(m);
+    return result;
+  }
+  
+  delete(m);
+  return 0;
+}

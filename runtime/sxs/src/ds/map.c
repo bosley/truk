@@ -17,6 +17,7 @@ struct __truk_map_node_t {
 };
 
 unsigned __truk_map_hash_str(const void *key, int ksize) {
+  (void)ksize;
   const char *str = *(const char **)key;
   unsigned hash = 5381;
   while (*str) {
@@ -26,40 +27,49 @@ unsigned __truk_map_hash_str(const void *key, int ksize) {
 }
 
 unsigned __truk_map_hash_i8(const void *key, int ksize) {
+  (void)ksize;
   return (unsigned)(*(const signed char *)key);
 }
 
 unsigned __truk_map_hash_i16(const void *key, int ksize) {
+  (void)ksize;
   return (unsigned)(*(const short *)key);
 }
 
 unsigned __truk_map_hash_i32(const void *key, int ksize) {
+  (void)ksize;
   return (unsigned)(*(const int *)key);
 }
 
 unsigned __truk_map_hash_i64(const void *key, int ksize) {
+  (void)ksize;
   long long val = *(const long long *)key;
   return (unsigned)(val ^ (val >> 32));
 }
 
 unsigned __truk_map_hash_u8(const void *key, int ksize) {
+  (void)ksize;
   return (unsigned)(*(const unsigned char *)key);
 }
 
 unsigned __truk_map_hash_u16(const void *key, int ksize) {
+  (void)ksize;
   return (unsigned)(*(const unsigned short *)key);
 }
 
 unsigned __truk_map_hash_u32(const void *key, int ksize) {
+  (void)ksize;
   return *(const unsigned int *)key;
 }
 
 unsigned __truk_map_hash_u64(const void *key, int ksize) {
+  (void)ksize;
   unsigned long long val = *(const unsigned long long *)key;
   return (unsigned)(val ^ (val >> 32));
 }
 
 unsigned __truk_map_hash_f32(const void *key, int ksize) {
+  (void)ksize;
   union {
     float f;
     unsigned u;
@@ -69,6 +79,7 @@ unsigned __truk_map_hash_f32(const void *key, int ksize) {
 }
 
 unsigned __truk_map_hash_f64(const void *key, int ksize) {
+  (void)ksize;
   union {
     double d;
     unsigned long long u;
@@ -78,10 +89,12 @@ unsigned __truk_map_hash_f64(const void *key, int ksize) {
 }
 
 unsigned __truk_map_hash_bool(const void *key, int ksize) {
+  (void)ksize;
   return *(const unsigned char *)key;
 }
 
 int __truk_map_cmp_str(const void *a, const void *b, int ksize) {
+  (void)ksize;
   const char *sa = *(const char **)a;
   const char *sb = *(const char **)b;
   return strcmp(sa, sb);

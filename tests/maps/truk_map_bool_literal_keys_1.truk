@@ -1,0 +1,20 @@
+fn main() : i32 {
+  var m: map[bool, i32] = make(@map[bool, i32]);
+  
+  m[true] = 1;
+  m[false] = 0;
+  
+  var ptr_true: *i32 = m[true];
+  var ptr_false: *i32 = m[false];
+  
+  var result: i32 = 0;
+  if ptr_true != nil {
+    result = result + *ptr_true;
+  }
+  if ptr_false != nil {
+    result = result + *ptr_false;
+  }
+  
+  delete(m);
+  return result;
+}

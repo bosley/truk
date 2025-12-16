@@ -1,0 +1,24 @@
+fn main() : i32 {
+  var m: map[f64, *u8] = make(@map[f64, *u8]);
+  
+  var k1: f64 = 1.1;
+  var k2: f64 = 2.2;
+  var k3: f64 = 3.3;
+  var k4: f64 = 4.4;
+  
+  m[k1] = "one";
+  m[k2] = "two";
+  m[k3] = "three";
+  m[k4] = "four";
+  
+  var count: i32 = 0;
+  each(m, &count, fn(key: f64, val: **u8, ctx: *i32) : bool {
+    if val != nil {
+      *ctx = *ctx + 1;
+    }
+    return true;
+  });
+  
+  delete(m);
+  return count;
+}

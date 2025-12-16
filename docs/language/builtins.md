@@ -11,7 +11,8 @@ Examples:
 - `@*i32` - pointer to i32
 - `@[5]i32` - sized array of 5 i32s
 - `@[]i32` - unsized array (slice) of i32
-- `@map[i32]` - map with i32 values
+- `@map[*u8, i32]` - map with string keys and i32 values
+- `@map[i32, *u8]` - map with i32 keys and string values
 - `@Point` - user-defined struct type
 - `@**Point` - pointer to pointer to Point
 
@@ -62,18 +63,18 @@ var count: u64 = 10;
 var arr: [][5]i32 = make(@[5]i32, count);
 ```
 
-### `make(@map[V]) -> map[V]`
+### `make(@map[K, V]) -> map[K, V]`
 
-Allocates and initializes a map (hash table) with string keys and values of type V.
+Allocates and initializes a map (hash table) with typed keys and values.
 
 **Parameters:**
-- `@map[V]`: Type parameter specifying the map value type
+- `@map[K, V]`: Type parameter specifying the map key type and value type
 
 **Returns:** Initialized map
 
-**Example:**
+**Example with string keys:**
 ```truk
-var m: map[i32] = make(@map[i32]);
+var m: map[*u8, i32] = make(@map[*u8, i32]);
 m["key"] = 42;
 
 var ptr: *i32 = m["key"];
@@ -84,7 +85,21 @@ if ptr != nil {
 delete(m);
 ```
 
-**Key types:** Maps accept string-like keys: `*i8`, `*u8`, `[]i8`, `[]u8`
+**Example with integer keys:**
+```truk
+var m: map[i32, *u8] = make(@map[i32, *u8]);
+m[1] = "one";
+m[2] = "two";
+
+var ptr: **u8 = m[1];
+if ptr != nil {
+  var value: *u8 = *ptr;
+}
+
+delete(m);
+```
+
+**Supported key types:** Primitives (i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, bool) and string pointers (*i8, *u8)
 
 **Indexing semantics:** Map indexing returns `*V` (pointer to value), which is `nil` if the key doesn't exist.
 
@@ -121,7 +136,7 @@ var arr: []i32 = make(@i32, count);
 delete(arr);
 ```
 
-### `delete(m: map[V]) -> void`
+### `delete(m: map[K, V]) -> void`
 
 Frees memory previously allocated with `make` for maps.
 
@@ -132,7 +147,7 @@ Frees memory previously allocated with `make` for maps.
 
 **Example:**
 ```truk
-var m: map[i32] = make(@map[i32]);
+var m: map[*u8, i32] = make(@map[*u8, i32]);
 m["key"] = 42;
 delete(m);
 ```
@@ -180,7 +195,7 @@ var ptr_size: u64 = sizeof(@*i32);
 
 ## Iteration
 
-### `each(collection: map[V] | []T, context: *C, callback: fn(...) : bool) -> void`
+### `each(collection: map[K, V] | []T, context: *C, callback: fn(...) : bool) -> void`
 
 Iterates over a map or slice, calling a callback function for each element.
 
@@ -189,16 +204,16 @@ Iterates over a map or slice, calling a callback function for each element.
 **Parameters:**
 - `collection`: Map to iterate over
 - `context`: Pointer to user-provided context data
-- `callback`: Function with signature `fn(key: *u8, val: *V, ctx: *C) : bool`
-  - `key`: Pointer to the key string
+- `callback`: Function with signature `fn(key: K, val: *V, ctx: *C) : bool`
+  - `key`: The key (type matches map's key type)
   - `val`: Pointer to the value
   - `ctx`: Context pointer (same as `context` parameter)
   - Returns `bool`: `true` to continue iteration, `false` to stop early
 
-**Example:**
+**Example with string keys:**
 ```truk
 fn main() : i32 {
-  var m: map[i32] = make(@map[i32]);
+  var m: map[*u8, i32] = make(@map[*u8, i32]);
   m["one"] = 1;
   m["two"] = 2;
   m["three"] = 3;
@@ -211,6 +226,25 @@ fn main() : i32 {
   
   delete(m);
   return count;
+}
+```
+
+**Example with integer keys:**
+```truk
+fn main() : i32 {
+  var m: map[i32, i32] = make(@map[i32, i32]);
+  m[1] = 10;
+  m[2] = 20;
+  m[3] = 30;
+  
+  var sum: i32 = 0;
+  each(m, &sum, fn(key: i32, val: *i32, ctx: *i32) : bool {
+    *ctx = *ctx + *val;
+    return true;
+  });
+  
+  delete(m);
+  return sum;
 }
 ```
 
@@ -311,7 +345,7 @@ struct Context {
 }
 
 fn main() : i32 {
-  var m: map[i32] = make(@map[i32]);
+  var m: map[*u8, i32] = make(@map[*u8, i32]);
   m["a"] = 10;
   m["b"] = 20;
   m["c"] = 5;

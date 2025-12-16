@@ -673,8 +673,16 @@ void type_checker_c::validate_builtin_call(const call_c &node,
       if (collection_type->map_value_type) {
         auto expected_value_type =
             std::make_unique<type_entry_s>(*collection_type->map_value_type);
-        expected_value_type->pointer_depth = 1;
-        expected_value_type->kind = type_kind_e::POINTER;
+        
+        if (expected_value_type->kind == type_kind_e::POINTER) {
+          expected_value_type->pointer_depth++;
+        } else {
+          auto pointee = std::move(expected_value_type);
+          expected_value_type = std::make_unique<type_entry_s>(
+              type_kind_e::POINTER, pointee->name);
+          expected_value_type->pointer_depth = pointee->pointer_depth + 1;
+          expected_value_type->pointee_type = std::move(pointee);
+        }
 
         if (!types_equal(value_param.get(), expected_value_type.get())) {
           report_error(
