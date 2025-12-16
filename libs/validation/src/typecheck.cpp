@@ -673,7 +673,7 @@ void type_checker_c::validate_builtin_call(const call_c &node,
       if (collection_type->map_value_type) {
         auto expected_value_type =
             std::make_unique<type_entry_s>(*collection_type->map_value_type);
-        
+
         if (expected_value_type->kind == type_kind_e::POINTER) {
           expected_value_type->pointer_depth++;
         } else {
