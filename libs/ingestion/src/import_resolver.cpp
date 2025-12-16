@@ -302,7 +302,8 @@ void import_resolver_c::process_file(const std::string &file_path) {
 
   if (!parse_result.success) {
     _errors.push_back({parse_result.error_message, file_path,
-                       parse_result.error_line, parse_result.error_column});
+                       parse_result.error_line, parse_result.error_column,
+                       import_error_type_e::PARSE_ERROR});
     _import_stack.pop_back();
     return;
   }
@@ -331,17 +332,9 @@ void import_resolver_c::extract_imports_and_declarations(
           {.path = cimport_node->path(),
            .is_angle_bracket = cimport_node->is_angle_bracket()});
     } else {
-      if (auto *fn_node = dynamic_cast<const fn_c *>(decl.get())) {
-        _symbol_to_decl[fn_node->name().name] = decl.get();
-      } else if (auto *struct_node =
-                     dynamic_cast<const struct_c *>(decl.get())) {
-        _symbol_to_decl[struct_node->name().name] = decl.get();
-      } else if (auto *var_node = dynamic_cast<const var_c *>(decl.get())) {
-        _symbol_to_decl[var_node->name().name] = decl.get();
-      } else if (auto *const_node = dynamic_cast<const const_c *>(decl.get())) {
-        _symbol_to_decl[const_node->name().name] = decl.get();
+      if (auto name = decl->symbol_name()) {
+        _symbol_to_decl[*name] = decl.get();
       }
-
       _all_declarations.push_back(std::move(decl));
     }
   }

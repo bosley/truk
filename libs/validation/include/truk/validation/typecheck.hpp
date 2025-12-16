@@ -126,11 +126,8 @@ public:
 
   void check(const truk::language::nodes::base_c *root);
 
-  const std::vector<std::string> &errors() const { return _errors; }
-  const std::vector<type_error_s> &detailed_errors() const {
-    return _detailed_errors;
-  }
-  bool has_errors() const { return !_errors.empty(); }
+  const std::vector<type_error_s> &errors() const { return _detailed_errors; }
+  bool has_errors() const { return !_detailed_errors.empty(); }
 
   void visit(const truk::language::nodes::primitive_type_c &node) override;
   void visit(const truk::language::nodes::named_type_c &node) override;
@@ -167,7 +164,6 @@ public:
 
 private:
   truk::core::memory_c<2048> _memory;
-  std::vector<std::string> _errors;
   std::vector<type_error_s> _detailed_errors;
   std::unique_ptr<type_entry_s> _current_expression_type;
   std::unique_ptr<type_entry_s> _current_function_return_type;

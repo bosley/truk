@@ -9,11 +9,20 @@
 
 namespace truk::ingestion {
 
+enum class import_error_type_e { IMPORT_ERROR, PARSE_ERROR, FILE_ERROR };
+
 struct import_error_s {
   std::string message;
   std::string file_path;
   std::size_t line;
   std::size_t column;
+  import_error_type_e type;
+
+  import_error_s(std::string msg, std::string path, std::size_t ln,
+                 std::size_t col,
+                 import_error_type_e t = import_error_type_e::IMPORT_ERROR)
+      : message(std::move(msg)), file_path(std::move(path)), line(ln),
+        column(col), type(t) {}
 };
 
 struct resolved_imports_s {

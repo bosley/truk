@@ -362,9 +362,6 @@ bool type_checker_c::is_compatible_for_assignment(const type_entry_s *target,
 
 void type_checker_c::report_error(const std::string &message,
                                   std::size_t source_index) {
-  std::ostringstream oss;
-  oss << "[" << source_index << "] " << message;
-  _errors.push_back(oss.str());
   _detailed_errors.emplace_back(message, source_index);
 }
 

@@ -1,10 +1,13 @@
 #include "tcc.hpp"
 #include <fmt/core.h>
+#include <truk/core/error_reporter.hpp>
 #include <truk/tcc/tcc.hpp>
 
 namespace truk::commands {
 
 int tcc(const tcc_options_s &opts) {
+  core::error_reporter_c reporter;
+
   for (const auto &path : opts.include_paths) {
     fmt::print("Include path: {}\n", path);
   }
@@ -37,7 +40,8 @@ int tcc(const tcc_options_s &opts) {
   auto result = compiler.compile_file(opts.input_file, opts.output_file);
 
   if (!result.success) {
-    fmt::print(stderr, "Error: {}\n", result.error_message);
+    reporter.report_compilation_error(result.error_message);
+    reporter.print_summary();
     return 1;
   }
 

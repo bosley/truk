@@ -1,0 +1,202 @@
+TRUK COMPILER ERROR FLOW DIAGRAM
+=================================
+
+                                    USER
+                                     |
+                                     | invokes
+                                     v
+                        ┌────────────────────────┐
+                        │  Command Entry Point   │
+                        │  (run/compile/toc/tcc) │
+                        └────────────┬───────────┘
+                                     |
+                                     | creates
+                                     v
+                        ┌────────────────────────┐
+                        │  error_reporter_c      │
+                        │  (unified reporter)    │
+                        └────────────┬───────────┘
+                                     |
+                ┌────────────────────┼────────────────────┐
+                |                    |                    |
+                v                    v                    v
+    ┌───────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+    │ PHASE 1: PARSING  │ │ PHASE 2: IMPORTS │ │ PHASE 3: TYPECHECK│
+    │                   │ │                  │ │                   │
+    │ parser_c          │ │ import_resolver_c│ │ type_checker_c    │
+    │ ↓                 │ │ ↓                │ │ ↓                 │
+    │ parse_error       │ │ import_error_s   │ │ type_error_s      │
+    │ (line, column)    │ │ (file, line)     │ │ (source_index)    │
+    └─────────┬─────────┘ └────────┬─────────┘ └─────────┬─────────┘
+              |                    |                      |
+              v                    v                      v
+    ┌──────────────────────────────────────────────────────────────┐
+    │                    error_reporter_c                          │
+    │                                                              │
+    │  • report_parse_error(file, source, line, col, msg)        │
+    │  • report_import_error(file, msg, line, col)               │
+    │  • report_typecheck_error(file, source, idx, msg)          │
+    │  • report_emission_error(file, source, idx, msg, ctx)      │
+    │  • report_compilation_error(msg)                            │
+    │  • report_file_error(file, msg)                             │
+    │                                                              │
+    │  [Stores all errors with phase tracking]                    │
+    └──────────────────────────┬───────────────────────────────────┘
+                               |
+                               | delegates to
+                               v
+                  ┌────────────────────────┐
+                  │   error_display_c      │
+                  │                        │
+                  │  • show_error()        │
+                  │  • show_error_at_index()│
+                  │  • Format with context │
+                  │  • Color coding        │
+                  │  • Line highlighting   │
+                  └────────────┬───────────┘
+                               |
+                               | outputs to
+                               v
+                          ┌─────────┐
+                          │  STDERR │
+                          └─────────┘
+                               |
+                               v
+                    ┌──────────────────────┐
+                    │ Formatted Error      │
+                    │                      │
+                    │ error: Message       │
+                    │   --> file:line:col  │
+                    │    |                 │
+                    │  1 | source line     │
+                    │  2 | error here      │
+                    │    | ^               │
+                    └──────────────────────┘
+                               |
+                               | after all errors
+                               v
+                  ┌────────────────────────┐
+                  │ error_reporter_c       │
+                  │ .print_summary()       │
+                  └────────────┬───────────┘
+                               |
+                               v
+                          ┌─────────┐
+                          │  STDERR │
+                          └─────────┘
+                               |
+                               v
+                    ┌──────────────────────┐
+                    │ Compilation failed   │
+                    │ with N error(s)      │
+                    └──────────────────────┘
+
+
+PHASE 4: CODE EMISSION                    PHASE 5: C COMPILATION
+┌──────────────────────┐                  ┌──────────────────────┐
+│ emitter_c            │                  │ tcc_compiler_c       │
+│ ↓                    │                  │ ↓                    │
+│ error_s              │                  │ compile_result_s     │
+│ (source_index, phase)│                  │ (error_message)      │
+└──────────┬───────────┘                  └──────────┬───────────┘
+           |                                         |
+           └─────────────────┬───────────────────────┘
+                             |
+                             v
+                ┌────────────────────────┐
+                │   error_reporter_c     │
+                │   (handles all phases) │
+                └────────────────────────┘
+
+
+ERROR INFORMATION BY PHASE
+===========================
+
+PARSING:
+  ✓ File path
+  ✓ Source text
+  ✓ Line number
+  ✓ Column number
+  ✓ Error message
+  → Full source context display
+
+IMPORT RESOLUTION:
+  ✓ File path
+  ✓ Error message
+  ✓ Line number (optional)
+  ✓ Column number (optional)
+  → Basic error display
+
+TYPE CHECKING:
+  ✓ File path
+  ✓ Source text
+  ✓ Source index (converted to line/col)
+  ✓ Error message
+  → Full source context display
+
+CODE EMISSION:
+  ✓ File path
+  ✓ Source text
+  ✓ Source index (converted to line/col)
+  ✓ Error message
+  ✓ Emission phase context
+  → Full source context display
+
+C COMPILATION:
+  ✓ Error message from TCC
+  → Basic error display
+
+FILE I/O:
+  ✓ File path
+  ✓ Error message
+  → Basic error display
+
+
+COMMAND FLOW EXAMPLE (run command)
+===================================
+
+User: ./truk run program.truk
+        |
+        v
+    run.cpp::run()
+        |
+        | creates error_reporter_c reporter
+        |
+        v
+    Read source file
+        |
+        v
+    parser_c::parse()
+        |
+        ├─ Success? → Continue
+        |
+        └─ Error? → reporter.report_parse_error()
+                    reporter.print_summary()
+                    return 1
+        |
+        v
+    type_checker_c::check()
+        |
+        ├─ Success? → Continue
+        |
+        └─ Error? → reporter.report_typecheck_error()
+                    reporter.print_summary()
+                    return 1
+        |
+        v
+    emitter_c::finalize()
+        |
+        ├─ Success? → Continue
+        |
+        └─ Error? → reporter.report_emission_error()
+                    reporter.print_summary()
+                    return 1
+        |
+        v
+    tcc_compiler_c::compile_and_run()
+        |
+        ├─ Success? → Execute program
+        |
+        └─ Error? → reporter.report_compilation_error()
+                    reporter.print_summary()
+                    return 1

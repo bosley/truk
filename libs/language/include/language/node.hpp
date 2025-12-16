@@ -20,6 +20,9 @@ public:
   std::size_t source_index() const { return _idx; }
 
   virtual void accept(visitor_if &visitor) const = 0;
+  virtual std::optional<std::string> symbol_name() const {
+    return std::nullopt;
+  }
 
   virtual ~base_c() = default;
 
@@ -178,6 +181,7 @@ public:
   bool is_extern() const { return _is_extern; }
 
   void accept(visitor_if &visitor) const override;
+  std::optional<std::string> symbol_name() const override { return _name.name; }
 
 private:
   identifier_s _name;
@@ -200,6 +204,7 @@ public:
   bool is_extern() const { return _is_extern; }
 
   void accept(visitor_if &visitor) const override;
+  std::optional<std::string> symbol_name() const override { return _name.name; }
 
 private:
   identifier_s _name;
@@ -222,6 +227,7 @@ public:
   }
 
   void accept(visitor_if &visitor) const override;
+  std::optional<std::string> symbol_name() const override { return _name.name; }
 
 private:
   identifier_s _name;
@@ -242,6 +248,7 @@ public:
   const base_c *value() const { return _value.get(); }
 
   void accept(visitor_if &visitor) const override;
+  std::optional<std::string> symbol_name() const override { return _name.name; }
 
 private:
   identifier_s _name;

@@ -24,7 +24,11 @@ static std::vector<std::string> typecheck_code(const std::string &code) {
     checker.check(decl.get());
   }
 
-  return checker.errors();
+  std::vector<std::string> error_messages;
+  for (const auto &err : checker.errors()) {
+    error_messages.push_back(err.message);
+  }
+  return error_messages;
 }
 
 TEST_GROUP(BuiltinTests){};

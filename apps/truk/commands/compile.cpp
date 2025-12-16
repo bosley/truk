@@ -1,7 +1,8 @@
 #include "compile.hpp"
 #include <fmt/core.h>
-#include <truk/core/error_display.hpp>
+#include <truk/core/error_reporter.hpp>
 #include <truk/emitc/emitter.hpp>
+#include <truk/ingestion/file_utils.hpp>
 #include <truk/ingestion/import_resolver.hpp>
 #include <truk/ingestion/parser.hpp>
 #include <truk/tcc/tcc.hpp>
@@ -10,6 +11,8 @@
 namespace truk::commands {
 
 int compile(const compile_options_s &opts) {
+  core::error_reporter_c reporter;
+
   for (const auto &path : opts.include_paths) {
     fmt::print("Include path: {}\n", path);
   }
@@ -31,12 +34,24 @@ int compile(const compile_options_s &opts) {
 
   if (!resolved.success) {
     for (const auto &err : resolved.errors) {
-      fmt::print(stderr, "Import error in '{}': {}\n", err.file_path,
-                 err.message);
-      if (err.line > 0) {
-        fmt::print(stderr, "  at line {}, column {}\n", err.line, err.column);
+      bool is_parse_error =
+          err.type == ingestion::import_error_type_e::PARSE_ERROR;
+
+      if (is_parse_error && err.line > 0) {
+        try {
+          std::string source = ingestion::read_file(err.file_path);
+          reporter.report_parse_error(err.file_path, source, err.line,
+                                      err.column, err.message);
+        } catch (...) {
+          reporter.report_import_error_with_type(err.file_path, err.message,
+                                                 err.line, err.column, true);
+        }
+      } else {
+        reporter.report_import_error_with_type(
+            err.file_path, err.message, err.line, err.column, is_parse_error);
       }
     }
+    reporter.print_summary();
     return 1;
   }
 
@@ -46,18 +61,11 @@ int compile(const compile_options_s &opts) {
   }
 
   if (type_checker.has_errors()) {
-    const auto &detailed_errors = type_checker.detailed_errors();
-
-    if (!detailed_errors.empty()) {
-      for (const auto &err : detailed_errors) {
-        fmt::print(stderr, "Type error: {}\n", err.message);
-      }
-    } else {
-      fmt::print(stderr, "Error: Type check failed\n");
-      for (const auto &err : type_checker.errors()) {
-        fmt::print(stderr, "  {}\n", err);
-      }
+    for (const auto &err : type_checker.errors()) {
+      reporter.report_generic_error(core::error_phase_e::TYPE_CHECKING,
+                                    err.message);
     }
+    reporter.print_summary();
     return 1;
   }
 
@@ -68,18 +76,21 @@ int compile(const compile_options_s &opts) {
 
   if (emit_result.has_errors()) {
     for (const auto &err : emit_result.errors) {
-      std::string enhanced_message =
-          fmt::format("{} (phase: {}, context: {})", err.message,
+      std::string phase_context =
+          fmt::format("phase: {}, context: {}",
                       emitc::emission_phase_name(err.phase), err.node_context);
-      fmt::print(stderr, "Emission error: {}\n", enhanced_message);
+      reporter.report_generic_error(core::error_phase_e::CODE_EMISSION,
+                                    err.message + " (" + phase_context + ")");
     }
+    reporter.print_summary();
     return 1;
   }
 
   if (!emit_result.metadata.has_main_function) {
-    fmt::print(
-        stderr,
-        "Error: No main function found. Cannot compile to executable.\n");
+    reporter.report_generic_error(
+        core::error_phase_e::CODE_EMISSION,
+        "No main function found. Cannot compile to executable");
+    reporter.print_summary();
     return 1;
   }
 
@@ -111,7 +122,8 @@ int compile(const compile_options_s &opts) {
   auto compile_result = compiler.compile_string(c_output, opts.output_file);
 
   if (!compile_result.success) {
-    fmt::print(stderr, "Error: {}\n", compile_result.error_message);
+    reporter.report_compilation_error(compile_result.error_message);
+    reporter.print_summary();
     return 1;
   }
 
