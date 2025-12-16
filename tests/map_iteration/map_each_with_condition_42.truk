@@ -6,12 +6,13 @@ fn main() : i32 {
   m["w"] = 11;
   
   var sum: i32 = 0;
-  each(m, &sum, fn(key: *u8, val: *i32, ctx: *i32) : void {
+  each(m, &sum, fn(key: *u8, val: *i32, ctx: *i32) : bool {
     if val != nil {
       if *val > 20 {
         *ctx = *ctx + *val;
       }
     }
+    return true;
   });
   
   delete(m);

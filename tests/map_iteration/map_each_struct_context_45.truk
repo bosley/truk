@@ -11,11 +11,12 @@ fn main() : i32 {
   
   var counter: Counter = Counter{total: 0, count: 0};
   
-  each(m, &counter, fn(key: *u8, val: *i32, ctx: *Counter) : void {
+  each(m, &counter, fn(key: *u8, val: *i32, ctx: *Counter) : bool {
     if val != nil {
       (*ctx).total = (*ctx).total + *val;
       (*ctx).count = (*ctx).count + 1;
     }
+    return true;
   });
   
   delete(m);

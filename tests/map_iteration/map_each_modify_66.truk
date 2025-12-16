@@ -5,10 +5,11 @@ fn main() : i32 {
   m["c"] = 30;
   
   var dummy: i32 = 0;
-  each(m, &dummy, fn(key: *u8, val: *i32, ctx: *i32) : void {
+  each(m, &dummy, fn(key: *u8, val: *i32, ctx: *i32) : bool {
     if val != nil {
       *val = *val + 2;
     }
+    return true;
   });
   
   var sum: i32 = 0;

@@ -9,10 +9,11 @@ fn main() : i32 {
   m["item3"] = Data{value: 40};
   
   var total: i32 = 0;
-  each(m, &total, fn(key: *u8, val: *Data, ctx: *i32) : void {
+  each(m, &total, fn(key: *u8, val: *Data, ctx: *i32) : bool {
     if val != nil {
       *ctx = *ctx + (*val).value;
     }
+    return true;
   });
   
   delete(m);

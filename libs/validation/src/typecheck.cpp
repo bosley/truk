@@ -542,16 +542,22 @@ void type_checker_c::validate_builtin_call(const call_c &node,
 
   if (func_type.builtin_kind == language::builtins::builtin_kind_e::EACH) {
     if (node.arguments().size() != 3) {
-      report_error(
-          "Builtin 'each' expects 3 arguments (map, context, and callback)",
-          node.source_index());
+      report_error("Builtin 'each' expects 3 arguments (collection, context, "
+                   "and callback)",
+                   node.source_index());
       return;
     }
 
     node.arguments()[0]->accept(*this);
-    auto map_type = std::move(_current_expression_type);
-    if (!map_type || map_type->kind != type_kind_e::MAP) {
-      report_error("First argument to 'each' must be a map",
+    auto collection_type = std::move(_current_expression_type);
+
+    bool is_map = collection_type && collection_type->kind == type_kind_e::MAP;
+    bool is_slice = collection_type &&
+                    collection_type->kind == type_kind_e::ARRAY &&
+                    !collection_type->array_size.has_value();
+
+    if (!is_map && !is_slice) {
+      report_error("First argument to 'each' must be a map or slice",
                    node.source_index());
       return;
     }
@@ -567,9 +573,90 @@ void type_checker_c::validate_builtin_call(const call_c &node,
       return;
     }
 
-    if (callback_type->function_param_types.size() != 3) {
-      report_error("Callback to 'each' must take 3 parameters (key, value "
-                   "pointer, and context)",
+    if (!callback_type->function_return_type ||
+        callback_type->function_return_type->kind != type_kind_e::PRIMITIVE ||
+        callback_type->function_return_type->name != "bool") {
+      report_error("Callback to 'each' must return bool", node.source_index());
+      return;
+    }
+
+    if (is_map) {
+      if (callback_type->function_param_types.size() != 3) {
+        report_error(
+            "Callback to 'each' for map must take 3 parameters (key, value "
+            "pointer, and context)",
+            node.source_index());
+        return;
+      }
+
+      auto &key_param = callback_type->function_param_types[0];
+      if (!key_param || key_param->kind != type_kind_e::POINTER ||
+          key_param->pointer_depth != 1 || key_param->name != "u8") {
+        report_error(
+            "First parameter of 'each' callback for map must be *u8 (key)",
+            node.source_index());
+        return;
+      }
+
+      auto &value_param = callback_type->function_param_types[1];
+      if (!value_param || value_param->kind != type_kind_e::POINTER) {
+        report_error("Second parameter of 'each' callback for map must be a "
+                     "pointer (value)",
+                     node.source_index());
+        return;
+      }
+
+      if (collection_type->map_value_type) {
+        auto expected_value_type =
+            std::make_unique<type_entry_s>(*collection_type->map_value_type);
+        expected_value_type->pointer_depth = 1;
+        expected_value_type->kind = type_kind_e::POINTER;
+
+        if (!types_equal(value_param.get(), expected_value_type.get())) {
+          report_error(
+              "Second parameter of 'each' callback must match map value type",
+              node.source_index());
+          return;
+        }
+      }
+    } else {
+      if (callback_type->function_param_types.size() != 2) {
+        report_error(
+            "Callback to 'each' for slice must take 2 parameters (element "
+            "pointer and context)",
+            node.source_index());
+        return;
+      }
+
+      auto &element_param = callback_type->function_param_types[0];
+      if (!element_param || element_param->kind != type_kind_e::POINTER) {
+        report_error("First parameter of 'each' callback for slice must be a "
+                     "pointer (element)",
+                     node.source_index());
+        return;
+      }
+
+      if (collection_type->element_type) {
+        auto expected_element_type =
+            std::make_unique<type_entry_s>(*collection_type->element_type);
+        expected_element_type->pointer_depth = 1;
+        expected_element_type->kind = type_kind_e::POINTER;
+
+        if (!types_equal(element_param.get(), expected_element_type.get())) {
+          report_error("First parameter of 'each' callback must match slice "
+                       "element type",
+                       node.source_index());
+          return;
+        }
+      }
+    }
+
+    auto &context_param =
+        callback_type
+            ->function_param_types[callback_type->function_param_types.size() -
+                                   1];
+    if (!types_equal(context_param.get(), context_type.get())) {
+      report_error("Last parameter of 'each' callback must match context type",
                    node.source_index());
       return;
     }

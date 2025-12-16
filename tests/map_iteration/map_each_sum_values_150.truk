@@ -5,10 +5,11 @@ fn main() : i32 {
   m["third"] = 70;
   
   var sum: i32 = 0;
-  each(m, &sum, fn(key: *u8, val: *i32, ctx: *i32) : void {
+  each(m, &sum, fn(key: *u8, val: *i32, ctx: *i32) : bool {
     if val != nil {
       *ctx = *ctx + *val;
     }
+    return true;
   });
   
   delete(m);

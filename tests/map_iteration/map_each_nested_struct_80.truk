@@ -14,7 +14,7 @@ fn main() : i32 {
   
   var stats: Stats = Stats{min: 0, max: 0, sum: 0, initialized: false};
   
-  each(m, &stats, fn(key: *u8, val: *i32, ctx: *Stats) : void {
+  each(m, &stats, fn(key: *u8, val: *i32, ctx: *Stats) : bool {
     if val != nil {
       var v: i32 = *val;
       if !(*ctx).initialized {
@@ -32,6 +32,7 @@ fn main() : i32 {
         (*ctx).sum = (*ctx).sum + v;
       }
     }
+    return true;
   });
   
   delete(m);

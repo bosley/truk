@@ -1295,11 +1295,20 @@ void emitter_c::visit(const call_c &node) {
       }
       case builtins::builtin_kind_e::EACH: {
         if (node.arguments().size() == 3) {
-          std::stringstream map_stream;
-          std::swap(map_stream, _current_expr);
+          bool is_slice = false;
+          bool is_map = false;
+
+          if (auto ident = dynamic_cast<const identifier_c *>(
+                  node.arguments()[0].get())) {
+            is_slice = is_variable_slice(ident->id().name);
+            is_map = is_variable_map(ident->id().name);
+          }
+
+          std::stringstream collection_stream;
+          std::swap(collection_stream, _current_expr);
           node.arguments()[0]->accept(*this);
-          std::string map_var = _current_expr.str();
-          std::swap(map_stream, _current_expr);
+          std::string collection_var = _current_expr.str();
+          std::swap(collection_stream, _current_expr);
 
           std::stringstream context_stream;
           std::swap(context_stream, _current_expr);
@@ -1307,10 +1316,8 @@ void emitter_c::visit(const call_c &node) {
           std::string context_var = _current_expr.str();
           std::swap(context_stream, _current_expr);
 
-          // Check if the callback is a lambda literal
           if (auto lambda =
                   dynamic_cast<const lambda_c *>(node.arguments()[2].get())) {
-            // Generate the lambda as a normal function
             node.arguments()[2]->accept(*this);
             std::string callback_func = _current_expr.str();
             _current_expr.str("");
@@ -1318,25 +1325,44 @@ void emitter_c::visit(const call_c &node) {
 
             _functions << cdef::indent(_indent_level) << "{\n";
             _indent_level++;
-            _functions
-                << cdef::indent(_indent_level)
-                << "__truk_map_iter_t __truk_iter = __truk_map_iter();\n";
-            _functions << cdef::indent(_indent_level)
-                       << "const char* __truk_key;\n";
-            _functions << cdef::indent(_indent_level)
-                       << "while ((__truk_key = __truk_map_next(&(" << map_var
-                       << "), &__truk_iter)) != NULL) {\n";
-            _indent_level++;
-            _functions << cdef::indent(_indent_level) << callback_func
-                       << "((__truk_u8*)__truk_key, __truk_map_get(&("
-                       << map_var << "), __truk_key), " << context_var
-                       << ");\n";
-            _indent_level--;
-            _functions << cdef::indent(_indent_level) << "}\n";
+
+            if (is_slice) {
+              _functions << cdef::indent(_indent_level)
+                         << "for (__truk_u64 __truk_idx = 0; __truk_idx < ("
+                         << collection_var << ").len; __truk_idx++) {\n";
+              _indent_level++;
+              _functions << cdef::indent(_indent_level)
+                         << "__truk_bool __truk_continue = " << callback_func
+                         << "(&(" << collection_var << ").data[__truk_idx], "
+                         << context_var << ");\n";
+              _functions << cdef::indent(_indent_level)
+                         << "if (!__truk_continue) break;\n";
+              _indent_level--;
+              _functions << cdef::indent(_indent_level) << "}\n";
+            } else {
+              _functions
+                  << cdef::indent(_indent_level)
+                  << "__truk_map_iter_t __truk_iter = __truk_map_iter();\n";
+              _functions << cdef::indent(_indent_level)
+                         << "const char* __truk_key;\n";
+              _functions << cdef::indent(_indent_level)
+                         << "while ((__truk_key = __truk_map_next(&("
+                         << collection_var << "), &__truk_iter)) != NULL) {\n";
+              _indent_level++;
+              _functions << cdef::indent(_indent_level)
+                         << "__truk_bool __truk_continue = " << callback_func
+                         << "((__truk_u8*)__truk_key, __truk_map_get(&("
+                         << collection_var << "), __truk_key), " << context_var
+                         << ");\n";
+              _functions << cdef::indent(_indent_level)
+                         << "if (!__truk_continue) break;\n";
+              _indent_level--;
+              _functions << cdef::indent(_indent_level) << "}\n";
+            }
+
             _indent_level--;
             _functions << cdef::indent(_indent_level) << "}\n";
           } else {
-            // Callback is a variable or expression
             std::stringstream callback_stream;
             std::swap(callback_stream, _current_expr);
             node.arguments()[2]->accept(*this);
@@ -1345,21 +1371,41 @@ void emitter_c::visit(const call_c &node) {
 
             _functions << cdef::indent(_indent_level) << "{\n";
             _indent_level++;
-            _functions
-                << cdef::indent(_indent_level)
-                << "__truk_map_iter_t __truk_iter = __truk_map_iter();\n";
-            _functions << cdef::indent(_indent_level)
-                       << "const char* __truk_key;\n";
-            _functions << cdef::indent(_indent_level)
-                       << "while ((__truk_key = __truk_map_next(&(" << map_var
-                       << "), &__truk_iter)) != NULL) {\n";
-            _indent_level++;
-            _functions << cdef::indent(_indent_level) << callback_func
-                       << "((__truk_u8*)__truk_key, __truk_map_get(&("
-                       << map_var << "), __truk_key), " << context_var
-                       << ");\n";
-            _indent_level--;
-            _functions << cdef::indent(_indent_level) << "}\n";
+
+            if (is_slice) {
+              _functions << cdef::indent(_indent_level)
+                         << "for (__truk_u64 __truk_idx = 0; __truk_idx < ("
+                         << collection_var << ").len; __truk_idx++) {\n";
+              _indent_level++;
+              _functions << cdef::indent(_indent_level)
+                         << "__truk_bool __truk_continue = " << callback_func
+                         << "(&(" << collection_var << ").data[__truk_idx], "
+                         << context_var << ");\n";
+              _functions << cdef::indent(_indent_level)
+                         << "if (!__truk_continue) break;\n";
+              _indent_level--;
+              _functions << cdef::indent(_indent_level) << "}\n";
+            } else {
+              _functions
+                  << cdef::indent(_indent_level)
+                  << "__truk_map_iter_t __truk_iter = __truk_map_iter();\n";
+              _functions << cdef::indent(_indent_level)
+                         << "const char* __truk_key;\n";
+              _functions << cdef::indent(_indent_level)
+                         << "while ((__truk_key = __truk_map_next(&("
+                         << collection_var << "), &__truk_iter)) != NULL) {\n";
+              _indent_level++;
+              _functions << cdef::indent(_indent_level)
+                         << "__truk_bool __truk_continue = " << callback_func
+                         << "((__truk_u8*)__truk_key, __truk_map_get(&("
+                         << collection_var << "), __truk_key), " << context_var
+                         << ");\n";
+              _functions << cdef::indent(_indent_level)
+                         << "if (!__truk_continue) break;\n";
+              _indent_level--;
+              _functions << cdef::indent(_indent_level) << "}\n";
+            }
+
             _indent_level--;
             _functions << cdef::indent(_indent_level) << "}\n";
           }

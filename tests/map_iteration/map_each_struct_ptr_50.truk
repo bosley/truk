@@ -18,10 +18,11 @@ fn main() : i32 {
     multiplier: 2
   };
   
-  each(m, &ctx, fn(key: *u8, val: *i32, ctx: *Context) : void {
+  each(m, &ctx, fn(key: *u8, val: *i32, ctx: *Context) : bool {
     if val != nil {
       (*(*ctx).result).value = (*(*ctx).result).value + (*val * (*ctx).multiplier);
     }
+    return true;
   });
   
   delete(m);

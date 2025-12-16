@@ -14,13 +14,14 @@ fn main() : i32 {
     index: 0
   };
   
-  each(m, &acc, fn(key: *u8, val: *i32, ctx: *Accumulator) : void {
+  each(m, &acc, fn(key: *u8, val: *i32, ctx: *Accumulator) : bool {
     if val != nil {
       if (*ctx).index < 3 {
         (*ctx).values[(*ctx).index] = *val;
         (*ctx).index = (*ctx).index + 1;
       }
     }
+    return true;
   });
   
   delete(m);

@@ -95,7 +95,7 @@
       "patterns": [
         {
           "name": "support.function.builtin.truk",
-          "match": "\\b(make|delete|len|sizeof|panic)\\b"
+          "match": "\\b(make|delete|len|sizeof|panic|each)\\b"
         }
       ]
     },

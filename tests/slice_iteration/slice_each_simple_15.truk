@@ -1,0 +1,18 @@
+fn main() : i32 {
+  var count: u64 = 5;
+  var slice: []i32 = make(@i32, count);
+  slice[0] = 1;
+  slice[1] = 2;
+  slice[2] = 3;
+  slice[3] = 4;
+  slice[4] = 5;
+  
+  var sum: i32 = 0;
+  each(slice, &sum, fn(elem: *i32, ctx: *i32) : bool {
+    *ctx = *ctx + *elem;
+    return true;
+  });
+  
+  delete(slice);
+  return sum;
+}

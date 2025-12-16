@@ -5,8 +5,9 @@ fn main() : i32 {
   m["three"] = 3;
   
   var count: i32 = 0;
-  each(m, &count, fn(key: *u8, val: *i32, ctx: *i32) : void {
+  each(m, &count, fn(key: *u8, val: *i32, ctx: *i32) : bool {
     *ctx = *ctx + 1;
+    return true;
   });
   
   delete(m);
