@@ -1,0 +1,18 @@
+import "shard_set_a/api.truk";
+import "shard_set_b/api.truk";
+
+fn main() : i32 {
+  var data: DataA = api_create_data(10);
+  
+  var processed: i32 = api_process_data(&data);
+  
+  var svc: ServiceB = api_create_service("MainService");
+  
+  var result: i32 = api_execute(&svc, processed);
+  
+  var log_count: i32 = api_get_log_count(&svc);
+  
+  api_shutdown(&svc);
+  
+  return result;
+}

@@ -1,0 +1,21 @@
+shard "set_a_internal";
+
+import "file1.truk";
+
+fn data_a_process(d: *DataA) : i32 {
+  if !_validate_data(d) {
+    return -1;
+  }
+  
+  (*d)._internal_state = _compute_internal((*d).value + 5);
+  
+  return (*d)._internal_state;
+}
+
+fn data_a_get_value(d: *DataA) : i32 {
+  return (*d).value;
+}
+
+fn data_a_reset(d: *DataA) : void {
+  (*d)._internal_state = 0;
+}

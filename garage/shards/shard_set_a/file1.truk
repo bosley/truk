@@ -1,0 +1,21 @@
+shard "set_a_internal";
+
+struct DataA {
+  value: i32,
+  _internal_state: i32
+}
+
+fn _compute_internal(x: i32) : i32 {
+  return x * 3;
+}
+
+fn _validate_data(d: *DataA) : bool {
+  return (*d)._internal_state >= 0;
+}
+
+fn data_a_create(v: i32) : DataA {
+  return DataA{
+    value: v,
+    _internal_state: _compute_internal(v)
+  };
+}

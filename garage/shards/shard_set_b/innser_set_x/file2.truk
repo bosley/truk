@@ -1,0 +1,21 @@
+shard "set_x_internal";
+
+import "file1.truk";
+
+fn _adjust_log_level(level: i32) : void {
+  _global_log_level = level;
+}
+
+fn logger_x_log(logger: *LoggerX, msg: *u8) : void {
+  if _global_log_level > 0 {
+    _format_message(logger, msg);
+  }
+}
+
+fn logger_x_disable(logger: *LoggerX) : void {
+  (*logger)._enabled = false;
+}
+
+fn logger_x_get_count(logger: *LoggerX) : i32 {
+  return (*logger)._count;
+}

@@ -1,0 +1,13 @@
+shard "set_x_internal";
+
+import "file1.truk";
+import "file2.truk";
+
+fn logger_x_set_level(level: i32) : void {
+  _adjust_log_level(level);
+}
+
+fn logger_x_reset(logger: *LoggerX) : void {
+  (*logger)._count = 0;
+  (*logger)._enabled = true;
+}

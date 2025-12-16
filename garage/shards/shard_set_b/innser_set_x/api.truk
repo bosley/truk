@@ -1,0 +1,29 @@
+shard "set_x_internal";
+
+import "file1.truk";
+import "file2.truk";
+import "file3.truk";
+
+fn logger_api_create(prefix: *u8) : LoggerX {
+  return logger_x_create(prefix);
+}
+
+fn logger_api_log(logger: *LoggerX, msg: *u8) : void {
+  logger_x_log(logger, msg);
+}
+
+fn logger_api_disable(logger: *LoggerX) : void {
+  logger_x_disable(logger);
+}
+
+fn logger_api_get_count(logger: *LoggerX) : i32 {
+  return logger_x_get_count(logger);
+}
+
+fn logger_api_set_level(level: i32) : void {
+  logger_x_set_level(level);
+}
+
+fn logger_api_reset(logger: *LoggerX) : void {
+  logger_x_reset(logger);
+}

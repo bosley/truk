@@ -1,0 +1,20 @@
+shard "set_b_internal";
+
+import "file1.truk";
+import "file2.truk";
+
+fn api_create_service(name: *u8) : ServiceB {
+  return service_b_create(name);
+}
+
+fn api_execute(svc: *ServiceB, value: i32) : i32 {
+  return service_b_execute(svc, value);
+}
+
+fn api_get_log_count(svc: *ServiceB) : i32 {
+  return service_b_get_log_count(svc);
+}
+
+fn api_shutdown(svc: *ServiceB) : void {
+  service_b_shutdown(svc);
+}

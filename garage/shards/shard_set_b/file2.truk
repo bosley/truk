@@ -1,0 +1,24 @@
+shard "set_b_internal";
+
+import "innser_set_x/api.truk";
+import "file1.truk";
+
+fn _log_operation(svc: *ServiceB, msg: *u8) : void {
+  if (*svc)._initialized {
+    logger_api_log(&(*svc)._logger, msg);
+  }
+}
+
+fn service_b_execute(svc: *ServiceB, value: i32) : i32 {
+  _log_operation(svc, "Executing operation");
+  return value * 2;
+}
+
+fn service_b_get_log_count(svc: *ServiceB) : i32 {
+  return logger_api_get_count(&(*svc)._logger);
+}
+
+fn service_b_shutdown(svc: *ServiceB) : void {
+  _log_operation(svc, "Shutting down");
+  logger_api_disable(&(*svc)._logger);
+}
