@@ -14,13 +14,37 @@ type_checker_c::type_checker_c() {
 }
 
 void type_checker_c::check(const base_c *root) {
-  if (root) {
-    auto it = _decl_to_file.find(root);
-    if (it != _decl_to_file.end()) {
-      _current_file = it->second;
-    }
-    root->accept(*this);
+  if (!root) {
+    return;
   }
+
+  auto it = _decl_to_file.find(root);
+  if (it != _decl_to_file.end()) {
+    _current_file = it->second;
+  }
+
+  auto symbol_result = collect_symbols(root);
+  _detailed_errors.insert(_detailed_errors.end(), symbol_result.errors.begin(),
+                          symbol_result.errors.end());
+
+  auto type_result = resolve_types(root, symbol_result);
+  _detailed_errors.insert(_detailed_errors.end(), type_result.errors.begin(),
+                          type_result.errors.end());
+
+  auto control_flow_result = analyze_control_flow(root);
+  _detailed_errors.insert(_detailed_errors.end(),
+                          control_flow_result.errors.begin(),
+                          control_flow_result.errors.end());
+
+  auto lambda_capture_result = validate_lambda_captures(root, symbol_result);
+  _detailed_errors.insert(_detailed_errors.end(),
+                          lambda_capture_result.errors.begin(),
+                          lambda_capture_result.errors.end());
+
+  perform_type_checking(root, symbol_result, type_result);
+
+  final_validation(symbol_result, type_result, control_flow_result,
+                   lambda_capture_result);
 }
 
 void type_checker_c::push_scope() { _memory.push_ctx(); }
@@ -1912,5 +1936,672 @@ bool type_checker_c::files_share_shard(const std::string &file1,
 
   return false;
 }
+
+symbol_collection_result_s type_checker_c::collect_symbols(const base_c *root) {
+  symbol_collector_c collector(_memory, _decl_to_file);
+  return collector.collect(root);
+}
+
+type_resolution_result_s
+type_checker_c::resolve_types(const base_c *root,
+                              const symbol_collection_result_s &symbols) {
+  type_resolution_result_s result;
+  return result;
+}
+
+control_flow_result_s type_checker_c::analyze_control_flow(const base_c *root) {
+  control_flow_result_s result;
+
+  control_flow_checker_c checker;
+  if (root) {
+    root->accept(checker);
+  }
+
+  if (checker.has_control_flow()) {
+    result.nodes_with_control_flow.insert(root);
+  }
+
+  return result;
+}
+
+lambda_capture_result_s type_checker_c::validate_lambda_captures(
+    const base_c *root, const symbol_collection_result_s &symbols) {
+  lambda_capture_validator_c validator(symbols, _decl_to_file);
+  return validator.validate(root);
+}
+
+void type_checker_c::perform_type_checking(
+    const base_c *root, const symbol_collection_result_s &symbols,
+    const type_resolution_result_s &types) {
+  root->accept(*this);
+}
+
+void type_checker_c::final_validation(
+    const symbol_collection_result_s &symbols,
+    const type_resolution_result_s &types,
+    const control_flow_result_s &control_flow,
+    const lambda_capture_result_s &lambda_captures) {}
+
+symbol_collector_c::symbol_collector_c(
+    truk::core::memory_c<2048> &memory,
+    const std::unordered_map<const base_c *, std::string> &decl_to_file)
+    : _memory(memory), _decl_to_file(decl_to_file) {
+  _result.global_scope =
+      std::make_unique<scope_info_s>(scope_kind_e::GLOBAL, nullptr, nullptr);
+  _current_scope = _result.global_scope.get();
+}
+
+symbol_collection_result_s symbol_collector_c::collect(const base_c *root) {
+  if (root) {
+    auto it = _decl_to_file.find(root);
+    if (it != _decl_to_file.end()) {
+      _current_file = it->second;
+    }
+    root->accept(*this);
+  }
+  return std::move(_result);
+}
+
+void symbol_collector_c::visit(const primitive_type_c &node) {}
+void symbol_collector_c::visit(const named_type_c &node) {}
+void symbol_collector_c::visit(const pointer_type_c &node) {}
+void symbol_collector_c::visit(const array_type_c &node) {}
+void symbol_collector_c::visit(const function_type_c &node) {}
+void symbol_collector_c::visit(const map_type_c &node) {}
+
+void symbol_collector_c::visit(const fn_c &node) {
+  auto it = _decl_to_file.find(&node);
+  if (it != _decl_to_file.end()) {
+    _current_file = it->second;
+  }
+
+  auto func_type =
+      std::make_unique<type_entry_s>(type_kind_e::FUNCTION, node.name().name);
+  auto func_symbol = std::make_unique<symbol_entry_s>(
+      node.name().name, std::move(func_type), false, node.source_index());
+  func_symbol->scope_kind = symbol_scope_e::GLOBAL;
+  func_symbol->declaring_node = &node;
+
+  auto *func_symbol_ptr = func_symbol.get();
+  _memory.set(node.name().name, std::move(func_symbol));
+  _result.global_symbols[node.name().name] = func_symbol_ptr;
+  _current_scope->symbols[node.name().name] = func_symbol_ptr;
+
+  auto func_scope = std::make_unique<scope_info_s>(scope_kind_e::FUNCTION,
+                                                   &node, _current_scope);
+  auto *func_scope_ptr = func_scope.get();
+  _current_scope->children.push_back(std::move(func_scope));
+  _result.scope_map[&node] = func_scope_ptr;
+
+  auto prev_scope = _current_scope;
+  _current_scope = func_scope_ptr;
+
+  _memory.push_ctx();
+
+  for (const auto &param : node.params()) {
+    if (!param.is_variadic) {
+      auto param_type =
+          std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "param");
+      auto symbol = std::make_unique<symbol_entry_s>(
+          param.name.name, std::move(param_type), true,
+          param.name.source_index);
+      symbol->scope_kind = symbol_scope_e::PARAMETER;
+      symbol->declaring_node = &node;
+
+      auto *symbol_ptr = symbol.get();
+      _memory.set(param.name.name, std::move(symbol));
+      _current_scope->symbols[param.name.name] = symbol_ptr;
+    }
+  }
+
+  if (node.body()) {
+    node.body()->accept(*this);
+  }
+
+  _memory.pop_ctx();
+  _current_scope = prev_scope;
+}
+
+void symbol_collector_c::visit(const lambda_c &node) {
+  _result.lambdas.push_back(&node);
+
+  auto lambda_scope = std::make_unique<scope_info_s>(scope_kind_e::LAMBDA,
+                                                     &node, _current_scope);
+  auto *lambda_scope_ptr = lambda_scope.get();
+  _current_scope->children.push_back(std::move(lambda_scope));
+  _result.scope_map[&node] = lambda_scope_ptr;
+
+  auto prev_scope = _current_scope;
+  _current_scope = lambda_scope_ptr;
+
+  _memory.push_ctx();
+
+  for (const auto &param : node.params()) {
+    if (!param.is_variadic) {
+      auto param_type =
+          std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "param");
+      auto symbol = std::make_unique<symbol_entry_s>(
+          param.name.name, std::move(param_type), true,
+          param.name.source_index);
+      symbol->scope_kind = symbol_scope_e::LAMBDA_LOCAL;
+      symbol->declaring_node = &node;
+
+      auto *symbol_ptr = symbol.get();
+      _memory.set(param.name.name, std::move(symbol));
+      _current_scope->symbols[param.name.name] = symbol_ptr;
+    }
+  }
+
+  if (node.body()) {
+    node.body()->accept(*this);
+  }
+
+  _memory.pop_ctx();
+  _current_scope = prev_scope;
+}
+
+void symbol_collector_c::visit(const struct_c &node) {
+  auto it = _decl_to_file.find(&node);
+  if (it != _decl_to_file.end()) {
+    _current_file = it->second;
+  }
+}
+
+void symbol_collector_c::visit(const var_c &node) {
+  auto it = _decl_to_file.find(&node);
+  if (it != _decl_to_file.end()) {
+    _current_file = it->second;
+  }
+
+  if (node.initializer()) {
+    node.initializer()->accept(*this);
+  }
+
+  auto var_type = std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "var");
+  auto var_symbol = std::make_unique<symbol_entry_s>(
+      node.name().name, std::move(var_type), true, node.source_index());
+
+  if (_current_scope->kind == scope_kind_e::GLOBAL) {
+    var_symbol->scope_kind = symbol_scope_e::GLOBAL;
+    _result.global_symbols[node.name().name] = var_symbol.get();
+  } else if (_current_scope->kind == scope_kind_e::LAMBDA ||
+             (_current_scope->parent &&
+              _current_scope->parent->kind == scope_kind_e::LAMBDA)) {
+    var_symbol->scope_kind = symbol_scope_e::LAMBDA_LOCAL;
+  } else {
+    var_symbol->scope_kind = symbol_scope_e::FUNCTION_LOCAL;
+  }
+
+  var_symbol->declaring_node = &node;
+
+  auto *var_symbol_ptr = var_symbol.get();
+  _memory.set(node.name().name, std::move(var_symbol));
+  _current_scope->symbols[node.name().name] = var_symbol_ptr;
+}
+
+void symbol_collector_c::visit(const const_c &node) {
+  if (node.value()) {
+    node.value()->accept(*this);
+  }
+}
+
+void symbol_collector_c::visit(const if_c &node) {
+  if (node.condition()) {
+    node.condition()->accept(*this);
+  }
+  if (node.then_block()) {
+    node.then_block()->accept(*this);
+  }
+  if (node.else_block()) {
+    node.else_block()->accept(*this);
+  }
+}
+
+void symbol_collector_c::visit(const while_c &node) {
+  if (node.condition()) {
+    node.condition()->accept(*this);
+  }
+  if (node.body()) {
+    node.body()->accept(*this);
+  }
+}
+
+void symbol_collector_c::visit(const for_c &node) {
+  _memory.push_ctx();
+
+  auto for_scope = std::make_unique<scope_info_s>(scope_kind_e::BLOCK, &node,
+                                                  _current_scope);
+  auto *for_scope_ptr = for_scope.get();
+  _current_scope->children.push_back(std::move(for_scope));
+  _result.scope_map[&node] = for_scope_ptr;
+
+  auto prev_scope = _current_scope;
+  _current_scope = for_scope_ptr;
+
+  if (node.init()) {
+    node.init()->accept(*this);
+  }
+  if (node.condition()) {
+    node.condition()->accept(*this);
+  }
+  if (node.post()) {
+    node.post()->accept(*this);
+  }
+  if (node.body()) {
+    node.body()->accept(*this);
+  }
+
+  _current_scope = prev_scope;
+  _memory.pop_ctx();
+}
+
+void symbol_collector_c::visit(const return_c &node) {
+  if (node.expression()) {
+    node.expression()->accept(*this);
+  }
+}
+
+void symbol_collector_c::visit(const break_c &node) {}
+void symbol_collector_c::visit(const continue_c &node) {}
+
+void symbol_collector_c::visit(const defer_c &node) {
+  if (node.deferred_code()) {
+    node.deferred_code()->accept(*this);
+  }
+}
+
+void symbol_collector_c::visit(const binary_op_c &node) {
+  if (node.left()) {
+    node.left()->accept(*this);
+  }
+  if (node.right()) {
+    node.right()->accept(*this);
+  }
+}
+
+void symbol_collector_c::visit(const unary_op_c &node) {
+  if (node.operand()) {
+    node.operand()->accept(*this);
+  }
+}
+
+void symbol_collector_c::visit(const cast_c &node) {
+  if (node.expression()) {
+    node.expression()->accept(*this);
+  }
+}
+
+void symbol_collector_c::visit(const call_c &node) {
+  if (node.callee()) {
+    node.callee()->accept(*this);
+  }
+  for (const auto &arg : node.arguments()) {
+    if (arg) {
+      arg->accept(*this);
+    }
+  }
+}
+
+void symbol_collector_c::visit(const index_c &node) {
+  if (node.object()) {
+    node.object()->accept(*this);
+  }
+  if (node.index()) {
+    node.index()->accept(*this);
+  }
+}
+
+void symbol_collector_c::visit(const member_access_c &node) {
+  if (node.object()) {
+    node.object()->accept(*this);
+  }
+}
+
+void symbol_collector_c::visit(const literal_c &node) {}
+void symbol_collector_c::visit(const identifier_c &node) {}
+
+void symbol_collector_c::visit(const assignment_c &node) {
+  if (node.target()) {
+    node.target()->accept(*this);
+  }
+  if (node.value()) {
+    node.value()->accept(*this);
+  }
+}
+
+void symbol_collector_c::visit(const block_c &node) {
+  _memory.push_ctx();
+
+  auto block_scope = std::make_unique<scope_info_s>(scope_kind_e::BLOCK, &node,
+                                                    _current_scope);
+  auto *block_scope_ptr = block_scope.get();
+  _current_scope->children.push_back(std::move(block_scope));
+  _result.scope_map[&node] = block_scope_ptr;
+
+  auto prev_scope = _current_scope;
+  _current_scope = block_scope_ptr;
+
+  for (const auto &stmt : node.statements()) {
+    if (stmt) {
+      stmt->accept(*this);
+    }
+  }
+
+  _current_scope = prev_scope;
+  _memory.pop_ctx();
+}
+
+void symbol_collector_c::visit(const array_literal_c &node) {
+  for (const auto &elem : node.elements()) {
+    if (elem) {
+      elem->accept(*this);
+    }
+  }
+}
+
+void symbol_collector_c::visit(const struct_literal_c &node) {
+  for (const auto &field : node.field_initializers()) {
+    if (field.value) {
+      field.value->accept(*this);
+    }
+  }
+}
+
+void symbol_collector_c::visit(const type_param_c &node) {}
+void symbol_collector_c::visit(const import_c &node) {}
+void symbol_collector_c::visit(const cimport_c &node) {}
+void symbol_collector_c::visit(const shard_c &node) {}
+
+lambda_capture_validator_c::lambda_capture_validator_c(
+    const symbol_collection_result_s &symbols,
+    const std::unordered_map<const base_c *, std::string> &decl_to_file)
+    : _symbols(symbols), _decl_to_file(decl_to_file) {
+  _current_scope = symbols.global_scope.get();
+}
+
+lambda_capture_result_s
+lambda_capture_validator_c::validate(const base_c *root) {
+  if (root) {
+    auto it = _decl_to_file.find(root);
+    if (it != _decl_to_file.end()) {
+      _current_file = it->second;
+    }
+    root->accept(*this);
+  }
+  return std::move(_result);
+}
+
+void lambda_capture_validator_c::visit(const primitive_type_c &node) {}
+void lambda_capture_validator_c::visit(const named_type_c &node) {}
+void lambda_capture_validator_c::visit(const pointer_type_c &node) {}
+void lambda_capture_validator_c::visit(const array_type_c &node) {}
+void lambda_capture_validator_c::visit(const function_type_c &node) {}
+void lambda_capture_validator_c::visit(const map_type_c &node) {}
+
+void lambda_capture_validator_c::visit(const fn_c &node) {
+  auto it = _symbols.scope_map.find(&node);
+  if (it != _symbols.scope_map.end()) {
+    auto prev_scope = _current_scope;
+    _current_scope = it->second;
+
+    if (node.body()) {
+      node.body()->accept(*this);
+    }
+
+    _current_scope = prev_scope;
+  }
+}
+
+void lambda_capture_validator_c::visit(const lambda_c &node) {
+  auto it = _symbols.scope_map.find(&node);
+  if (it != _symbols.scope_map.end()) {
+    auto prev_scope = _current_scope;
+    auto prev_lambda = _current_lambda;
+
+    _current_scope = it->second;
+    _current_lambda = &node;
+
+    if (node.body()) {
+      node.body()->accept(*this);
+    }
+
+    _current_lambda = prev_lambda;
+    _current_scope = prev_scope;
+  }
+}
+
+void lambda_capture_validator_c::visit(const struct_c &node) {}
+
+void lambda_capture_validator_c::visit(const var_c &node) {
+  if (node.initializer()) {
+    node.initializer()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const const_c &node) {
+  if (node.value()) {
+    node.value()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const if_c &node) {
+  if (node.condition()) {
+    node.condition()->accept(*this);
+  }
+  if (node.then_block()) {
+    node.then_block()->accept(*this);
+  }
+  if (node.else_block()) {
+    node.else_block()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const while_c &node) {
+  if (node.condition()) {
+    node.condition()->accept(*this);
+  }
+  if (node.body()) {
+    node.body()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const for_c &node) {
+  auto it = _symbols.scope_map.find(&node);
+  if (it != _symbols.scope_map.end()) {
+    auto prev_scope = _current_scope;
+    _current_scope = it->second;
+
+    if (node.init()) {
+      node.init()->accept(*this);
+    }
+    if (node.condition()) {
+      node.condition()->accept(*this);
+    }
+    if (node.post()) {
+      node.post()->accept(*this);
+    }
+    if (node.body()) {
+      node.body()->accept(*this);
+    }
+
+    _current_scope = prev_scope;
+  }
+}
+
+void lambda_capture_validator_c::visit(const return_c &node) {
+  if (node.expression()) {
+    node.expression()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const break_c &node) {}
+void lambda_capture_validator_c::visit(const continue_c &node) {}
+
+void lambda_capture_validator_c::visit(const defer_c &node) {
+  if (node.deferred_code()) {
+    node.deferred_code()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const binary_op_c &node) {
+  if (node.left()) {
+    node.left()->accept(*this);
+  }
+  if (node.right()) {
+    node.right()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const unary_op_c &node) {
+  if (node.operand()) {
+    node.operand()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const cast_c &node) {
+  if (node.expression()) {
+    node.expression()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const call_c &node) {
+  if (node.callee()) {
+    node.callee()->accept(*this);
+  }
+  for (const auto &arg : node.arguments()) {
+    if (arg) {
+      arg->accept(*this);
+    }
+  }
+}
+
+void lambda_capture_validator_c::visit(const index_c &node) {
+  if (node.object()) {
+    node.object()->accept(*this);
+  }
+  if (node.index()) {
+    node.index()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const member_access_c &node) {
+  if (node.object()) {
+    node.object()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const literal_c &node) {}
+
+void lambda_capture_validator_c::visit(const identifier_c &node) {
+  const std::string &name = node.id().name;
+
+  if (!_current_lambda) {
+    return;
+  }
+
+  scope_info_s *search_scope = _current_scope;
+  scope_info_s *found_in_scope = nullptr;
+
+  while (search_scope) {
+    auto it = search_scope->symbols.find(name);
+    if (it != search_scope->symbols.end()) {
+      found_in_scope = search_scope;
+      break;
+    }
+    search_scope = search_scope->parent;
+  }
+
+  if (!found_in_scope) {
+    return;
+  }
+
+  if (found_in_scope->kind == scope_kind_e::GLOBAL) {
+    return;
+  }
+
+  scope_info_s *lambda_scope = nullptr;
+  auto lambda_it = _symbols.scope_map.find(_current_lambda);
+  if (lambda_it != _symbols.scope_map.end()) {
+    lambda_scope = lambda_it->second;
+  }
+
+  if (!lambda_scope) {
+    return;
+  }
+
+  bool is_lambda_local = false;
+  scope_info_s *check_scope = found_in_scope;
+  while (check_scope) {
+    if (check_scope == lambda_scope) {
+      is_lambda_local = true;
+      break;
+    }
+    if (check_scope->kind == scope_kind_e::GLOBAL) {
+      break;
+    }
+    check_scope = check_scope->parent;
+  }
+
+  if (!is_lambda_local) {
+    std::string error_msg =
+        "Lambda cannot capture variable '" + name +
+        "' from enclosing scope. Use context parameter instead.";
+    _result.errors.push_back(
+        type_error_s(error_msg, _current_file, node.source_index()));
+    _result.captured_vars[_current_lambda].push_back(name);
+  }
+}
+
+void lambda_capture_validator_c::visit(const assignment_c &node) {
+  if (node.target()) {
+    node.target()->accept(*this);
+  }
+  if (node.value()) {
+    node.value()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const block_c &node) {
+  auto it = _symbols.scope_map.find(&node);
+  if (it != _symbols.scope_map.end()) {
+    auto prev_scope = _current_scope;
+    _current_scope = it->second;
+
+    for (const auto &stmt : node.statements()) {
+      if (stmt) {
+        stmt->accept(*this);
+      }
+    }
+
+    _current_scope = prev_scope;
+  } else {
+    for (const auto &stmt : node.statements()) {
+      if (stmt) {
+        stmt->accept(*this);
+      }
+    }
+  }
+}
+
+void lambda_capture_validator_c::visit(const array_literal_c &node) {
+  for (const auto &elem : node.elements()) {
+    if (elem) {
+      elem->accept(*this);
+    }
+  }
+}
+
+void lambda_capture_validator_c::visit(const struct_literal_c &node) {
+  for (const auto &field : node.field_initializers()) {
+    if (field.value) {
+      field.value->accept(*this);
+    }
+  }
+}
+
+void lambda_capture_validator_c::visit(const type_param_c &node) {}
+void lambda_capture_validator_c::visit(const import_c &node) {}
+void lambda_capture_validator_c::visit(const cimport_c &node) {}
+void lambda_capture_validator_c::visit(const shard_c &node) {}
 
 } // namespace truk::validation

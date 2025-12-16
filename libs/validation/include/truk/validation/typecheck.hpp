@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace truk::validation {
@@ -25,6 +26,19 @@ enum class type_kind_e {
   UNTYPED_INTEGER,
   UNTYPED_FLOAT
 };
+
+enum class validator_stage_e {
+  SYMBOL_COLLECTION,
+  TYPE_RESOLUTION,
+  CONTROL_FLOW_ANALYSIS,
+  LAMBDA_CAPTURE_VALIDATION,
+  TYPE_CHECKING,
+  FINAL_VALIDATION
+};
+
+enum class symbol_scope_e { GLOBAL, FUNCTION_LOCAL, LAMBDA_LOCAL, PARAMETER };
+
+enum class scope_kind_e { GLOBAL, FUNCTION, LAMBDA, BLOCK };
 
 struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
   type_kind_e kind;
@@ -92,6 +106,8 @@ struct symbol_entry_s : public truk::core::memory_c<2048>::storeable_if {
   std::unique_ptr<type_entry_s> type;
   bool is_mutable;
   std::size_t declaration_index;
+  symbol_scope_e scope_kind{symbol_scope_e::FUNCTION_LOCAL};
+  const truk::language::nodes::base_c *declaring_node{nullptr};
 
   symbol_entry_s(std::string n, std::unique_ptr<type_entry_s> t,
                  bool mutable_flag, std::size_t decl_idx)
@@ -100,7 +116,8 @@ struct symbol_entry_s : public truk::core::memory_c<2048>::storeable_if {
 
   symbol_entry_s(const symbol_entry_s &other)
       : name(other.name), is_mutable(other.is_mutable),
-        declaration_index(other.declaration_index) {
+        declaration_index(other.declaration_index),
+        scope_kind(other.scope_kind), declaring_node(other.declaring_node) {
     if (other.type) {
       type = std::make_unique<type_entry_s>(*other.type);
     }
@@ -120,6 +137,53 @@ struct type_error_s {
       : message(std::move(msg)), file_path(std::move(file)), source_index(idx) {
   }
 };
+
+struct scope_info_s {
+  scope_kind_e kind;
+  const truk::language::nodes::base_c *owner_node;
+  scope_info_s *parent;
+  std::unordered_map<std::string, symbol_entry_s *> symbols;
+  std::vector<std::unique_ptr<scope_info_s>> children;
+
+  scope_info_s(scope_kind_e k, const truk::language::nodes::base_c *owner,
+               scope_info_s *p)
+      : kind(k), owner_node(owner), parent(p) {}
+};
+
+struct symbol_collection_result_s {
+  std::unordered_map<std::string, symbol_entry_s *> global_symbols;
+  std::unique_ptr<scope_info_s> global_scope;
+  std::unordered_map<const truk::language::nodes::base_c *, scope_info_s *>
+      scope_map;
+  std::vector<const truk::language::nodes::lambda_c *> lambdas;
+  std::vector<type_error_s> errors;
+};
+
+struct type_resolution_result_s {
+  std::unordered_map<const truk::language::nodes::base_c *, type_entry_s *>
+      node_types;
+  std::vector<type_error_s> errors;
+};
+
+struct control_flow_result_s {
+  std::unordered_set<const truk::language::nodes::base_c *>
+      nodes_with_control_flow;
+  std::vector<type_error_s> errors;
+};
+
+struct lambda_capture_result_s {
+  std::unordered_map<const truk::language::nodes::lambda_c *,
+                     std::vector<std::string>>
+      captured_vars;
+  std::vector<type_error_s> errors;
+};
+
+class symbol_collector_c;
+class type_resolver_c;
+class control_flow_analyzer_c;
+class lambda_capture_validator_c;
+class type_checking_visitor_c;
+class final_validator_c;
 
 class type_checker_c : public truk::language::nodes::visitor_if {
 public:
@@ -192,6 +256,24 @@ private:
   std::unordered_map<std::string, std::vector<std::string>> _file_to_shards;
   std::string _current_file;
 
+  symbol_collection_result_s
+  collect_symbols(const truk::language::nodes::base_c *root);
+  type_resolution_result_s
+  resolve_types(const truk::language::nodes::base_c *root,
+                const symbol_collection_result_s &symbols);
+  control_flow_result_s
+  analyze_control_flow(const truk::language::nodes::base_c *root);
+  lambda_capture_result_s
+  validate_lambda_captures(const truk::language::nodes::base_c *root,
+                           const symbol_collection_result_s &symbols);
+  void perform_type_checking(const truk::language::nodes::base_c *root,
+                             const symbol_collection_result_s &symbols,
+                             const type_resolution_result_s &types);
+  void final_validation(const symbol_collection_result_s &symbols,
+                        const type_resolution_result_s &types,
+                        const control_flow_result_s &control_flow,
+                        const lambda_capture_result_s &lambda_captures);
+
   void push_scope();
   void pop_scope();
 
@@ -241,6 +323,113 @@ private:
   get_defining_file_for_global(const std::string &global_name) const;
   bool files_share_shard(const std::string &file1,
                          const std::string &file2) const;
+};
+
+class symbol_collector_c : public truk::language::nodes::visitor_if {
+public:
+  symbol_collector_c(
+      truk::core::memory_c<2048> &memory,
+      const std::unordered_map<const truk::language::nodes::base_c *,
+                               std::string> &decl_to_file);
+
+  symbol_collection_result_s collect(const truk::language::nodes::base_c *root);
+
+  void visit(const truk::language::nodes::primitive_type_c &node) override;
+  void visit(const truk::language::nodes::named_type_c &node) override;
+  void visit(const truk::language::nodes::pointer_type_c &node) override;
+  void visit(const truk::language::nodes::array_type_c &node) override;
+  void visit(const truk::language::nodes::function_type_c &node) override;
+  void visit(const truk::language::nodes::map_type_c &node) override;
+  void visit(const truk::language::nodes::fn_c &node) override;
+  void visit(const truk::language::nodes::lambda_c &node) override;
+  void visit(const truk::language::nodes::struct_c &node) override;
+  void visit(const truk::language::nodes::var_c &node) override;
+  void visit(const truk::language::nodes::const_c &node) override;
+  void visit(const truk::language::nodes::if_c &node) override;
+  void visit(const truk::language::nodes::while_c &node) override;
+  void visit(const truk::language::nodes::for_c &node) override;
+  void visit(const truk::language::nodes::return_c &node) override;
+  void visit(const truk::language::nodes::break_c &node) override;
+  void visit(const truk::language::nodes::continue_c &node) override;
+  void visit(const truk::language::nodes::defer_c &node) override;
+  void visit(const truk::language::nodes::binary_op_c &node) override;
+  void visit(const truk::language::nodes::unary_op_c &node) override;
+  void visit(const truk::language::nodes::cast_c &node) override;
+  void visit(const truk::language::nodes::call_c &node) override;
+  void visit(const truk::language::nodes::index_c &node) override;
+  void visit(const truk::language::nodes::member_access_c &node) override;
+  void visit(const truk::language::nodes::literal_c &node) override;
+  void visit(const truk::language::nodes::identifier_c &node) override;
+  void visit(const truk::language::nodes::assignment_c &node) override;
+  void visit(const truk::language::nodes::block_c &node) override;
+  void visit(const truk::language::nodes::array_literal_c &node) override;
+  void visit(const truk::language::nodes::struct_literal_c &node) override;
+  void visit(const truk::language::nodes::type_param_c &node) override;
+  void visit(const truk::language::nodes::import_c &node) override;
+  void visit(const truk::language::nodes::cimport_c &node) override;
+  void visit(const truk::language::nodes::shard_c &node) override;
+
+private:
+  truk::core::memory_c<2048> &_memory;
+  const std::unordered_map<const truk::language::nodes::base_c *, std::string>
+      &_decl_to_file;
+  symbol_collection_result_s _result;
+  scope_info_s *_current_scope{nullptr};
+  std::string _current_file;
+};
+
+class lambda_capture_validator_c : public truk::language::nodes::visitor_if {
+public:
+  lambda_capture_validator_c(
+      const symbol_collection_result_s &symbols,
+      const std::unordered_map<const truk::language::nodes::base_c *,
+                               std::string> &decl_to_file);
+
+  lambda_capture_result_s validate(const truk::language::nodes::base_c *root);
+
+  void visit(const truk::language::nodes::primitive_type_c &node) override;
+  void visit(const truk::language::nodes::named_type_c &node) override;
+  void visit(const truk::language::nodes::pointer_type_c &node) override;
+  void visit(const truk::language::nodes::array_type_c &node) override;
+  void visit(const truk::language::nodes::function_type_c &node) override;
+  void visit(const truk::language::nodes::map_type_c &node) override;
+  void visit(const truk::language::nodes::fn_c &node) override;
+  void visit(const truk::language::nodes::lambda_c &node) override;
+  void visit(const truk::language::nodes::struct_c &node) override;
+  void visit(const truk::language::nodes::var_c &node) override;
+  void visit(const truk::language::nodes::const_c &node) override;
+  void visit(const truk::language::nodes::if_c &node) override;
+  void visit(const truk::language::nodes::while_c &node) override;
+  void visit(const truk::language::nodes::for_c &node) override;
+  void visit(const truk::language::nodes::return_c &node) override;
+  void visit(const truk::language::nodes::break_c &node) override;
+  void visit(const truk::language::nodes::continue_c &node) override;
+  void visit(const truk::language::nodes::defer_c &node) override;
+  void visit(const truk::language::nodes::binary_op_c &node) override;
+  void visit(const truk::language::nodes::unary_op_c &node) override;
+  void visit(const truk::language::nodes::cast_c &node) override;
+  void visit(const truk::language::nodes::call_c &node) override;
+  void visit(const truk::language::nodes::index_c &node) override;
+  void visit(const truk::language::nodes::member_access_c &node) override;
+  void visit(const truk::language::nodes::literal_c &node) override;
+  void visit(const truk::language::nodes::identifier_c &node) override;
+  void visit(const truk::language::nodes::assignment_c &node) override;
+  void visit(const truk::language::nodes::block_c &node) override;
+  void visit(const truk::language::nodes::array_literal_c &node) override;
+  void visit(const truk::language::nodes::struct_literal_c &node) override;
+  void visit(const truk::language::nodes::type_param_c &node) override;
+  void visit(const truk::language::nodes::import_c &node) override;
+  void visit(const truk::language::nodes::cimport_c &node) override;
+  void visit(const truk::language::nodes::shard_c &node) override;
+
+private:
+  const symbol_collection_result_s &_symbols;
+  const std::unordered_map<const truk::language::nodes::base_c *, std::string>
+      &_decl_to_file;
+  lambda_capture_result_s _result;
+  scope_info_s *_current_scope{nullptr};
+  const truk::language::nodes::lambda_c *_current_lambda{nullptr};
+  std::string _current_file;
 };
 
 } // namespace truk::validation
