@@ -178,6 +178,161 @@ var size: u64 = sizeof(@i32);
 var ptr_size: u64 = sizeof(@*i32);
 ```
 
+## Iteration
+
+### `each(collection: map[V] | []T, context: *C, callback: fn(...) : bool) -> void`
+
+Iterates over a map or slice, calling a callback function for each element.
+
+**For Maps:**
+
+**Parameters:**
+- `collection`: Map to iterate over
+- `context`: Pointer to user-provided context data
+- `callback`: Function with signature `fn(key: *u8, val: *V, ctx: *C) : bool`
+  - `key`: Pointer to the key string
+  - `val`: Pointer to the value
+  - `ctx`: Context pointer (same as `context` parameter)
+  - Returns `bool`: `true` to continue iteration, `false` to stop early
+
+**Example:**
+```truk
+fn main() : i32 {
+  var m: map[i32] = make(@map[i32]);
+  m["one"] = 1;
+  m["two"] = 2;
+  m["three"] = 3;
+  
+  var count: i32 = 0;
+  each(m, &count, fn(key: *u8, val: *i32, ctx: *i32) : bool {
+    *ctx = *ctx + 1;
+    return true;
+  });
+  
+  delete(m);
+  return count;
+}
+```
+
+**For Slices:**
+
+**Parameters:**
+- `collection`: Slice to iterate over
+- `context`: Pointer to user-provided context data
+- `callback`: Function with signature `fn(elem: *T, ctx: *C) : bool`
+  - `elem`: Pointer to the element
+  - `ctx`: Context pointer (same as `context` parameter)
+  - Returns `bool`: `true` to continue iteration, `false` to stop early
+
+**Example:**
+```truk
+fn main() : i32 {
+  var count: u64 = 5;
+  var slice: []i32 = make(@i32, count);
+  slice[0] = 1;
+  slice[1] = 2;
+  slice[2] = 3;
+  slice[3] = 4;
+  slice[4] = 5;
+  
+  var sum: i32 = 0;
+  each(slice, &sum, fn(elem: *i32, ctx: *i32) : bool {
+    *ctx = *ctx + *elem;
+    return true;
+  });
+  
+  delete(slice);
+  return sum;
+}
+```
+
+**Early Exit:**
+
+Return `false` from the callback to stop iteration early:
+
+```truk
+fn main() : i32 {
+  var count: u64 = 10;
+  var slice: []i32 = make(@i32, count);
+  
+  var i: u64 = 0;
+  while i < count {
+    slice[i] = i as i32;
+    i = i + 1;
+  }
+  
+  var found: i32 = 0;
+  each(slice, &found, fn(elem: *i32, ctx: *i32) : bool {
+    if *elem == 5 {
+      *ctx = *elem;
+      return false;
+    }
+    return true;
+  });
+  
+  delete(slice);
+  return found;
+}
+```
+
+**Modifying Values:**
+
+Since the callback receives pointers, you can modify values in place:
+
+```truk
+fn main() : i32 {
+  var count: u64 = 3;
+  var slice: []i32 = make(@i32, count);
+  slice[0] = 1;
+  slice[1] = 2;
+  slice[2] = 3;
+  
+  var unused: i32 = 0;
+  each(slice, &unused, fn(elem: *i32, ctx: *i32) : bool {
+    *elem = *elem * 2;
+    return true;
+  });
+  
+  var sum: i32 = slice[0] + slice[1] + slice[2];
+  delete(slice);
+  return sum;
+}
+```
+
+**Complex Context:**
+
+Use structs for complex context data:
+
+```truk
+struct Context {
+  sum: i32,
+  count: i32,
+  max: i32
+}
+
+fn main() : i32 {
+  var m: map[i32] = make(@map[i32]);
+  m["a"] = 10;
+  m["b"] = 20;
+  m["c"] = 5;
+  
+  var ctx: Context = Context{sum: 0, count: 0, max: 0};
+  each(m, &ctx, fn(key: *u8, val: *i32, context: *Context) : bool {
+    (*context).sum = (*context).sum + *val;
+    (*context).count = (*context).count + 1;
+    if *val > (*context).max {
+      (*context).max = *val;
+    }
+    return true;
+  });
+  
+  delete(m);
+  return ctx.sum;
+}
+```
+
+**Note:** The `each` builtin uses lambdas for the callback. See [lambdas.md](lambdas.md) for more details on lambda syntax and semantics.
+
 ## Error Handling
 
 ### `panic(message: []u8) -> void`
