@@ -739,6 +739,12 @@ void type_checker_c::visit(const map_type_c &node) {
 }
 
 void type_checker_c::visit(const fn_c &node) {
+  auto it = _decl_to_file.find(&node);
+  if (it != _decl_to_file.end()) {
+    _function_to_file[node.name().name] = it->second;
+    _current_file = it->second;
+  }
+
   auto return_type = resolve_type(node.return_type());
   if (!return_type) {
     report_error("Unknown return type: " +
@@ -794,6 +800,11 @@ void type_checker_c::visit(const fn_c &node) {
 }
 
 void type_checker_c::visit(const struct_c &node) {
+  auto it = _decl_to_file.find(&node);
+  if (it != _decl_to_file.end()) {
+    _struct_to_file[node.name().name] = it->second;
+  }
+
   auto incomplete_type =
       std::make_unique<type_entry_s>(type_kind_e::STRUCT, node.name().name);
   register_type(node.name().name, std::move(incomplete_type));
@@ -823,6 +834,11 @@ void type_checker_c::visit(const struct_c &node) {
 }
 
 void type_checker_c::visit(const var_c &node) {
+  auto it = _decl_to_file.find(&node);
+  if (it != _decl_to_file.end()) {
+    _global_to_file[node.name().name] = it->second;
+  }
+
   auto var_type = resolve_type(node.type());
   if (!var_type) {
     report_error("Unknown variable type: " +
@@ -1199,6 +1215,11 @@ void type_checker_c::visit(const cast_c &node) {
 }
 
 void type_checker_c::visit(const call_c &node) {
+  std::string func_name;
+  if (auto *id_node = dynamic_cast<const identifier_c *>(node.callee())) {
+    func_name = id_node->id().name;
+  }
+
   node.callee()->accept(*this);
 
   if (!_current_expression_type ||
@@ -1208,6 +1229,16 @@ void type_checker_c::visit(const call_c &node) {
   }
 
   auto func_type = std::move(_current_expression_type);
+
+  if (!func_name.empty() && is_private_identifier(func_name)) {
+    std::string func_file = get_defining_file_for_function(func_name);
+    if (!func_file.empty() && func_file != _current_file) {
+      report_error("Cannot call private function '" + func_name +
+                       "' from outside its defining file",
+                   node.source_index());
+      return;
+    }
+  }
 
   if (func_type->is_builtin) {
     validate_builtin_call(node, *func_type);
@@ -1358,6 +1389,17 @@ void type_checker_c::visit(const member_access_c &node) {
     return;
   }
 
+  if (is_private_identifier(field_name)) {
+    std::string struct_file = get_defining_file_for_struct(struct_type->name);
+    if (!struct_file.empty() && struct_file != _current_file) {
+      report_error("Cannot access private field '" + field_name +
+                       "' of struct '" + struct_type->name +
+                       "' from outside its defining file",
+                   node.source_index());
+      return;
+    }
+  }
+
   _current_expression_type = std::make_unique<type_entry_s>(*it->second);
 }
 
@@ -1394,6 +1436,16 @@ void type_checker_c::visit(const identifier_c &node) {
     report_error("Undefined identifier: " + node.id().name,
                  node.source_index());
     return;
+  }
+
+  if (is_private_identifier(node.id().name)) {
+    std::string global_file = get_defining_file_for_global(node.id().name);
+    if (!global_file.empty() && global_file != _current_file) {
+      report_error("Cannot access private global variable '" + node.id().name +
+                       "' from outside its defining file",
+                   node.source_index());
+      return;
+    }
   }
 
   if (symbol->type) {
@@ -1575,5 +1627,36 @@ bool type_checker_c::check_no_control_flow(const base_c *node) {
 void type_checker_c::visit(const import_c &node) {}
 
 void type_checker_c::visit(const cimport_c &node) {}
+
+bool type_checker_c::is_private_identifier(const std::string &name) const {
+  return !name.empty() && name[0] == '_';
+}
+
+std::string type_checker_c::get_defining_file_for_struct(
+    const std::string &struct_name) const {
+  auto it = _struct_to_file.find(struct_name);
+  if (it != _struct_to_file.end()) {
+    return it->second;
+  }
+  return "";
+}
+
+std::string type_checker_c::get_defining_file_for_function(
+    const std::string &func_name) const {
+  auto it = _function_to_file.find(func_name);
+  if (it != _function_to_file.end()) {
+    return it->second;
+  }
+  return "";
+}
+
+std::string type_checker_c::get_defining_file_for_global(
+    const std::string &global_name) const {
+  auto it = _global_to_file.find(global_name);
+  if (it != _global_to_file.end()) {
+    return it->second;
+  }
+  return "";
+}
 
 } // namespace truk::validation

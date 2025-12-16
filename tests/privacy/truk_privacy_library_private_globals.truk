@@ -1,0 +1,17 @@
+var _private_counter: i32 = 0;
+var _private_max: i32 = 100;
+var public_version: i32 = 1;
+
+fn increment_counter() : void {
+  if _private_counter < _private_max {
+    _private_counter = _private_counter + 1;
+  }
+}
+
+fn get_counter() : i32 {
+  return _private_counter;
+}
+
+fn reset_counter() : void {
+  _private_counter = 0;
+}

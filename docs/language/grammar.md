@@ -1,5 +1,7 @@
 # TRUK Grammar
 
+**Note:** Identifiers starting with underscore (`_`) are private to their defining file. See [privacy.md](privacy.md) for details.
+
 ```
 program         ::= declaration*
 

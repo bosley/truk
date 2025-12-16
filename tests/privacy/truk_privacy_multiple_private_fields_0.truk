@@ -1,0 +1,27 @@
+struct Connection {
+  host: *u8,
+  port: u16,
+  _socket_fd: i32,
+  _is_connected: bool,
+  _retry_count: u32
+}
+
+fn main() : i32 {
+  var conn: Connection = Connection{
+    host: "localhost",
+    port: 5432,
+    _socket_fd: -1,
+    _is_connected: false,
+    _retry_count: 0
+  };
+  
+  conn._socket_fd = 42;
+  conn._is_connected = true;
+  conn._retry_count = 1;
+  
+  if conn._is_connected {
+    return conn._socket_fd;
+  }
+  
+  return 0;
+}

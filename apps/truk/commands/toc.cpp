@@ -46,6 +46,7 @@ int toc(const toc_options_s &opts) {
   }
 
   validation::type_checker_c type_checker;
+  type_checker.set_declaration_file_map(resolved.decl_to_file);
   for (auto &decl : resolved.all_declarations) {
     type_checker.check(decl.get());
   }
@@ -61,6 +62,7 @@ int toc(const toc_options_s &opts) {
 
   emitc::emitter_c emitter;
   auto emit_result = emitter.add_declarations(resolved.all_declarations)
+                         .set_declaration_file_map(resolved.decl_to_file)
                          .set_c_imports(resolved.c_imports)
                          .finalize();
 

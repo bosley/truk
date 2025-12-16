@@ -93,6 +93,12 @@ public:
       const std::vector<std::unique_ptr<truk::language::nodes::base_c>> &decls);
   emitter_c &
   set_c_imports(const std::vector<truk::language::nodes::c_import_s> &imports);
+  emitter_c &set_declaration_file_map(
+      const std::unordered_map<const truk::language::nodes::base_c *,
+                               std::string> &map) {
+    _decl_to_file = map;
+    return *this;
+  }
 
   result_c finalize();
 
@@ -155,8 +161,11 @@ private:
                               const truk::language::nodes::type_c *type);
   bool is_variable_slice(const std::string &name);
   bool is_variable_map(const std::string &name);
+  bool is_private_identifier(const std::string &name) const;
 
   std::vector<const truk::language::nodes::base_c *> _declarations;
+  std::unordered_map<const truk::language::nodes::base_c *, std::string>
+      _decl_to_file;
   result_c _result;
   std::stringstream _current_expr;
   std::stringstream _header;

@@ -408,7 +408,15 @@ void emitter_c::visit(const fn_c &node) {
   _current_phase = emission_phase_e::FUNCTION_DEFINITION;
   _current_node_context = "function '" + node.name().name + "'";
 
+  bool is_private = is_private_identifier(node.name().name);
+  bool is_library = _result.metadata.is_library();
+
   std::string return_type = emit_type(node.return_type());
+
+  if (is_private && is_library) {
+    _functions << "static ";
+  }
+
   _functions << return_type << " " << node.name().name << "(";
 
   bool has_variadic = false;
@@ -552,9 +560,15 @@ void emitter_c::visit(const var_c &node) {
     ensure_map_typedef(map->value_type());
   }
 
+  bool is_private = is_private_identifier(node.name().name);
+  bool is_library = _result.metadata.is_library();
+
   std::string type_str = emit_type(node.type());
 
   if (_indent_level == 0) {
+    if (is_private && is_library) {
+      _functions << "static ";
+    }
     _functions << type_str << " " << node.name().name;
   } else {
     _functions << cdef::indent(_indent_level) << type_str << " "
@@ -1477,7 +1491,9 @@ assembly_result_s result_c::assemble(assembly_type_e type,
       signature.pop_back();
     }
 
-    if (!signature.empty()) {
+    bool is_static = signature.find("static ") == 0;
+
+    if (!signature.empty() && !is_static) {
       function_declarations << signature << ";\n";
     }
 
@@ -1504,6 +1520,10 @@ assembly_result_s result_c::assemble(assembly_type_e type,
 
   return assembly_result_s(assembly_type_e::LIBRARY, source_content,
                            header_content, header_name);
+}
+
+bool emitter_c::is_private_identifier(const std::string &name) const {
+  return !name.empty() && name[0] == '_';
 }
 
 } // namespace truk::emitc

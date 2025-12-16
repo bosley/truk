@@ -1,0 +1,11 @@
+struct Point {
+  x: i32,
+  y: i32,
+  _cached: i32
+}
+
+fn main() : i32 {
+  var p: Point = Point{x: 10, y: 20, _cached: 0};
+  p._cached = p.x + p.y;
+  return p._cached;
+}

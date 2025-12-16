@@ -1,0 +1,21 @@
+struct Inner {
+  value: i32,
+  _secret: i32
+}
+
+struct Outer {
+  inner: Inner,
+  _private: i32
+}
+
+fn main() : i32 {
+  var o: Outer = Outer{
+    inner: Inner{value: 10, _secret: 20},
+    _private: 30
+  };
+  
+  o.inner._secret = 25;
+  o._private = 35;
+  
+  return o.inner._secret + o._private;
+}

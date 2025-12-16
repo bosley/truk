@@ -1,0 +1,23 @@
+struct Config {
+  name: *u8,
+  _internal_id: u32
+}
+
+var _next_id: u32 = 1;
+
+fn _generate_id() : u32 {
+  var id: u32 = _next_id;
+  _next_id = _next_id + 1;
+  return id;
+}
+
+fn config_create(name: *u8) : Config {
+  return Config{
+    name: name,
+    _internal_id: _generate_id()
+  };
+}
+
+fn config_get_name(cfg: *Config) : *u8 {
+  return cfg.name;
+}

@@ -44,7 +44,14 @@ int run(const run_options_s &opts) {
     return 1;
   }
 
+  std::unordered_map<const truk::language::nodes::base_c *, std::string>
+      decl_to_file;
+  for (const auto &decl : parse_result.declarations) {
+    decl_to_file[decl.get()] = opts.input_file;
+  }
+
   validation::type_checker_c type_checker;
+  type_checker.set_declaration_file_map(decl_to_file);
   for (auto &decl : parse_result.declarations) {
     type_checker.check(decl.get());
   }
@@ -60,6 +67,7 @@ int run(const run_options_s &opts) {
 
   emitc::emitter_c emitter;
   auto emit_result = emitter.add_declarations(parse_result.declarations)
+                         .set_declaration_file_map(decl_to_file)
                          .set_c_imports(parse_result.c_imports)
                          .finalize();
 

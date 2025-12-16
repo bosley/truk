@@ -1,0 +1,15 @@
+var _counter: i32 = 0;
+
+fn increment() : void {
+  _counter = _counter + 1;
+}
+
+fn get_counter() : i32 {
+  return _counter;
+}
+
+fn main() : i32 {
+  increment();
+  increment();
+  return get_counter();
+}

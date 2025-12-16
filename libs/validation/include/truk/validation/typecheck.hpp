@@ -126,6 +126,12 @@ public:
 
   void check(const truk::language::nodes::base_c *root);
 
+  void set_declaration_file_map(
+      const std::unordered_map<const truk::language::nodes::base_c *,
+                               std::string> &map) {
+    _decl_to_file = map;
+  }
+
   const std::vector<type_error_s> &errors() const { return _detailed_errors; }
   bool has_errors() const { return !_detailed_errors.empty(); }
 
@@ -169,6 +175,13 @@ private:
   std::unique_ptr<type_entry_s> _current_function_return_type;
   bool _in_loop{false};
 
+  std::unordered_map<const truk::language::nodes::base_c *, std::string>
+      _decl_to_file;
+  std::unordered_map<std::string, std::string> _struct_to_file;
+  std::unordered_map<std::string, std::string> _function_to_file;
+  std::unordered_map<std::string, std::string> _global_to_file;
+  std::string _current_file;
+
   void push_scope();
   void pop_scope();
 
@@ -207,6 +220,14 @@ private:
   std::unique_ptr<type_entry_s>
   resolve_untyped_literal(const type_entry_s *literal_type,
                           const type_entry_s *target_type);
+
+  bool is_private_identifier(const std::string &name) const;
+  std::string
+  get_defining_file_for_struct(const std::string &struct_name) const;
+  std::string
+  get_defining_file_for_function(const std::string &func_name) const;
+  std::string
+  get_defining_file_for_global(const std::string &global_name) const;
 };
 
 } // namespace truk::validation

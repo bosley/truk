@@ -280,6 +280,7 @@ resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
   _decl_dependencies.clear();
   _errors.clear();
   _c_imports.clear();
+  _decl_to_file.clear();
 
   process_file(entry_file);
 
@@ -292,6 +293,7 @@ resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
   }
 
   result.c_imports = std::move(_c_imports);
+  result.decl_to_file = _decl_to_file;
 
   return result;
 }
@@ -360,6 +362,7 @@ void import_resolver_c::extract_imports_and_declarations(
           {.path = cimport_node->path(),
            .is_angle_bracket = cimport_node->is_angle_bracket()});
     } else {
+      _decl_to_file[decl.get()] = file_path;
       if (auto name = decl->symbol_name()) {
         _symbol_to_decl[*name] = decl.get();
       }

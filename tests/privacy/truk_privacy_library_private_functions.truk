@@ -1,0 +1,16 @@
+fn _internal_helper(x: i32) : i32 {
+  return x * 2;
+}
+
+fn _another_helper(x: i32) : i32 {
+  return x + 10;
+}
+
+fn public_api(x: i32) : i32 {
+  var temp: i32 = _internal_helper(x);
+  return _another_helper(temp);
+}
+
+fn another_public_function(x: i32) : i32 {
+  return _internal_helper(x) + 5;
+}

@@ -1,0 +1,7 @@
+
+
+struct moot {
+}
+
+fn x() :void {}
+fn _xx() :void {}

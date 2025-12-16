@@ -29,6 +29,8 @@ struct resolved_imports_s {
   std::vector<truk::language::nodes::base_ptr> all_declarations;
   std::vector<import_error_s> errors;
   std::vector<truk::language::nodes::c_import_s> c_imports;
+  std::unordered_map<const truk::language::nodes::base_c *, std::string>
+      decl_to_file;
   bool success;
 };
 
@@ -115,6 +117,8 @@ private:
       _decl_dependencies;
   std::vector<import_error_s> _errors;
   std::vector<truk::language::nodes::c_import_s> _c_imports;
+  std::unordered_map<const truk::language::nodes::base_c *, std::string>
+      _decl_to_file;
 };
 
 } // namespace truk::ingestion
