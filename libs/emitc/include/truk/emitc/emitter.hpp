@@ -4,6 +4,7 @@
 #include <language/visitor.hpp>
 #include <truk/core/exceptions.hpp>
 #include <truk/emitc/builtin_handler.hpp>
+#include <truk/emitc/expression_visitor.hpp>
 #include <truk/emitc/type_registry.hpp>
 #include <truk/emitc/variable_registry.hpp>
 
@@ -108,6 +109,7 @@ class emitter_c : public truk::language::nodes::visitor_if {
   friend class panic_builtin_handler_c;
   friend class each_builtin_handler_c;
   friend class va_arg_builtin_handler_c;
+  friend class expression_visitor_c;
 
 public:
   emitter_c();

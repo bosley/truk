@@ -1217,48 +1217,9 @@ std::string emitter_c::emit_expression(const base_c *node) {
   if (!node)
     return "";
 
-  /*
-
-      TODO: Make a new class that is a visitor specifically for this
-     decomposiition
-
-  */
-
-  if (auto *bin_op = dynamic_cast<const binary_op_c *>(node))
-    return emit_expr_binary_op(*bin_op);
-  if (auto *un_op = dynamic_cast<const unary_op_c *>(node))
-    return emit_expr_unary_op(*un_op);
-  if (auto *call = dynamic_cast<const call_c *>(node))
-    return emit_expr_call(*call);
-  if (auto *idx = dynamic_cast<const index_c *>(node))
-    return emit_expr_index(*idx);
-  if (auto *member = dynamic_cast<const member_access_c *>(node))
-    return emit_expr_member_access(*member);
-  if (auto *lit = dynamic_cast<const literal_c *>(node))
-    return emit_expr_literal(*lit);
-  if (auto *ident = dynamic_cast<const identifier_c *>(node))
-    return emit_expr_identifier(*ident);
-  if (auto *arr_lit = dynamic_cast<const array_literal_c *>(node))
-    return emit_expr_array_literal(*arr_lit);
-  if (auto *struct_lit = dynamic_cast<const struct_literal_c *>(node))
-    return emit_expr_struct_literal(*struct_lit);
-  if (auto *cast = dynamic_cast<const cast_c *>(node))
-    return emit_expr_cast(*cast);
-  if (auto *assign = dynamic_cast<const assignment_c *>(node)) {
-    std::string target = emit_expression(assign->target());
-    std::string value = emit_expression(assign->value());
-    return target + " = " + value;
-  }
-  if (auto *lambda = dynamic_cast<const lambda_c *>(node)) {
-    std::stringstream temp_expr;
-    std::swap(temp_expr, _current_expr);
-    lambda->accept(*this);
-    std::string result = _current_expr.str();
-    std::swap(temp_expr, _current_expr);
-    return result;
-  }
-
-  return "";
+  expression_visitor_c expr_visitor(*this);
+  node->accept(expr_visitor);
+  return expr_visitor.get_result();
 }
 
 void emitter_c::push_defer_scope(defer_scope_s::scope_type_e type,
