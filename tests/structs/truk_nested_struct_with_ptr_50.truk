@@ -10,9 +10,9 @@ struct Outer {
 fn main() : i32 {
   var outer: Outer;
   outer.inner.value = 30;
-  outer.ptr = alloc(@i32);
+  outer.ptr = make(@i32);
   *outer.ptr = 20;
   var result: i32 = outer.inner.value + *outer.ptr;
-  free(outer.ptr);
+  delete(outer.ptr);
   return result;
 }

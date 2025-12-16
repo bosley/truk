@@ -1,19 +1,21 @@
-function(read_file_as_string filepath varname)
-    file(READ "${filepath}" file_content)
-    string(REPLACE "\\" "\\\\" file_content "${file_content}")
-    string(REPLACE "\"" "\\\"" file_content "${file_content}")
-    set(${varname} "${file_content}" PARENT_SCOPE)
-endfunction()
-
-function(embed_sxs_runtime output_file)
-    set(SXS_ROOT "${CMAKE_SOURCE_DIR}/runtime/sxs")
-    
+function(get_sxs_runtime_files out_var)
     set(SXS_FILES
         "include/sxs/types.h"
         "include/sxs/runtime.h"
         "include/sxs/sxs.h"
+        "include/sxs/ds/map.h"
         "src/runtime.c"
+        "src/ds/map.c"
     )
+    set(${out_var} ${SXS_FILES} PARENT_SCOPE)
+endfunction()
+
+function(embed_sxs_runtime output_file)
+    if(NOT DEFINED SXS_ROOT)
+        set(SXS_ROOT "${CMAKE_SOURCE_DIR}/runtime/sxs")
+    endif()
+    
+    get_sxs_runtime_files(SXS_FILES)
     
     set(GENERATED_CONTENT "#pragma once\n\n")
     string(APPEND GENERATED_CONTENT "#include <string>\n")

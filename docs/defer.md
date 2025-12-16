@@ -321,10 +321,10 @@ fn process() : i32 {
   
   var file2: *File = open_file("output.txt");
   defer close_file(file2);
-  
-  var buffer: []u8 = alloc_array(@u8, 1024);
-  defer free_array(buffer);
-  
+
+  var buffer: []u8 = make(@u8, 1024);
+  defer delete(buffer);
+
   // Process files...
   
   return 0;  // All resources cleaned up automatically

@@ -1,14 +1,14 @@
 fn test_i8() : i32 {
-  var ptr: *i8 = alloc(@i8);
+  var ptr: *i8 = make(@i8);
   *ptr = 42;
-  free(ptr);
+  delete(ptr);
   return 0;
 }
 
 fn test_i16() : i32 {
-  var ptr: *i16 = alloc(@i16);
+  var ptr: *i16 = make(@i16);
   *ptr = 1000;
-  free(ptr);
+  delete(ptr);
   return 0;
 }
 

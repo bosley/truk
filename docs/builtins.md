@@ -11,12 +11,13 @@ Examples:
 - `@*i32` - pointer to i32
 - `@[5]i32` - sized array of 5 i32s
 - `@[]i32` - unsized array (slice) of i32
+- `@map[i32]` - map with i32 values
 - `@Point` - user-defined struct type
 - `@**Point` - pointer to pointer to Point
 
 ## Memory Management
 
-### `alloc(@type) -> *T`
+### `make(@type) -> *T`
 
 Allocates memory on the heap for a single value of the specified type.
 
@@ -27,34 +28,17 @@ Allocates memory on the heap for a single value of the specified type.
 
 **Example:**
 ```truk
-var ptr: *i32 = alloc(@i32);
+var ptr: *i32 = make(@i32);
 *ptr = 42;
-free(ptr);
+delete(ptr);
 ```
 
 **Complex types:**
 ```truk
-var ptr_to_ptr: **i32 = alloc(@*i32);
+var ptr_to_ptr: **i32 = make(@*i32);
 ```
 
-### `free(ptr: *T) -> void`
-
-Frees memory previously allocated with `alloc`.
-
-**Parameters:**
-- `ptr`: Pointer to the memory to free
-
-**Returns:** void
-
-**Example:**
-```truk
-var ptr: *i32 = alloc(@i32);
-free(ptr);
-```
-
-**Note:** Calling `free` on already-freed memory or non-heap memory results in undefined behavior.
-
-### `alloc_array(@type, count: u64) -> []T`
+### `make(@type, count: u64) -> []T`
 
 Allocates a dynamic array (slice) on the heap.
 
@@ -67,20 +51,63 @@ Allocates a dynamic array (slice) on the heap.
 **Example:**
 ```truk
 var count: u64 = 100;
-var arr: []i32 = alloc_array(@i32, count);
+var arr: []i32 = make(@i32, count);
 arr[0] = 42;
-free_array(arr);
+delete(arr);
 ```
 
 **Complex element types:**
 ```truk
 var count: u64 = 10;
-var arr: [][5]i32 = alloc_array(@[5]i32, count);
+var arr: [][5]i32 = make(@[5]i32, count);
 ```
 
-### `free_array(arr: []T) -> void`
+### `make(@map[V]) -> map[V]`
 
-Frees memory previously allocated with `alloc_array`.
+Allocates and initializes a map (hash table) with string keys and values of type V.
+
+**Parameters:**
+- `@map[V]`: Type parameter specifying the map value type
+
+**Returns:** Initialized map
+
+**Example:**
+```truk
+var m: map[i32] = make(@map[i32]);
+m["key"] = 42;
+
+var ptr: *i32 = m["key"];
+if ptr != nil {
+  var value: i32 = *ptr;
+}
+
+delete(m);
+```
+
+**Key types:** Maps accept string-like keys: `*i8`, `*u8`, `[]i8`, `[]u8`
+
+**Indexing semantics:** Map indexing returns `*V` (pointer to value), which is `nil` if the key doesn't exist.
+
+**Note:** The `make` builtin is polymorphic - it allocates a single value, an array, or a map depending on the type parameter. This is similar to Go's `make` function.
+
+### `delete(ptr: *T) -> void`
+
+Frees memory previously allocated with `make`.
+
+**Parameters:**
+- `ptr`: Pointer to the memory to free
+
+**Returns:** void
+
+**Example:**
+```truk
+var ptr: *i32 = make(@i32);
+delete(ptr);
+```
+
+### `delete(arr: []T) -> void`
+
+Frees memory previously allocated with `make` for arrays.
 
 **Parameters:**
 - `arr`: Array to free
@@ -90,9 +117,29 @@ Frees memory previously allocated with `alloc_array`.
 **Example:**
 ```truk
 var count: u64 = 100;
-var arr: []i32 = alloc_array(@i32, count);
-free_array(arr);
+var arr: []i32 = make(@i32, count);
+delete(arr);
 ```
+
+### `delete(m: map[V]) -> void`
+
+Frees memory previously allocated with `make` for maps.
+
+**Parameters:**
+- `m`: Map to free
+
+**Returns:** void
+
+**Example:**
+```truk
+var m: map[i32] = make(@map[i32]);
+m["key"] = 42;
+delete(m);
+```
+
+**Note:** `delete` frees the map structure and all internal nodes. If map values contain pointers to heap-allocated data, you must free that data separately before deleting the map.
+
+**Note:** The `delete` builtin automatically determines whether to free a single value, an array, or a map based on the type of its argument. Calling `delete` on already-freed memory or non-heap memory results in undefined behavior.
 
 ## Array Operations
 
@@ -108,7 +155,7 @@ Returns the length of an unsized array (slice).
 **Example:**
 ```truk
 var count: u64 = 100;
-var arr: []i32 = alloc_array(@i32, count);
+var arr: []i32 = make(@i32, count);
 var size: u64 = len(arr);
 ```
 
@@ -147,7 +194,7 @@ Aborts program execution with an error message.
 fn divide(a: i32, b: i32) : i32 {
   if b == 0 {
     var count: u64 = 18;
-    var msg: []u8 = alloc_array(@u8, count);
+    var msg: []u8 = make(@u8, count);
     panic(msg);
   }
   return a / b;
@@ -168,10 +215,10 @@ truk follows a **C-style manual memory management** model:
 Memory is automatically freed when the variable goes out of scope.
 
 ### Heap Allocation (Manual)
-- Single values: `var ptr: *i32 = alloc(@i32);`
-- Arrays: `var arr: []i32 = alloc_array(@i32, count);`
+- Single values: `var ptr: *i32 = make(@i32);`
+- Arrays: `var arr: []i32 = make(@i32, count);`
 
-Memory must be explicitly freed with `free` or `free_array`.
+Memory must be explicitly freed with `delete`.
 
 ### Ownership and Safety
 
@@ -182,10 +229,9 @@ Memory must be explicitly freed with `free` or `free_array`.
 - Null pointer dereference: undefined behavior
 
 **Best practices:**
-1. Always pair `alloc` with `free`
-2. Always pair `alloc_array` with `free_array`
-3. Set pointers to `nil` after freeing
-4. Check for `nil` before dereferencing
+1. Always pair `make` with `delete`
+2. Set pointers to `nil` after deleting
+3. Check for `nil` before dereferencing
 
 ## Bounds Checking
 
@@ -194,7 +240,7 @@ Array indexing operations perform **runtime bounds checking**. Accessing an arra
 Example:
 ```truk
 var count: u64 = 10;
-var arr: []i32 = alloc_array(@i32, count);
+var arr: []i32 = make(@i32, count);
 arr[10] = 42;
 ```
 
@@ -213,19 +259,19 @@ struct Point {
 }
 
 fn main() : void {
-  var ptr: *i32 = alloc(@i32);
+  var ptr: *i32 = make(@i32);
   *ptr = 42;
   
   var count: u64 = 10;
-  var arr: []Point = alloc_array(@Point, count);
+  var arr: []Point = make(@Point, count);
   var size: u64 = len(arr);
   
   arr[0] = Point{x: 10, y: 20};
   
   var type_size: u64 = sizeof(@Point);
   
-  free_array(arr);
-  free(ptr);
+  delete(arr);
+  delete(ptr);
 }
 ```
 

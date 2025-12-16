@@ -121,24 +121,24 @@ inline std::string emit_slice_typedef(const std::string &element_type,
       element_type, slice_name);
 }
 
-inline std::string emit_builtin_alloc(const std::string &type_str) {
+inline std::string emit_builtin_make(const std::string &type_str) {
   return fmt::format("({0}*)__truk_runtime_sxs_alloc(sizeof({0}))", type_str);
 }
 
-inline std::string emit_builtin_free(const std::string &ptr_expr) {
-  return fmt::format("__truk_runtime_sxs_free({})", ptr_expr);
-}
-
 inline std::string
-emit_builtin_alloc_array(const std::string &cast_type,
-                         const std::string &elem_type_for_sizeof,
-                         const std::string &count_expr) {
+emit_builtin_make_array(const std::string &cast_type,
+                        const std::string &elem_type_for_sizeof,
+                        const std::string &count_expr) {
   return fmt::format(
       "{{({0})__truk_runtime_sxs_alloc_array(sizeof({1}), ({2})), ({2})}}",
       cast_type, elem_type_for_sizeof, count_expr);
 }
 
-inline std::string emit_builtin_free_array(const std::string &arr_expr) {
+inline std::string emit_builtin_delete(const std::string &ptr_expr) {
+  return fmt::format("__truk_runtime_sxs_free({})", ptr_expr);
+}
+
+inline std::string emit_builtin_delete_array(const std::string &arr_expr) {
   return fmt::format("__truk_runtime_sxs_free_array(({}).data)", arr_expr);
 }
 

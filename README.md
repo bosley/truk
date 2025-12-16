@@ -22,6 +22,11 @@ Arrays:
 - Unsized arrays: `[]i32` (heap allocated slices)
 - Multi-dimensional: `[5][10]i32`
 
+Maps:
+- Hash tables with string keys: `map[i32]`
+- Indexing returns pointer: `m["key"]` returns `*i32`
+- Nil checking: `if m["key"] != nil { ... }`
+
 Pointers:
 - Single: `*i32`
 - Multiple indirection: `**i32`
@@ -42,24 +47,24 @@ User-defined types:
 Manual memory management with explicit allocation and deallocation:
 
 ```truk
-var ptr: *i32 = alloc(@i32);
+var ptr: *i32 = make(@i32);
 *ptr = 42;
-free(ptr);
+delete(ptr);
 
 var count: u64 = 100;
-var arr: []i32 = alloc_array(@i32, count);
+var arr: []i32 = make(@i32, count);
 arr[0] = 10;
-free_array(arr);
+delete(arr);
 ```
 
 Runtime bounds checking on all array accesses. Out-of-bounds access causes a panic.
 
 ### Builtin Functions
 
-- `alloc(@type)` - allocate single value on heap
-- `free(ptr)` - free allocated memory
-- `alloc_array(@type, count)` - allocate array on heap
-- `free_array(arr)` - free allocated array
+- `make(@type)` - allocate single value on heap
+- `make(@type, count)` - allocate array on heap
+- `make(@map[V])` - allocate and initialize map
+- `delete(ptr)` - free allocated memory (single value, array, or map)
 - `len(arr)` - get array length
 - `sizeof(@type)` - get type size in bytes
 - `panic(message)` - abort with error message
@@ -88,11 +93,21 @@ fn main() : i32 {
   var dist: f32 = distance(p1, p2);
   
   var count: u64 = 10;
-  var points: []Point = alloc_array(@Point, count);
+  var points: []Point = make(@Point, count);
   points[0] = p1;
   points[1] = p2;
   
-  free_array(points);
+  var cache: map[Point] = make(@map[Point]);
+  cache["origin"] = p1;
+  cache["target"] = p2;
+  
+  var ptr: *Point = cache["origin"];
+  if ptr != nil {
+    var x: i32 = (*ptr).x;
+  }
+  
+  delete(cache);
+  delete(points);
   return 0;
 }
 ```
@@ -108,4 +123,4 @@ truk compiles to C and uses TCC (Tiny C Compiler) internally as the backend. The
 
 ## Memory Model
 
-Stack allocation for local variables with sized arrays and structs. Heap allocation through explicit `alloc` and `alloc_array` calls. No garbage collection. Memory must be manually freed. Double-free and use-after-free result in undefined behavior.
+Stack allocation for local variables with sized arrays and structs. Heap allocation through explicit `make` calls. No garbage collection. Memory must be manually freed with `delete`. Double-free and use-after-free result in undefined behavior.

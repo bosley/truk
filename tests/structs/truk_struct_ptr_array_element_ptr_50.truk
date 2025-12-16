@@ -5,7 +5,7 @@ struct Point {
 
 fn main() : i32 {
   var count: u64 = 3;
-  var arr: []Point = alloc_array(@Point, count);
+  var arr: []Point = make(@Point, count);
   
   arr[0] = Point{x: 10, y: 5};
   arr[1] = Point{x: 35, y: 15};
@@ -14,6 +14,6 @@ fn main() : i32 {
   var ptr: *Point = &arr[1];
   var result: i32 = (*ptr).x + (*ptr).y;
   
-  free_array(arr);
+  delete(arr);
   return result;
 }

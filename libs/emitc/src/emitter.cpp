@@ -122,6 +122,15 @@ void emitter_c::internal_finalize() {
 
   final_header << cdef::emit_runtime_implementation();
 
+  if (embedded::runtime_files.count("include/sxs/ds/map.h")) {
+    final_header << cdef::strip_pragma_and_includes(
+        embedded::runtime_files.at("include/sxs/ds/map.h").content);
+  }
+  if (embedded::runtime_files.count("src/ds/map.c")) {
+    final_header << cdef::strip_pragma_and_includes(
+        embedded::runtime_files.at("src/ds/map.c").content);
+  }
+
   final_header << "typedef struct {\n  __truk_void* data;\n  __truk_u64 "
                   "len;\n} truk_slice_void;\n\n";
 
@@ -197,6 +206,10 @@ std::string emitter_c::emit_type(const type_c *type) {
     } else {
       return get_slice_type_name(arr->element_type());
     }
+  }
+
+  if (auto map = dynamic_cast<const map_type_c *>(type)) {
+    return get_map_type_name(map->value_type());
   }
 
   return "__truk_void";
@@ -308,14 +321,50 @@ bool emitter_c::is_slice_type(const type_c *type) {
   return false;
 }
 
+std::string emitter_c::get_map_type_name(const type_c *value_type) {
+  std::string value_str = emit_type_for_sizeof(value_type);
+  std::string sanitized = value_str;
+  for (auto &c : sanitized) {
+    if (c == '*')
+      c = 'p';
+    if (c == '[' || c == ']' || c == ' ')
+      c = '_';
+  }
+  return "__truk_map_" + sanitized;
+}
+
+void emitter_c::ensure_map_typedef(const type_c *value_type) {
+  std::string map_name = get_map_type_name(value_type);
+
+  if (_map_types_emitted.find(map_name) == _map_types_emitted.end()) {
+    _map_types_emitted.insert(map_name);
+    std::string value_str = emit_type_for_sizeof(value_type);
+    _structs << "typedef __truk_map_t(" << value_str << ") " << map_name
+             << ";\n\n";
+  }
+}
+
+bool emitter_c::is_map_type(const type_c *type) {
+  return dynamic_cast<const map_type_c *>(type) != nullptr;
+}
+
 void emitter_c::register_variable_type(const std::string &name,
                                        const type_c *type) {
   _variable_is_slice[name] = is_slice_type(type);
+  _variable_is_map[name] = is_map_type(type);
 }
 
 bool emitter_c::is_variable_slice(const std::string &name) {
   auto it = _variable_is_slice.find(name);
   if (it != _variable_is_slice.end()) {
+    return it->second;
+  }
+  return false;
+}
+
+bool emitter_c::is_variable_map(const std::string &name) {
+  auto it = _variable_is_map.find(name);
+  if (it != _variable_is_map.end()) {
     return it->second;
   }
   return false;
@@ -338,6 +387,10 @@ void emitter_c::visit(const array_type_c &node) {
 }
 
 void emitter_c::visit(const function_type_c &node) {}
+
+void emitter_c::visit(const map_type_c &node) {
+  _current_expr << get_map_type_name(node.value_type());
+}
 
 void emitter_c::visit(const fn_c &node) {
   if (_collecting_declarations) {
@@ -490,6 +543,10 @@ void emitter_c::visit(const var_c &node) {
   }
 
   register_variable_type(node.name().name, node.type());
+
+  if (auto map = dynamic_cast<const map_type_c *>(node.type())) {
+    ensure_map_typedef(map->value_type());
+  }
 
   std::string type_str = emit_type(node.type());
 
@@ -784,79 +841,120 @@ void emitter_c::visit(const call_c &node) {
 
     if (builtin) {
       switch (builtin->kind) {
-      case builtins::builtin_kind_e::ALLOC: {
+      case builtins::builtin_kind_e::MAKE: {
         if (!node.arguments().empty()) {
           if (auto type_param = dynamic_cast<const type_param_c *>(
                   node.arguments()[0].get())) {
-            std::string type_str = emit_type(type_param->type());
-            _current_expr << cdef::emit_builtin_alloc(type_str);
-            return;
-          }
-        }
-        break;
-      }
-      case builtins::builtin_kind_e::FREE: {
-        if (!node.arguments().empty()) {
-          std::stringstream arg_stream;
-          std::swap(arg_stream, _current_expr);
-          node.arguments()[0]->accept(*this);
-          std::string arg = _current_expr.str();
-          std::swap(arg_stream, _current_expr);
-          _current_expr << cdef::emit_builtin_free(arg);
+            if (node.arguments().size() == 1) {
+              if (is_map_type(type_param->type())) {
+                auto *map_type =
+                    dynamic_cast<const map_type_c *>(type_param->type());
+                ensure_map_typedef(map_type->value_type());
 
-          if (!_in_expression) {
-            _functions << cdef::indent(_indent_level) << _current_expr.str()
-                       << ";\n";
-            _current_expr.str("");
-            _current_expr.clear();
-          }
-          return;
-        }
-        break;
-      }
-      case builtins::builtin_kind_e::ALLOC_ARRAY: {
-        if (node.arguments().size() >= 2) {
-          if (auto type_param = dynamic_cast<const type_param_c *>(
-                  node.arguments()[0].get())) {
-            std::string elem_type_for_sizeof =
-                emit_type_for_sizeof(type_param->type());
-            ensure_slice_typedef(type_param->type());
+                std::string map_name =
+                    get_map_type_name(map_type->value_type());
+                _current_expr << "({" << map_name
+                              << " __tmp; __truk_map_init(&__tmp); __tmp;})";
+                return;
+              }
 
-            std::stringstream count_stream;
-            std::swap(count_stream, _current_expr);
-            node.arguments()[1]->accept(*this);
-            std::string count_expr = _current_expr.str();
-            std::swap(count_stream, _current_expr);
+              std::string type_str = emit_type(type_param->type());
+              _current_expr << cdef::emit_builtin_make(type_str);
+              return;
+            } else if (node.arguments().size() == 2) {
+              std::string elem_type_for_sizeof =
+                  emit_type_for_sizeof(type_param->type());
+              ensure_slice_typedef(type_param->type());
 
-            std::string slice_type = get_slice_type_name(type_param->type());
+              std::stringstream count_stream;
+              std::swap(count_stream, _current_expr);
+              node.arguments()[1]->accept(*this);
+              std::string count_expr = _current_expr.str();
+              std::swap(count_stream, _current_expr);
 
-            std::string cast_type;
-            if (auto arr =
-                    dynamic_cast<const array_type_c *>(type_param->type())) {
-              if (arr->size().has_value()) {
-                cast_type = emit_array_pointer_type(type_param->type());
+              std::string slice_type = get_slice_type_name(type_param->type());
+
+              std::string cast_type;
+              if (auto arr =
+                      dynamic_cast<const array_type_c *>(type_param->type())) {
+                if (arr->size().has_value()) {
+                  cast_type = emit_array_pointer_type(type_param->type());
+                } else {
+                  cast_type = elem_type_for_sizeof + "*";
+                }
               } else {
                 cast_type = elem_type_for_sizeof + "*";
               }
-            } else {
-              cast_type = elem_type_for_sizeof + "*";
-            }
 
-            _current_expr << cdef::emit_builtin_alloc_array(
-                cast_type, elem_type_for_sizeof, count_expr);
-            return;
+              _current_expr << cdef::emit_builtin_make_array(
+                  cast_type, elem_type_for_sizeof, count_expr);
+              return;
+            }
           }
         }
         break;
       }
-      case builtins::builtin_kind_e::FREE_ARRAY: {
+      case builtins::builtin_kind_e::DELETE: {
         if (!node.arguments().empty()) {
+          if (auto idx =
+                  dynamic_cast<const index_c *>(node.arguments()[0].get())) {
+            if (auto ident =
+                    dynamic_cast<const identifier_c *>(idx->object())) {
+              if (is_variable_map(ident->id().name)) {
+                std::stringstream obj_stream;
+                std::swap(obj_stream, _current_expr);
+                _in_expression = true;
+                idx->object()->accept(*this);
+                std::string obj_expr = _current_expr.str();
+                std::swap(obj_stream, _current_expr);
+
+                std::stringstream idx_stream;
+                std::swap(idx_stream, _current_expr);
+                idx->index()->accept(*this);
+                std::string idx_expr = _current_expr.str();
+                std::swap(idx_stream, _current_expr);
+                _in_expression = false;
+
+                bool key_is_slice = false;
+                if (auto key_ident =
+                        dynamic_cast<const identifier_c *>(idx->index())) {
+                  key_is_slice = is_variable_slice(key_ident->id().name);
+                }
+
+                if (!_in_expression) {
+                  _functions << cdef::indent(_indent_level);
+                }
+                if (key_is_slice) {
+                  _current_expr << "__truk_map_remove(&(" << obj_expr << "), ("
+                                << idx_expr << ").data)";
+                } else {
+                  _current_expr << "__truk_map_remove(&(" << obj_expr << "), "
+                                << idx_expr << ")";
+                }
+
+                if (!_in_expression) {
+                  _functions << _current_expr.str() << ";\n";
+                  _current_expr.str("");
+                  _current_expr.clear();
+                }
+                return;
+              }
+            }
+          }
+
           std::stringstream arg_stream;
           std::swap(arg_stream, _current_expr);
           node.arguments()[0]->accept(*this);
           std::string arg = _current_expr.str();
           std::swap(arg_stream, _current_expr);
-          _current_expr << cdef::emit_builtin_free_array(arg);
+
+          if (is_variable_map(arg)) {
+            _current_expr << "__truk_map_deinit(&(" << arg << "))";
+          } else if (is_variable_slice(arg)) {
+            _current_expr << cdef::emit_builtin_delete_array(arg);
+          } else {
+            _current_expr << cdef::emit_builtin_delete(arg);
+          }
 
           if (!_in_expression) {
             _functions << cdef::indent(_indent_level) << _current_expr.str()
@@ -968,8 +1066,10 @@ void emitter_c::visit(const index_c &node) {
   std::swap(idx_stream, _current_expr);
 
   bool is_slice = false;
+  bool is_map = false;
   if (auto ident = dynamic_cast<const identifier_c *>(node.object())) {
     is_slice = is_variable_slice(ident->id().name);
+    is_map = is_variable_map(ident->id().name);
   } else if (auto inner_idx = dynamic_cast<const index_c *>(node.object())) {
     if (auto inner_ident =
             dynamic_cast<const identifier_c *>(inner_idx->object())) {
@@ -985,7 +1085,20 @@ void emitter_c::visit(const index_c &node) {
     is_slice = false;
   }
 
-  if (is_slice) {
+  if (is_map) {
+    bool key_is_slice = false;
+    if (auto key_ident = dynamic_cast<const identifier_c *>(node.index())) {
+      key_is_slice = is_variable_slice(key_ident->id().name);
+    }
+
+    if (key_is_slice) {
+      _current_expr << "__truk_map_get(&(" << obj_expr << "), (" << idx_expr
+                    << ").data)";
+    } else {
+      _current_expr << "__truk_map_get(&(" << obj_expr << "), " << idx_expr
+                    << ")";
+    }
+  } else if (is_slice) {
     _current_expr << "({ __truk_runtime_sxs_bounds_check(" << idx_expr << ", ("
                   << obj_expr << ").len); (" << obj_expr << ").data["
                   << idx_expr << "]; })";
@@ -1044,12 +1157,55 @@ void emitter_c::visit(const assignment_c &node) {
 
   if (auto idx = dynamic_cast<const index_c *>(node.target())) {
     bool is_slice = false;
+    bool is_map = false;
     if (auto ident = dynamic_cast<const identifier_c *>(idx->object())) {
       is_slice = is_variable_slice(ident->id().name);
+      is_map = is_variable_map(ident->id().name);
     } else if (auto inner_idx = dynamic_cast<const index_c *>(idx->object())) {
       is_slice = false;
+      is_map = false;
     } else {
       is_slice = false;
+      is_map = false;
+    }
+
+    if (is_map && !was_in_expr) {
+      std::stringstream obj_stream;
+      std::swap(obj_stream, _current_expr);
+      _in_expression = true;
+      idx->object()->accept(*this);
+      std::string obj_expr = _current_expr.str();
+      std::swap(obj_stream, _current_expr);
+
+      std::stringstream idx_stream;
+      std::swap(idx_stream, _current_expr);
+      idx->index()->accept(*this);
+      std::string idx_expr = _current_expr.str();
+      std::swap(idx_stream, _current_expr);
+
+      bool key_is_slice = false;
+      if (auto key_ident = dynamic_cast<const identifier_c *>(idx->index())) {
+        key_is_slice = is_variable_slice(key_ident->id().name);
+      }
+
+      node.value()->accept(*this);
+      std::string value = _current_expr.str();
+      _current_expr.str("");
+      _current_expr.clear();
+      _in_expression = was_in_expr;
+
+      _functions << cdef::indent(_indent_level);
+      _functions << "{ (" << obj_expr << ").tmp = " << value << "; ";
+      if (key_is_slice) {
+        _functions << "__truk_map_set_(&(" << obj_expr << ").base, ("
+                   << idx_expr << ").data, &(" << obj_expr << ").tmp, sizeof(("
+                   << obj_expr << ").tmp)); }\n";
+      } else {
+        _functions << "__truk_map_set_(&(" << obj_expr << ").base, " << idx_expr
+                   << ", &(" << obj_expr << ").tmp, sizeof((" << obj_expr
+                   << ").tmp)); }\n";
+      }
+      return;
     }
 
     if (is_slice && !was_in_expr) {

@@ -5,13 +5,13 @@ struct Point {
 
 fn main() : i32 {
   var count: u64 = 5;
-  var arr: []*Point = alloc_array(@*Point, count);
+  var arr: []*Point = make(@*Point, count);
   
-  arr[0] = alloc(@Point);
+  arr[0] = make(@Point);
   arr[1] = nil;
-  arr[2] = alloc(@Point);
+  arr[2] = make(@Point);
   arr[3] = nil;
-  arr[4] = alloc(@Point);
+  arr[4] = make(@Point);
   
   var non_nil_count: i32 = 0;
   var i: u64 = 0;
@@ -21,9 +21,9 @@ fn main() : i32 {
     }
   }
   
-  free(arr[0]);
-  free(arr[2]);
-  free(arr[4]);
-  free_array(arr);
+  delete(arr[0]);
+  delete(arr[2]);
+  delete(arr[4]);
+  delete(arr);
   return non_nil_count;
 }

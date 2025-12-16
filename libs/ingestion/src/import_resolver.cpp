@@ -37,6 +37,12 @@ void dependency_visitor_c::visit(const function_type_c &node) {
   }
 }
 
+void dependency_visitor_c::visit(const map_type_c &node) {
+  if (node.value_type()) {
+    node.value_type()->accept(*this);
+  }
+}
+
 void dependency_visitor_c::visit(const fn_c &) {}
 
 void dependency_visitor_c::visit(const struct_c &) {}

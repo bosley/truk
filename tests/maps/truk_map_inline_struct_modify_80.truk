@@ -1,0 +1,30 @@
+struct Data {
+  value: i32,
+  flag: bool
+}
+
+fn main() : i32 {
+  var m: map[Data] = make(@map[Data]);
+  
+  var initial: Data = Data{value: 10, flag: false};
+  m["item"] = initial;
+  
+  var ptr: *Data = m["item"];
+  if ptr != nil {
+    (*ptr).value = 40;
+    (*ptr).flag = true;
+  }
+  
+  var ptr2: *Data = m["item"];
+  if ptr2 != nil {
+    var result: i32 = (*ptr2).value;
+    if (*ptr2).flag {
+      result = result + 40;
+    }
+    delete(m);
+    return result;
+  }
+  
+  delete(m);
+  return 0;
+}

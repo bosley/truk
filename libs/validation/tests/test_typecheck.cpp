@@ -1172,6 +1172,250 @@ TEST(TypeCheckErrorTests, ArrayLiteralInconsistentTypes) {
   CHECK_TRUE(checker->has_errors());
 }
 
+TEST_GROUP(TypeCheckMapTests) {
+  truk::validation::type_checker_c *checker;
+
+  void setup() override { checker = new truk::validation::type_checker_c(); }
+
+  void teardown() override { delete checker; }
+
+  void parse_and_check(const char *source) {
+    truk::ingestion::parser_c parser(source, std::strlen(source));
+    auto result = parser.parse();
+    CHECK_TRUE(result.success);
+    for (auto &decl : result.declarations) {
+      checker->check(decl.get());
+    }
+  }
+};
+
+TEST(TypeCheckMapTests, MapCreationWithPrimitiveValue) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[i32] = make(@map[i32]);
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapCreationWithStructValue) {
+  const char *source = R"(
+    struct Point {
+      x: i32,
+      y: i32
+    }
+    
+    fn test(): void {
+      var m: map[Point] = make(@map[Point]);
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapCreationWithPointerValue) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[*i32] = make(@map[*i32]);
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapIndexingWithStringLiteral) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[i32] = make(@map[i32]);
+      m["key"] = 42;
+      var ptr: *i32 = m["key"];
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapIndexingWithU8Pointer) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[i32] = make(@map[i32]);
+      var key: *u8 = "hello";
+      m[key] = 42;
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapIndexingWithI8Pointer) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[i32] = make(@map[i32]);
+      var key: *i8 = "world";
+      m[key] = 42;
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapIndexingWithU8Slice) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[i32] = make(@map[i32]);
+      var size: u64 = 10;
+      var key: []u8 = make(@u8, size);
+      m[key] = 42;
+      delete(key);
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapIndexingReturnsPointerToValue) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[i32] = make(@map[i32]);
+      m["key"] = 42;
+      var ptr: *i32 = m["key"];
+      if ptr != nil {
+        var value: i32 = *ptr;
+      }
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapAssignmentWithCorrectType) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[i32] = make(@map[i32]);
+      m["key"] = 42;
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapAssignmentWithStructValue) {
+  const char *source = R"(
+    struct Point {
+      x: i32,
+      y: i32
+    }
+    
+    fn test(): void {
+      var m: map[Point] = make(@map[Point]);
+      var p: Point = Point{x: 10, y: 20};
+      m["origin"] = p;
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapDeletion) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[i32] = make(@map[i32]);
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapIndexingWithInvalidKeyType) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[i32] = make(@map[i32]);
+      m[42] = 100;
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_TRUE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapAssignmentWithWrongValueType) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[i32] = make(@map[i32]);
+      m["key"] = true;
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_TRUE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapIndexingWrongReturnType) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[i32] = make(@map[i32]);
+      m["key"] = 42;
+      var value: i32 = m["key"];
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_TRUE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapWithPointerValuesCorrectUsage) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[*i32] = make(@map[*i32]);
+      var value: i32 = 10;
+      m["key"] = &value;
+      var ptr_ptr: **i32 = m["key"];
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapTypeEqualityDifferentValueTypes) {
+  const char *source = R"(
+    fn test(): void {
+      var m1: map[i32] = make(@map[i32]);
+      var m2: map[f64] = make(@map[f64]);
+      delete(m1);
+      delete(m2);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
+TEST(TypeCheckMapTests, MapNestedValueTypes) {
+  const char *source = R"(
+    fn test(): void {
+      var m: map[*i32] = make(@map[*i32]);
+      var value: i32 = 42;
+      var ptr: *i32 = &value;
+      m["key"] = ptr;
+      delete(m);
+    }
+  )";
+  parse_and_check(source);
+  CHECK_FALSE(checker->has_errors());
+}
+
 int main(int argc, char **argv) {
   return CommandLineTestRunner::RunAllTests(argc, argv);
 }

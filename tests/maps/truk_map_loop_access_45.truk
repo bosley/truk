@@ -1,0 +1,36 @@
+fn main() : i32 {
+  var m: map[i32] = make(@map[i32]);
+  
+  m["0"] = 5;
+  m["1"] = 5;
+  m["2"] = 5;
+  m["3"] = 5;
+  m["4"] = 5;
+  m["5"] = 5;
+  m["6"] = 5;
+  m["7"] = 5;
+  m["8"] = 5;
+  
+  var result: i32 = 0;
+  var i: i32 = 0;
+  while i < 9 {
+    var ptr: *i32 = nil;
+    if i == 0 { ptr = m["0"]; }
+    if i == 1 { ptr = m["1"]; }
+    if i == 2 { ptr = m["2"]; }
+    if i == 3 { ptr = m["3"]; }
+    if i == 4 { ptr = m["4"]; }
+    if i == 5 { ptr = m["5"]; }
+    if i == 6 { ptr = m["6"]; }
+    if i == 7 { ptr = m["7"]; }
+    if i == 8 { ptr = m["8"]; }
+    
+    if ptr != nil {
+      result = result + *ptr;
+    }
+    i = i + 1;
+  }
+  
+  delete(m);
+  return result;
+}

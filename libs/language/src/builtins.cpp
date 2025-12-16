@@ -45,7 +45,7 @@ nodes::type_ptr clone_type(const nodes::type_c *type) {
   return nullptr;
 }
 
-static type_ptr build_alloc_signature(const type_c *type_param) {
+static type_ptr build_make_signature(const type_c *type_param) {
   std::vector<type_ptr> params;
 
   auto pointee = clone_type(type_param);
@@ -55,40 +55,12 @@ static type_ptr build_alloc_signature(const type_c *type_param) {
                                            std::move(return_type));
 }
 
-static type_ptr build_free_signature(const type_c *type_param) {
+static type_ptr build_delete_signature(const type_c *type_param) {
   std::vector<type_ptr> params;
 
   auto void_type = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
   auto ptr_type = std::make_unique<pointer_type_c>(0, std::move(void_type));
   params.push_back(std::move(ptr_type));
-
-  auto return_type = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
-
-  return std::make_unique<function_type_c>(0, std::move(params),
-                                           std::move(return_type));
-}
-
-static type_ptr build_alloc_array_signature(const type_c *type_param) {
-  std::vector<type_ptr> params;
-
-  auto count_param = std::make_unique<primitive_type_c>(keywords_e::U64, 0);
-  params.push_back(std::move(count_param));
-
-  auto element = clone_type(type_param);
-  auto return_type =
-      std::make_unique<array_type_c>(0, std::move(element), std::nullopt);
-
-  return std::make_unique<function_type_c>(0, std::move(params),
-                                           std::move(return_type));
-}
-
-static type_ptr build_free_array_signature(const type_c *type_param) {
-  std::vector<type_ptr> params;
-
-  auto void_type = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
-  auto array_param =
-      std::make_unique<array_type_c>(0, std::move(void_type), std::nullopt);
-  params.push_back(std::move(array_param));
 
   auto return_type = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);
 
@@ -163,20 +135,13 @@ static type_ptr build_va_arg_ptr_signature(const type_c *type_param) {
 }
 
 static std::vector<builtin_signature_s> builtin_registry = {
-    {"alloc", builtin_kind_e::ALLOC, true, false, {}, build_alloc_signature},
-    {"free", builtin_kind_e::FREE, false, false, {"ptr"}, build_free_signature},
-    {"alloc_array",
-     builtin_kind_e::ALLOC_ARRAY,
-     true,
-     false,
-     {"count"},
-     build_alloc_array_signature},
-    {"free_array",
-     builtin_kind_e::FREE_ARRAY,
+    {"make", builtin_kind_e::MAKE, true, false, {}, build_make_signature},
+    {"delete",
+     builtin_kind_e::DELETE,
      false,
      false,
-     {"arr"},
-     build_free_array_signature},
+     {"ptr"},
+     build_delete_signature},
     {"len", builtin_kind_e::LEN, false, false, {"arr"}, build_len_signature},
     {"sizeof", builtin_kind_e::SIZEOF, true, false, {}, build_sizeof_signature},
     {"panic",

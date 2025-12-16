@@ -103,8 +103,8 @@ Type-safe array copy using slice metadata. Automatically bounds-checks using the
 
 **Example:**
 ```truk
-var src: []i32 = alloc_array(@i32, 10);
-var dst: []i32 = alloc_array(@i32, 10);
+var src: []i32 = make(@i32, 10);
+var dst: []i32 = make(@i32, 10);
 array_copy(dst, src);
 ```
 
@@ -188,7 +188,7 @@ Atomically load a value from memory with acquire semantics.
 
 **Example:**
 ```truk
-var ptr: *i32 = alloc(@i32);
+var ptr: *i32 = make(@i32);
 var value: i32 = atomic_load(@i32, ptr);
 ```
 
@@ -199,7 +199,7 @@ Atomically store a value to memory with release semantics.
 
 **Example:**
 ```truk
-var ptr: *i32 = alloc(@i32);
+var ptr: *i32 = make(@i32);
 atomic_store(@i32, ptr, 42);
 ```
 
@@ -210,7 +210,7 @@ Atomically add to a value and return the old value.
 
 **Example:**
 ```truk
-var counter: *i32 = alloc(@i32);
+var counter: *i32 = make(@i32);
 var old: i32 = atomic_add(@i32, counter, 1);
 ```
 
@@ -221,7 +221,7 @@ Atomically compare and exchange (CAS operation). Returns true if exchange occurr
 
 **Example:**
 ```truk
-var ptr: *i32 = alloc(@i32);
+var ptr: *i32 = make(@i32);
 *ptr = 10;
 var success: bool = atomic_compare_exchange(@i32, ptr, 10, 20);
 ```

@@ -7,6 +7,7 @@ class named_type_c;
 class pointer_type_c;
 class array_type_c;
 class function_type_c;
+class map_type_c;
 class fn_c;
 class struct_c;
 class var_c;
@@ -43,6 +44,7 @@ public:
   virtual void visit(const pointer_type_c &node) = 0;
   virtual void visit(const array_type_c &node) = 0;
   virtual void visit(const function_type_c &node) = 0;
+  virtual void visit(const map_type_c &node) = 0;
   virtual void visit(const fn_c &node) = 0;
   virtual void visit(const struct_c &node) = 0;
   virtual void visit(const var_c &node) = 0;

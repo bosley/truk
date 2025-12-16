@@ -9,10 +9,8 @@
 namespace truk::language::builtins {
 
 enum class builtin_kind_e {
-  ALLOC,
-  FREE,
-  ALLOC_ARRAY,
-  FREE_ARRAY,
+  MAKE,
+  DELETE,
   LEN,
   SIZEOF,
   PANIC,

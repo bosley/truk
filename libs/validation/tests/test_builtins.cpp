@@ -29,10 +29,10 @@ static std::vector<std::string> typecheck_code(const std::string &code) {
 
 TEST_GROUP(BuiltinTests){};
 
-TEST(BuiltinTests, AllocReturnsPointerType) {
+TEST(BuiltinTests, MakeReturnsPointerType) {
   std::string code = R"(
     fn test() : void {
-      var ptr: *i32 = alloc(@i32);
+      var ptr: *i32 = make(@i32);
     }
   )";
 
@@ -40,7 +40,7 @@ TEST(BuiltinTests, AllocReturnsPointerType) {
   CHECK_TRUE(errors.empty());
 }
 
-TEST(BuiltinTests, AllocWithStructType) {
+TEST(BuiltinTests, MakeWithStructType) {
   std::string code = R"(
     struct Point {
       x: i32,
@@ -48,7 +48,7 @@ TEST(BuiltinTests, AllocWithStructType) {
     }
     
     fn test() : void {
-      var ptr: *Point = alloc(@Point);
+      var ptr: *Point = make(@Point);
     }
   )";
 
@@ -56,11 +56,11 @@ TEST(BuiltinTests, AllocWithStructType) {
   CHECK_TRUE(errors.empty());
 }
 
-TEST(BuiltinTests, AllocArrayReturnsSlice) {
+TEST(BuiltinTests, MakeArrayReturnsSlice) {
   std::string code = R"(
     fn test() : void {
       var count: u64 = 10;
-      var arr: []i32 = alloc_array(@i32, count);
+      var arr: []i32 = make(@i32, count);
     }
   )";
 
@@ -68,11 +68,11 @@ TEST(BuiltinTests, AllocArrayReturnsSlice) {
   CHECK_TRUE(errors.empty());
 }
 
-TEST(BuiltinTests, FreeAcceptsPointer) {
+TEST(BuiltinTests, DeleteAcceptsPointer) {
   std::string code = R"(
     fn test() : void {
-      var ptr: *i32 = alloc(@i32);
-      free(ptr);
+      var ptr: *i32 = make(@i32);
+      delete(ptr);
     }
   )";
 
@@ -80,12 +80,12 @@ TEST(BuiltinTests, FreeAcceptsPointer) {
   CHECK_TRUE(errors.empty());
 }
 
-TEST(BuiltinTests, FreeArrayAcceptsSlice) {
+TEST(BuiltinTests, DeleteAcceptsSlice) {
   std::string code = R"(
     fn test() : void {
       var count: u64 = 10;
-      var arr: []i32 = alloc_array(@i32, count);
-      free_array(arr);
+      var arr: []i32 = make(@i32, count);
+      delete(arr);
     }
   )";
 
@@ -97,7 +97,7 @@ TEST(BuiltinTests, LenReturnsU64) {
   std::string code = R"(
     fn test() : void {
       var count: u64 = 10;
-      var arr: []i32 = alloc_array(@i32, count);
+      var arr: []i32 = make(@i32, count);
       var size: u64 = len(arr);
     }
   )";
@@ -121,7 +121,7 @@ TEST(BuiltinTests, PanicAcceptsU8Array) {
   std::string code = R"(
     fn test() : void {
       var count: u64 = 10;
-      var msg: []u8 = alloc_array(@u8, count);
+      var msg: []u8 = make(@u8, count);
       panic(msg);
     }
   )";
@@ -134,7 +134,7 @@ TEST(BuiltinTests, TypeParameterMustBeType) {
   std::string code = R"(
     fn test() : void {
       var x: i32 = 5;
-      var ptr: *i32 = alloc(x);
+      var ptr: *i32 = make(x);
     }
   )";
 
@@ -143,10 +143,10 @@ TEST(BuiltinTests, TypeParameterMustBeType) {
   CHECK_TRUE(errors[0].find("type parameter") != std::string::npos);
 }
 
-TEST(BuiltinTests, AllocRequiresTypeParameter) {
+TEST(BuiltinTests, MakeRequiresTypeParameter) {
   std::string code = R"(
     fn test() : void {
-      var ptr: *i32 = alloc();
+      var ptr: *i32 = make();
     }
   )";
 
@@ -155,29 +155,28 @@ TEST(BuiltinTests, AllocRequiresTypeParameter) {
   CHECK_TRUE(errors[0].find("requires a type parameter") != std::string::npos);
 }
 
-TEST(BuiltinTests, AllocArrayRequiresCountArgument) {
+TEST(BuiltinTests, MakeSingleValueWithOneArg) {
   std::string code = R"(
     fn test() : void {
-      var arr: []i32 = alloc_array(@i32);
+      var ptr: *i32 = make(@i32);
     }
   )";
 
   auto errors = typecheck_code(code);
-  CHECK_FALSE(errors.empty());
-  CHECK_TRUE(errors[0].find("expects 1 argument") != std::string::npos);
+  CHECK_TRUE(errors.empty());
 }
 
-TEST(BuiltinTests, FreeRequiresPointerArgument) {
+TEST(BuiltinTests, DeleteRequiresPointerOrArrayArgument) {
   std::string code = R"(
     fn test() : void {
       var x: i32 = 5;
-      free(x);
+      delete(x);
     }
   )";
 
   auto errors = typecheck_code(code);
   CHECK_FALSE(errors.empty());
-  CHECK_TRUE(errors[0].find("type mismatch") != std::string::npos);
+  CHECK_TRUE(errors[0].find("pointer, array, or map") != std::string::npos);
 }
 
 TEST(BuiltinTests, LenRequiresSliceArgument) {
@@ -193,7 +192,7 @@ TEST(BuiltinTests, LenRequiresSliceArgument) {
   CHECK_TRUE(errors[0].find("type mismatch") != std::string::npos);
 }
 
-TEST(BuiltinTests, AllocArrayWithStructType) {
+TEST(BuiltinTests, MakeArrayWithStructType) {
   std::string code = R"(
     struct Point {
       x: i32,
@@ -202,7 +201,7 @@ TEST(BuiltinTests, AllocArrayWithStructType) {
     
     fn test() : void {
       var count: u64 = 5;
-      var arr: []Point = alloc_array(@Point, count);
+      var arr: []Point = make(@Point, count);
     }
   )";
 
@@ -210,10 +209,10 @@ TEST(BuiltinTests, AllocArrayWithStructType) {
   CHECK_TRUE(errors.empty());
 }
 
-TEST(BuiltinTests, AllocWithPointerType) {
+TEST(BuiltinTests, MakeWithPointerType) {
   std::string code = R"(
     fn test() : void {
-      var ptr: **i32 = alloc(@*i32);
+      var ptr: **i32 = make(@*i32);
     }
   )";
 
@@ -221,11 +220,11 @@ TEST(BuiltinTests, AllocWithPointerType) {
   CHECK_TRUE(errors.empty());
 }
 
-TEST(BuiltinTests, AllocArrayWithArrayType) {
+TEST(BuiltinTests, MakeArrayWithArrayType) {
   std::string code = R"(
     fn test() : void {
       var count: u64 = 10;
-      var arr: [][5]i32 = alloc_array(@[5]i32, count);
+      var arr: [][5]i32 = make(@[5]i32, count);
     }
   )";
 
@@ -236,13 +235,13 @@ TEST(BuiltinTests, AllocArrayWithArrayType) {
 TEST(BuiltinTests, MultipleBuiltinCalls) {
   std::string code = R"(
     fn test() : void {
-      var ptr: *i32 = alloc(@i32);
+      var ptr: *i32 = make(@i32);
       var count: u64 = 10;
-      var arr: []i32 = alloc_array(@i32, count);
+      var arr: []i32 = make(@i32, count);
       var size: u64 = len(arr);
       var type_size: u64 = sizeof(@i32);
-      free_array(arr);
-      free(ptr);
+      delete(arr);
+      delete(ptr);
     }
   )";
 
@@ -250,10 +249,10 @@ TEST(BuiltinTests, MultipleBuiltinCalls) {
   CHECK_TRUE(errors.empty());
 }
 
-TEST(BuiltinTests, AllocInExpression) {
+TEST(BuiltinTests, MakeInExpression) {
   std::string code = R"(
     fn get_ptr() : *i32 {
-      return alloc(@i32);
+      return make(@i32);
     }
   )";
 
@@ -272,20 +271,20 @@ TEST(BuiltinTests, LenInExpression) {
   CHECK_TRUE(errors.empty());
 }
 
-TEST(BuiltinTests, AllocWithAllPrimitiveTypes) {
+TEST(BuiltinTests, MakeWithAllPrimitiveTypes) {
   std::string code = R"(
     fn test() : void {
-      var p1: *i8 = alloc(@i8);
-      var p2: *i16 = alloc(@i16);
-      var p3: *i32 = alloc(@i32);
-      var p4: *i64 = alloc(@i64);
-      var p5: *u8 = alloc(@u8);
-      var p6: *u16 = alloc(@u16);
-      var p7: *u32 = alloc(@u32);
-      var p8: *u64 = alloc(@u64);
-      var p9: *f32 = alloc(@f32);
-      var p10: *f64 = alloc(@f64);
-      var p11: *bool = alloc(@bool);
+      var p1: *i8 = make(@i8);
+      var p2: *i16 = make(@i16);
+      var p3: *i32 = make(@i32);
+      var p4: *i64 = make(@i64);
+      var p5: *u8 = make(@u8);
+      var p6: *u16 = make(@u16);
+      var p7: *u32 = make(@u32);
+      var p8: *u64 = make(@u64);
+      var p9: *f32 = make(@f32);
+      var p10: *f64 = make(@f64);
+      var p11: *bool = make(@bool);
     }
   )";
 

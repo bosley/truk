@@ -1,15 +1,15 @@
 fn main() : i32 {
-  var ptr1: *i32 = alloc(@i32);
+  var ptr1: *i32 = make(@i32);
   *ptr1 = 42;
   
-  var ptr2: **i32 = alloc(@*i32);
+  var ptr2: **i32 = make(@*i32);
   *ptr2 = ptr1;
   
   var single_deref: *i32 = *ptr2;
   var result: i32 = *single_deref;
   
-  free(ptr2);
-  free(ptr1);
+  delete(ptr2);
+  delete(ptr1);
   
   return result;
 }

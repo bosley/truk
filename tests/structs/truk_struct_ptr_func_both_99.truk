@@ -4,21 +4,21 @@ struct Point {
 }
 
 fn swap_point(ptr: *Point) : *Point {
-  var new_ptr: *Point = alloc(@Point);
+  var new_ptr: *Point = make(@Point);
   (*new_ptr).x = (*ptr).y;
   (*new_ptr).y = (*ptr).x;
   return new_ptr;
 }
 
 fn main() : i32 {
-  var ptr1: *Point = alloc(@Point);
+  var ptr1: *Point = make(@Point);
   (*ptr1).x = 1;
   (*ptr1).y = 99;
   
   var ptr2: *Point = swap_point(ptr1);
   var result: i32 = (*ptr2).x;
   
-  free(ptr1);
-  free(ptr2);
+  delete(ptr1);
+  delete(ptr2);
   return result;
 }

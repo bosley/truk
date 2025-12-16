@@ -1,14 +1,14 @@
 var global_ptr: *i32 = nil;
 
 fn allocate_resource() : void {
-  global_ptr = alloc(@i32);
+  global_ptr = make(@i32);
   *global_ptr = 42;
 }
 
 fn use_and_cleanup() : i32 {
   var value: i32 = *global_ptr;
   defer {
-    free(global_ptr);
+    delete(global_ptr);
     global_ptr = nil;
   }
   return value;

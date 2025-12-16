@@ -15,21 +15,21 @@ fn main() : i32 {
   
   var count: u64 = 5;
   
-  var dyn_f32: []f32 = alloc_array(@f32, count);
+  var dyn_f32: []f32 = make(@f32, count);
   dyn_f32[0] = 3.14;
   dyn_f32[1] = -2.718;
   dyn_f32[2] = 0.0;
   dyn_f32[3] = 1000.5;
   dyn_f32[4] = -999.99;
-  free_array(dyn_f32);
+  delete(dyn_f32);
   
-  var dyn_f64: []f64 = alloc_array(@f64, count);
+  var dyn_f64: []f64 = make(@f64, count);
   dyn_f64[0] = 3.141592653589793;
   dyn_f64[1] = -2.718281828459045;
   dyn_f64[2] = 0.0;
   dyn_f64[3] = 1000000.123456;
   dyn_f64[4] = -999999.987654;
-  free_array(dyn_f64);
+  delete(dyn_f64);
   
   return 0;
 }

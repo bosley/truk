@@ -1,0 +1,12 @@
+fn main() : i32 {
+  var m: map[i32] = make(@map[i32]);
+  
+  var ptr: *i32 = m["nonexistent"];
+  if ptr == nil {
+    delete(m);
+    return 0;
+  }
+  
+  delete(m);
+  return 1;
+}

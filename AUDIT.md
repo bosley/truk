@@ -372,13 +372,13 @@ Unsized arrays are allocated on the heap and have runtime-determined size:
 
 ```truk
 var count: u64 = 5;
-var arr: []i32 = alloc_array(@i32, count);
+var arr: []i32 = make(@i32, count);
 arr[0] = 10;
 arr[1] = 20;
-free_array(arr);
+delete(arr);
 ```
 
-Note the `@i32` syntax - this is a type parameter telling `alloc_array` what type to allocate.
+Note the `@i32` syntax - this is a type parameter telling `make` what type to allocate.
 
 ## Pointers and Memory Management
 
@@ -427,9 +427,9 @@ Allocate single values on the heap with `alloc`:
 
 ```truk
 fn main() : i32 {
-  var ptr: *i32 = alloc(@i32);
+  var ptr: *i32 = make(@i32);
   *ptr = 42;
-  free(ptr);
+  delete(ptr);
   return 0;
 }
 ```
@@ -438,25 +438,25 @@ fn main() : i32 {
 
 ### Array Allocation
 
-Allocate arrays on the heap with `alloc_array`:
+Allocate arrays on the heap with `make`:
 
 ```truk
 var count: u64 = 100;
-var arr: []i32 = alloc_array(@i32, count);
+var arr: []i32 = make(@i32, count);
 arr[0] = 42;
-free_array(arr);
+delete(arr);
 ```
 
-**Important:** Every `alloc_array` must be paired with a `free_array`.
+**Important:** Every `make` must be paired with a `delete`.
 
 ### Complex Type Parameters
 
 Type parameters support complex types:
 
 ```truk
-var ptr_to_ptr: **i32 = alloc(@*i32);
-var arr_of_arrays: [][5]i32 = alloc_array(@[5]i32, count);
-var arr_of_structs: []Point = alloc_array(@Point, count);
+var ptr_to_ptr: **i32 = make(@*i32);
+var arr_of_arrays: [][5]i32 = make(@[5]i32, count);
+var arr_of_structs: []Point = make(@Point, count);
 ```
 
 ## Builtins
@@ -465,23 +465,21 @@ Truk provides essential builtin functions for memory management and utilities.
 
 ### Memory Management
 
-**`alloc(@type) -> *T`** - Allocate single value on heap
+**`make(@type) -> *T`** - Allocate single value on heap
 
 ```truk
-var ptr: *i32 = alloc(@i32);
-free(ptr);
+var ptr: *i32 = make(@i32);
+delete(ptr);
 ```
 
-**`free(ptr: *T) -> void`** - Free allocated memory
-
-**`alloc_array(@type, count: u64) -> []T`** - Allocate array on heap
+**`make(@type, count: u64) -> []T`** - Allocate array on heap
 
 ```truk
-var arr: []i32 = alloc_array(@i32, 10);
-free_array(arr);
+var arr: []i32 = make(@i32, 10);
+delete(arr);
 ```
 
-**`free_array(arr: []T) -> void`** - Free allocated array
+**`delete(ptr: *T) -> void`** or **`delete(arr: []T) -> void`** - Free allocated memory (polymorphic)
 
 ### Array Operations
 
@@ -489,9 +487,9 @@ free_array(arr);
 
 ```truk
 var count: u64 = 5;
-var arr: []i32 = alloc_array(@i32, count);
+var arr: []i32 = make(@i32, count);
 var size: u64 = len(arr);
-free_array(arr);
+delete(arr);
 ```
 
 ### Type Information
@@ -510,7 +508,7 @@ var ptr_size: u64 = sizeof(@*i32);
 ```truk
 if b == 0 {
   var count: u64 = 18;
-  var msg: []u8 = alloc_array(@u8, count);
+  var msg: []u8 = make(@u8, count);
   panic(msg);
 }
 ```
@@ -539,8 +537,8 @@ Note: `printf` is an external C function. The format parameter is a pointer to u
 - Automatically freed when out of scope
 
 **Heap (manual):**
-- Single values: `var ptr: *i32 = alloc(@i32);`
-- Arrays: `var arr: []i32 = alloc_array(@i32, count);`
+- Single values: `var ptr: *i32 = make(@i32);`
+- Arrays: `var arr: []i32 = make(@i32, count);`
 - Must be explicitly freed
 
 ### Safety Considerations
@@ -554,11 +552,10 @@ Truk has C-style undefined behavior on:
 
 ### Best Practices
 
-1. Always pair `alloc` with `free`
-2. Always pair `alloc_array` with `free_array`
-3. Set pointers to `nil` after freeing
-4. Check for `nil` before dereferencing
-5. Be mindful of array bounds
+1. Always pair `make` with `delete`
+2. Set pointers to `nil` after deleting
+3. Check for `nil` before dereferencing
+4. Be mindful of array bounds
 
 ## Type Casting
 
@@ -604,7 +601,7 @@ fn main() : i32 {
   var dist_sq: i32 = distance_squared(p1, p2);
   
   var count: u64 = 10;
-  var points: []Point = alloc_array(@Point, count);
+  var points: []Point = make(@Point, count);
   
   var i: i32 = 0;
   while i < 10 {
@@ -612,7 +609,7 @@ fn main() : i32 {
     i = i + 1;
   }
   
-  free_array(points);
+  delete(points);
   
   return 0;
 }

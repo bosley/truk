@@ -1,0 +1,16 @@
+fn main() : i32 {
+  var m: map[i32] = make(@map[i32]);
+  
+  var key1: *u8 = "test";
+  m[key1] = 5;
+  
+  var ptr: *i32 = m["test"];
+  if ptr != nil {
+    var result: i32 = *ptr;
+    delete(m);
+    return result;
+  }
+  
+  delete(m);
+  return 0;
+}

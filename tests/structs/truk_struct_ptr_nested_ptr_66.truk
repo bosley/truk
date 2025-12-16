@@ -9,17 +9,17 @@ struct Container {
 }
 
 fn main() : i32 {
-  var point_ptr: *Point = alloc(@Point);
+  var point_ptr: *Point = make(@Point);
   (*point_ptr).x = 50;
   (*point_ptr).y = 16;
   
-  var container_ptr: *Container = alloc(@Container);
+  var container_ptr: *Container = make(@Container);
   (*container_ptr).ptr = point_ptr;
   (*container_ptr).value = 0;
   
   var result: i32 = (*(*container_ptr).ptr).x + (*(*container_ptr).ptr).y;
   
-  free(container_ptr);
-  free(point_ptr);
+  delete(container_ptr);
+  delete(point_ptr);
   return result;
 }

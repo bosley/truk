@@ -1,0 +1,26 @@
+fn main() : i32 {
+  var m: map[f64] = make(@map[f64]);
+  
+  m["pi"] = 3.14;
+  m["e"] = 2.71;
+  
+  var ptr1: *f64 = m["pi"];
+  var ptr2: *f64 = m["e"];
+  
+  var result: i32 = 0;
+  if ptr1 != nil {
+    var val: f64 = *ptr1;
+    if val > 3.0 {
+      result = result + 50;
+    }
+  }
+  if ptr2 != nil {
+    var val: f64 = *ptr2;
+    if val > 2.0 {
+      result = result + 50;
+    }
+  }
+  
+  delete(m);
+  return result;
+}

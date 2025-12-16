@@ -4,22 +4,22 @@ struct Point {
 }
 
 fn main() : i32 {
-  var ptr1: *Point = alloc(@Point);
+  var ptr1: *Point = make(@Point);
   (*ptr1).x = 40;
   (*ptr1).y = 10;
   
-  var ptr2: *Point = alloc(@Point);
+  var ptr2: *Point = make(@Point);
   (*ptr2).x = 35;
   (*ptr2).y = 15;
   
-  var ptr3: *Point = alloc(@Point);
+  var ptr3: *Point = make(@Point);
   (*ptr3).x = 25;
   (*ptr3).y = 0;
   
   var sum: i32 = (*ptr1).x + (*ptr2).x + (*ptr3).x;
   
-  free(ptr1);
-  free(ptr2);
-  free(ptr3);
+  delete(ptr1);
+  delete(ptr2);
+  delete(ptr3);
   return sum;
 }

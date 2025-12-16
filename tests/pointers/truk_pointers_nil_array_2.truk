@@ -1,9 +1,9 @@
 fn main() : i32 {
   var count: u64 = 3;
-  var arr: []*i32 = alloc_array(@*i32, count);
+  var arr: []*i32 = make(@*i32, count);
   
   arr[0] = nil;
-  arr[1] = alloc(@i32);
+  arr[1] = make(@i32);
   *arr[1] = 10;
   arr[2] = nil;
   
@@ -15,7 +15,7 @@ fn main() : i32 {
     }
   }
   
-  free(arr[1]);
-  free_array(arr);
+  delete(arr[1]);
+  delete(arr);
   return nil_count;
 }

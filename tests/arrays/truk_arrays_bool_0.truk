@@ -8,13 +8,13 @@ fn main() : i32 {
   
   var count: u64 = 5;
   
-  var dyn_bool: []bool = alloc_array(@bool, count);
+  var dyn_bool: []bool = make(@bool, count);
   dyn_bool[0] = true;
   dyn_bool[1] = false;
   dyn_bool[2] = true;
   dyn_bool[3] = false;
   dyn_bool[4] = true;
-  free_array(dyn_bool);
+  delete(dyn_bool);
   
   return 0;
 }

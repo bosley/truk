@@ -10,10 +10,10 @@ fn modify_point(ptr: *Point) : i32 {
 }
 
 fn main() : i32 {
-  var ptr: *Point = alloc(@Point);
+  var ptr: *Point = make(@Point);
   (*ptr).x = 10;
   (*ptr).y = 20;
   var result: i32 = modify_point(ptr);
-  free(ptr);
+  delete(ptr);
   return result;
 }

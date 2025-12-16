@@ -1,0 +1,21 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+fn main() : i32 {
+  var m: map[Point] = make(@map[Point]);
+  
+  var stack_point: Point = Point{x: 21, y: 21};
+  m["key"] = stack_point;
+  
+  var ptr: *Point = m["key"];
+  if ptr != nil {
+    var result: i32 = (*ptr).x + (*ptr).y;
+    delete(m);
+    return result;
+  }
+  
+  delete(m);
+  return 0;
+}

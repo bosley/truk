@@ -29,6 +29,7 @@ type_annotation ::= ":" type
 type            ::= primitive_type
                   | array_type
                   | pointer_type
+                  | map_type
                   | IDENTIFIER
 
 primitive_type  ::= "i8" | "i16" | "i32" | "i64"
@@ -39,6 +40,8 @@ primitive_type  ::= "i8" | "i16" | "i32" | "i64"
 array_type      ::= "[" expression? "]" type
 
 pointer_type    ::= "*" type
+
+map_type        ::= "map" "[" type "]"
 
 block           ::= "{" statement* "}"
 

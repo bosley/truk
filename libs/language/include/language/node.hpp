@@ -146,6 +146,21 @@ private:
   bool _has_variadic{false};
 };
 
+class map_type_c : public type_c {
+public:
+  map_type_c() = delete;
+  map_type_c(std::size_t source_index, type_ptr value_type)
+      : type_c(keywords_e::MAP, source_index),
+        _value_type(std::move(value_type)) {}
+
+  const type_c *value_type() const { return _value_type.get(); }
+
+  void accept(visitor_if &visitor) const override;
+
+private:
+  type_ptr _value_type;
+};
+
 class fn_c : public base_c {
 public:
   fn_c() = delete;

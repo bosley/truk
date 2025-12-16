@@ -1,9 +1,9 @@
 fn test_i8() : i32 {
   var count: u64 = 10;
-  var arr: []i8 = alloc_array(@i8, count);
+  var arr: []i8 = make(@i8, count);
   var arr_len: u64 = len(arr);
   var expected_len: u64 = 10;
-  free_array(arr);
+  delete(arr);
   return 0;
 }
 

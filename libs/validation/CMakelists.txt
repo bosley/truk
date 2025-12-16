@@ -13,6 +13,8 @@ target_link_libraries(truk_validation PUBLIC
     truk_ingestion
 )
 
+add_dependencies(truk_validation truk_language truk_ingestion)
+
 target_compile_features(truk_validation PRIVATE cxx_std_20)
 
 if(BUILD_TESTS)

@@ -1,0 +1,25 @@
+fn main() : i32 {
+  var m: map[i32] = make(@map[i32]);
+  
+  var condition: bool = true;
+  
+  if condition {
+    m["yes"] = 33;
+  } else {
+    m["no"] = 0;
+  }
+  
+  var ptr1: *i32 = m["yes"];
+  var ptr2: *i32 = m["no"];
+  
+  var result: i32 = 0;
+  if ptr1 != nil {
+    result = result + *ptr1;
+  }
+  if ptr2 != nil {
+    result = result + *ptr2;
+  }
+  
+  delete(m);
+  return result;
+}

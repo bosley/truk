@@ -148,6 +148,18 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return func_type;
   }
 
+  if (auto *map = dynamic_cast<const map_type_c *>(type_node)) {
+    auto value_type = resolve_type(map->value_type());
+
+    if (!value_type) {
+      return nullptr;
+    }
+
+    auto resolved = std::make_unique<type_entry_s>(type_kind_e::MAP, "map");
+    resolved->map_value_type = std::make_unique<type_entry_s>(*value_type);
+    return resolved;
+  }
+
   return nullptr;
 }
 
@@ -179,6 +191,10 @@ std::string type_checker_c::get_type_name_for_error(const type_c *type_node) {
     return "fn";
   }
 
+  if (auto *map = dynamic_cast<const map_type_c *>(type_node)) {
+    return "map[" + get_type_name_for_error(map->value_type()) + "]";
+  }
+
   return "<unknown>";
 }
 
@@ -203,6 +219,14 @@ std::string type_checker_c::get_type_name_from_entry(const type_entry_s *type) {
                                ? std::to_string(type->array_size.value())
                                : "";
     return "[" + size_str + "]" + base_name;
+  }
+
+  if (type->kind == type_kind_e::MAP) {
+    if (type->map_value_type) {
+      return "map[" + get_type_name_from_entry(type->map_value_type.get()) +
+             "]";
+    }
+    return "map[<unknown>]";
   }
 
   return base_name;
@@ -247,6 +271,12 @@ bool type_checker_c::types_equal(const type_entry_s *a, const type_entry_s *b) {
 
   if (a->kind == type_kind_e::ARRAY && a->element_type && b->element_type) {
     if (!types_equal(a->element_type.get(), b->element_type.get())) {
+      return false;
+    }
+  }
+
+  if (a->kind == type_kind_e::MAP && a->map_value_type && b->map_value_type) {
+    if (!types_equal(a->map_value_type.get(), b->map_value_type.get())) {
       return false;
     }
   }
@@ -349,6 +379,98 @@ void type_checker_c::validate_builtin_call(const call_c &node,
   if (!builtin) {
     report_error("Internal error: builtin not found in registry",
                  node.source_index());
+    return;
+  }
+
+  if (func_type.builtin_kind == language::builtins::builtin_kind_e::MAKE) {
+    if (node.arguments().empty()) {
+      report_error("Builtin 'make' requires a type parameter",
+                   node.source_index());
+      return;
+    }
+
+    const auto *first_arg_type_param =
+        dynamic_cast<const type_param_c *>(node.arguments()[0].get());
+    if (!first_arg_type_param) {
+      report_error(
+          "Builtin 'make' requires a type parameter (use @type syntax)",
+          node.source_index());
+      return;
+    }
+
+    const type_c *type_param = first_arg_type_param->type();
+    std::size_t actual_arg_count = node.arguments().size() - 1;
+
+    if (actual_arg_count == 0) {
+      auto resolved = resolve_type(type_param);
+      if (!resolved) {
+        report_error("Failed to resolve type for make", node.source_index());
+        return;
+      }
+
+      if (resolved->kind == type_kind_e::MAP) {
+        _current_expression_type = std::move(resolved);
+        return;
+      }
+
+      auto return_type =
+          std::make_unique<type_entry_s>(type_kind_e::POINTER, resolved->name);
+      return_type->pointer_depth = resolved->pointer_depth + 1;
+      return_type->pointee_type = std::move(resolved);
+      _current_expression_type = std::move(return_type);
+      return;
+    } else if (actual_arg_count == 1) {
+      node.arguments()[1]->accept(*this);
+      auto count_type = std::move(_current_expression_type);
+      if (!count_type || count_type->name != "u64") {
+        report_error("Builtin 'make' array count must be u64",
+                     node.source_index());
+        return;
+      }
+      auto element = resolve_type(type_param);
+      if (!element) {
+        report_error("Failed to resolve element type for make",
+                     node.source_index());
+        return;
+      }
+      auto return_type =
+          std::make_unique<type_entry_s>(type_kind_e::ARRAY, element->name);
+      return_type->element_type = std::move(element);
+      return_type->array_size = std::nullopt;
+      _current_expression_type = std::move(return_type);
+      return;
+    } else {
+      report_error("Builtin 'make' expects 1 or 2 arguments (type parameter + "
+                   "optional count)",
+                   node.source_index());
+      return;
+    }
+  }
+
+  if (func_type.builtin_kind == language::builtins::builtin_kind_e::DELETE) {
+    if (node.arguments().size() != 1) {
+      report_error("Builtin 'delete' expects 1 argument", node.source_index());
+      return;
+    }
+
+    node.arguments()[0]->accept(*this);
+    auto arg_type = std::move(_current_expression_type);
+
+    if (!arg_type) {
+      report_error("Failed to resolve argument type for delete",
+                   node.source_index());
+      return;
+    }
+
+    if (arg_type->kind != type_kind_e::POINTER &&
+        arg_type->kind != type_kind_e::ARRAY &&
+        arg_type->kind != type_kind_e::MAP) {
+      report_error("Builtin 'delete' requires pointer, array, or map type",
+                   node.source_index());
+      return;
+    }
+
+    _current_expression_type.reset();
     return;
   }
 
@@ -561,6 +683,19 @@ void type_checker_c::visit(const function_type_c &node) {
   }
 
   _current_expression_type = std::move(func_type);
+}
+
+void type_checker_c::visit(const map_type_c &node) {
+  auto value_type = resolve_type(node.value_type());
+
+  if (!value_type) {
+    report_error("Failed to resolve map value type", node.source_index());
+    return;
+  }
+
+  auto map_type = std::make_unique<type_entry_s>(type_kind_e::MAP, "map");
+  map_type->map_value_type = std::move(value_type);
+  _current_expression_type = std::move(map_type);
 }
 
 void type_checker_c::visit(const fn_c &node) {
@@ -1055,6 +1190,47 @@ void type_checker_c::visit(const index_c &node) {
     return;
   }
 
+  if (object_type->kind == type_kind_e::MAP) {
+    if (!index_type) {
+      report_error("Map index has invalid type", node.source_index());
+      return;
+    }
+
+    bool valid_key = false;
+
+    if (index_type->kind == type_kind_e::POINTER &&
+        index_type->pointer_depth == 1 &&
+        (index_type->name == "i8" || index_type->name == "u8")) {
+      valid_key = true;
+    } else if (index_type->kind == type_kind_e::ARRAY &&
+               !index_type->array_size.has_value() &&
+               index_type->element_type &&
+               (index_type->element_type->name == "i8" ||
+                index_type->element_type->name == "u8")) {
+      valid_key = true;
+    }
+
+    if (!valid_key) {
+      report_error("Map key must be *i8, *u8, []i8, or []u8",
+                   node.source_index());
+      return;
+    }
+
+    if (!object_type->map_value_type) {
+      report_error("Map has no value type", node.source_index());
+      return;
+    }
+
+    auto value_type =
+        std::make_unique<type_entry_s>(*object_type->map_value_type);
+    auto ptr_type =
+        std::make_unique<type_entry_s>(type_kind_e::POINTER, value_type->name);
+    ptr_type->pointer_depth = value_type->pointer_depth + 1;
+    ptr_type->pointee_type = std::move(value_type);
+    _current_expression_type = std::move(ptr_type);
+    return;
+  }
+
   if (!index_type || !is_integer_type(index_type.get())) {
     report_error("Index must be integer type", node.source_index());
     return;
@@ -1072,7 +1248,7 @@ void type_checker_c::visit(const index_c &node) {
     object_type->pointer_depth--;
     _current_expression_type = std::move(object_type);
   } else {
-    report_error("Index operation requires array or pointer type",
+    report_error("Index operation requires array, pointer, or map type",
                  node.source_index());
   }
 }
@@ -1139,6 +1315,61 @@ void type_checker_c::visit(const identifier_c &node) {
 }
 
 void type_checker_c::visit(const assignment_c &node) {
+  bool is_map_assignment = false;
+  const type_entry_s *map_value_type = nullptr;
+
+  if (auto *index = dynamic_cast<const index_c *>(node.target())) {
+    index->object()->accept(*this);
+    auto object_type = std::move(_current_expression_type);
+
+    if (object_type && object_type->kind == type_kind_e::MAP) {
+      is_map_assignment = true;
+      map_value_type = object_type->map_value_type.get();
+
+      index->index()->accept(*this);
+      auto index_type = std::move(_current_expression_type);
+
+      if (!index_type) {
+        report_error("Map index has invalid type", node.source_index());
+        return;
+      }
+
+      bool valid_key = false;
+      if (index_type->kind == type_kind_e::POINTER &&
+          index_type->pointer_depth == 1 &&
+          (index_type->name == "i8" || index_type->name == "u8")) {
+        valid_key = true;
+      } else if (index_type->kind == type_kind_e::ARRAY &&
+                 !index_type->array_size.has_value() &&
+                 index_type->element_type &&
+                 (index_type->element_type->name == "i8" ||
+                  index_type->element_type->name == "u8")) {
+        valid_key = true;
+      }
+
+      if (!valid_key) {
+        report_error("Map key must be *i8, *u8, []i8, or []u8",
+                     node.source_index());
+        return;
+      }
+
+      node.value()->accept(*this);
+      auto value_type = std::move(_current_expression_type);
+
+      if (!value_type || !map_value_type) {
+        report_error("Assignment with invalid types", node.source_index());
+        return;
+      }
+
+      if (!is_compatible_for_assignment(map_value_type, value_type.get())) {
+        report_error("Assignment type mismatch", node.source_index());
+      }
+
+      _current_expression_type.reset();
+      return;
+    }
+  }
+
   node.target()->accept(*this);
   auto target_type = std::move(_current_expression_type);
 

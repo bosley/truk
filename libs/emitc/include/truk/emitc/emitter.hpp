@@ -101,6 +101,7 @@ public:
   void visit(const truk::language::nodes::pointer_type_c &node) override;
   void visit(const truk::language::nodes::array_type_c &node) override;
   void visit(const truk::language::nodes::function_type_c &node) override;
+  void visit(const truk::language::nodes::map_type_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
@@ -146,9 +147,14 @@ private:
   get_slice_type_name(const truk::language::nodes::type_c *element_type);
   void ensure_slice_typedef(const truk::language::nodes::type_c *element_type);
   bool is_slice_type(const truk::language::nodes::type_c *type);
+  std::string
+  get_map_type_name(const truk::language::nodes::type_c *value_type);
+  void ensure_map_typedef(const truk::language::nodes::type_c *value_type);
+  bool is_map_type(const truk::language::nodes::type_c *type);
   void register_variable_type(const std::string &name,
                               const truk::language::nodes::type_c *type);
   bool is_variable_slice(const std::string &name);
+  bool is_variable_map(const std::string &name);
 
   std::vector<const truk::language::nodes::base_c *> _declarations;
   result_c _result;
@@ -159,10 +165,12 @@ private:
   std::stringstream _functions;
   int _indent_level{0};
   std::unordered_set<std::string> _slice_types_emitted;
+  std::unordered_set<std::string> _map_types_emitted;
   std::unordered_set<std::string> _struct_names;
   std::unordered_set<std::string> _extern_struct_names;
   std::unordered_set<std::string> _function_names;
   std::unordered_map<std::string, bool> _variable_is_slice;
+  std::unordered_map<std::string, bool> _variable_is_map;
   bool _in_expression{false};
   bool _collecting_declarations{false};
   std::string _current_function_name;
