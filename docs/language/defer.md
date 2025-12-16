@@ -2,9 +2,13 @@
 
 ## Overview
 
-The `defer` statement schedules code to execute when the current **function** exits. Deferred code executes in Last-In-First-Out (LIFO) order, meaning the last defer registered is the first to execute.
+The `defer` statement schedules code to execute when the current **scope** exits. Deferred code executes in Last-In-First-Out (LIFO) order, meaning the last defer registered is the first to execute.
 
-Defer is useful for cleanup operations, ensuring resources are released, or performing final computations before a function returns.
+Defer is useful for cleanup operations, ensuring resources are released, or performing final computations. Defers execute when exiting:
+- **Blocks** (anonymous scopes)
+- **Loops** (while, for)
+- **Functions**
+- **Lambdas**
 
 ## Syntax
 
@@ -30,23 +34,23 @@ defer_stmt ::= "defer" (expression ";" | block)
 
 ## Execution Model
 
-### Function-Scope Execution
+### Scope-Based Execution
 
-**Defers execute ONLY when exiting the function**, not at block or loop scope exits. All defers registered anywhere in the function will execute when the function returns, regardless of where they were declared.
+**Defers execute when exiting their declaring scope**. Each scope (block, loop, function, lambda) maintains its own defer stack. When a scope exits normally, its defers execute in LIFO order.
 
 ```truk
 fn main() : i32 {
   var x: i32 = 0;
-  defer x = x + 1;
+  defer x = x + 1;  // Function scope defer
   {
-    defer x = x + 2;  // Still executes at function exit
+    defer x = x + 2;  // Block scope defer
     x = x + 10;
-  }
-  return x;  // Defers execute here: x=10, then x=12, then x=13
+  }  // Block defer executes here: x=10, then x=12
+  return x;  // Function defer executes here: x=12, then x=13
 }
 ```
 
-Returns `13`. Both defers execute at function exit in LIFO order, even though one was declared in a nested block.
+Returns `13`. The block defer executes when exiting the block, then the function defer executes at function exit.
 
 ### LIFO Ordering
 
@@ -117,6 +121,57 @@ fn main() : i32 {
 
 Returns `10`. The defer block executes both statements before the return.
 
+### Block Scope Defer
+
+```truk
+fn main() : i32 {
+  var x: i32 = 0;
+  {
+    defer x = x + 5;
+    x = x + 1;
+  }  // Defer executes here: x=1, then x=6
+  x = x + 4;
+  return x;  // Returns 10
+}
+```
+
+Returns `10`. The defer executes when exiting the block, not at function exit.
+
+### Nested Block Defers
+
+```truk
+fn main() : i32 {
+  var x: i32 = 0;
+  {
+    defer x = x + 1;  // Outer block defer
+    {
+      defer x = x + 2;  // Inner block defer
+    }  // Inner defer executes: x=0, then x=2
+    defer x = x + 3;  // Another outer block defer
+  }  // Outer defers execute in LIFO: x=2, then x=5, then x=6
+  return x;  // Returns 6
+}
+```
+
+Returns `6`. Defers execute when their declaring scope exits, in LIFO order within each scope.
+
+### Loop Scope Defer
+
+```truk
+fn main() : i32 {
+  var x: i32 = 0;
+  var i: i32 = 0;
+  while i < 3 {
+    defer x = x + 1;
+    x = x + 10;
+    i = i + 1;
+  }  // Defer executes at end of each iteration
+  return x;
+}
+```
+
+Returns `33`. Each iteration: x+=10, then defer executes x+=1. After 3 iterations: (10+1) + (10+1) + (10+1) = 33.
+
 ## Interaction with Control Flow
 
 ### Return Statements
@@ -179,45 +234,54 @@ All three defers execute in LIFO order before ANY return, ensuring consistent cl
 
 ### Loops
 
-Defers in loops are registered during code generation (compile time), not during execution (runtime). A defer statement in a loop body is only registered ONCE:
+Defers in loops execute at the end of each loop iteration. Each time the loop body executes, the defer is registered and executes when the iteration completes:
 
 ```truk
 fn main() : i32 {
   var x: i32 = 0;
   var i: i32 = 0;
   while i < 5 {
-    defer x = x + 1;  // Registered ONCE at compile time
+    defer x = x + 1;  // Executes at end of each iteration
     i = i + 1;
   }
-  return x;  // One defer executes: x becomes 1
+  return x;  // Returns 5
 }
 ```
 
-Returns `1`. The defer statement is visited once during code generation, so only one defer is registered, which executes once at function exit.
+Returns `5`. The defer executes 5 times, once at the end of each loop iteration.
 
-**Important**: Defer registration happens at compile time (when the code is generated), not at runtime (when the loop executes). The defer statement itself is not executed multiple times just because it's in a loop.
+**Important**: Loop scopes are special - defers registered in the loop body execute at the end of each iteration, not just once at loop exit.
 
 ### Break and Continue
 
-Break and continue statements do NOT trigger defer execution. Defers only execute at function exit:
+Break and continue statements execute defers from the current scope up to (but not including) the enclosing loop scope:
 
 ```truk
 fn main() : i32 {
   var x: i32 = 0;
-  defer x = x + 100;
+  defer x = x + 100;  // Function scope defer
   var i: i32 = 0;
   while i < 10 {
-    x = x + 1;
-    i = i + 1;
-    if i == 5 {
-      break;  // Defer does NOT execute here
-    }
+    defer x = x + 10;  // Loop scope defer
+    {
+      defer x = x + 1;  // Block scope defer
+      x = x + 1;
+      i = i + 1;
+      if i == 5 {
+        break;  // Executes block defer, then breaks (loop defer NOT executed)
+      }
+    }  // Block defer executes here on normal exit
   }
-  return x;  // Defer executes here: x=5, then x=105
+  return x;  // Function defer executes here
 }
 ```
 
-Returns `105`. The defer executes at function exit, not when the break occurs.
+On break at i==5:
+1. Block defer executes: `x = x + 1`
+2. Break exits loop (loop defer does NOT execute)
+3. At function return, function defer executes: `x = x + 100`
+
+The loop defer (`x = x + 10`) executes at the end of each normal iteration, but NOT when breaking.
 
 ## Restrictions
 
@@ -296,7 +360,7 @@ fn main() : i32 {
   
   if condition {
     defer x = x + 10;  // Only registered if condition is true
-  }
+  }  // If registered, executes here when exiting if block
   
   defer x = x + 1;  // Always registered
   
@@ -304,7 +368,7 @@ fn main() : i32 {
 }
 ```
 
-If `condition` is true, two defers execute. If false, only one defer executes.
+If `condition` is true, the block defer executes when exiting the if block, then the function defer executes at return. If false, only the function defer executes.
 
 ### Defers Don't Execute on Panic
 
@@ -364,22 +428,23 @@ fn conditional_process(needs_cleanup: bool) : i32 {
 
 ## Summary
 
-- Defer schedules code to execute at **function exit** (not block or loop exit)
-- Defers execute in LIFO (Last-In-First-Out) order
-- All defers execute before ANY return statement
-- Defers do NOT execute on break, continue, or panic
+- Defer schedules code to execute at **scope exit** (blocks, loops, functions, lambdas)
+- Defers execute in LIFO (Last-In-First-Out) order within each scope
+- Block and loop defers execute when exiting their scope normally
+- Return statements execute all defers from current scope up to function scope
+- Break/continue execute defers from current scope up to (but not including) loop scope
 - Defers cannot contain control flow statements (return, break, continue)
 - Use defer for cleanup and finalization operations
 - Defer registration is dynamic (happens during execution)
 
 ## Comparison with Other Languages
 
-**Go**: Defer executes at function exit (same as Truk)
+**Go**: Defer executes at function exit only
 
-**C++**: Destructors execute at scope exit (different from Truk - Truk is function-scope only)
+**C++**: Destructors execute at scope exit (same as Truk)
 
-**Rust**: Drop executes at scope exit (different from Truk - Truk is function-scope only)
+**Rust**: Drop executes at scope exit (same as Truk)
 
-**Zig**: Defer executes at scope exit (different from Truk - Truk is function-scope only)
+**Zig**: Defer executes at scope exit (same as Truk)
 
-Truk's defer is simpler and more predictable: it ALWAYS executes at function exit, never at intermediate scope exits.
+Truk's defer follows the Zig model: defers execute when exiting their declaring scope, providing fine-grained control over cleanup and finalization.

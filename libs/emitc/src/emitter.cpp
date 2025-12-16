@@ -571,13 +571,14 @@ void emitter_c::visit(const fn_c &node) {
 
   _current_function_name = node.name().name;
   _current_function_return_type = node.return_type();
-  _function_defers.clear();
 
   if (node.body()) {
     _functions << " ";
     if (has_variadic) {
       _functions << "{\n";
       _indent_level++;
+
+      push_defer_scope(defer_scope_s::scope_type_e::FUNCTION, &node);
 
       _functions << cdef::indent(_indent_level) << "va_list __truk_va_args;\n";
       _functions << cdef::indent(_indent_level) << "va_start(__truk_va_args, ";
@@ -591,19 +592,35 @@ void emitter_c::visit(const fn_c &node) {
         }
       }
 
-      emit_function_defers();
+      emit_scope_defers(_current_defer_scope);
+      pop_defer_scope();
 
       _functions << cdef::indent(_indent_level) << "va_end(__truk_va_args);\n";
       _indent_level--;
       _functions << "}\n";
     } else {
-      node.body()->accept(*this);
+      push_defer_scope(defer_scope_s::scope_type_e::FUNCTION, &node);
+      
+      if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+        _functions << "{\n";
+        _indent_level++;
+        for (const auto &stmt : body_block->statements()) {
+          stmt->accept(*this);
+        }
+        emit_scope_defers(_current_defer_scope);
+        _indent_level--;
+        _functions << cdef::indent(_indent_level) << "}";
+      } else {
+        node.body()->accept(*this);
+        emit_scope_defers(_current_defer_scope);
+      }
+      
+      pop_defer_scope();
     }
   }
 
   _functions << "\n";
 
-  _function_defers.clear();
   _current_function_name = "";
 
   _current_phase = saved_phase;
@@ -706,11 +723,26 @@ void emitter_c::visit(const lambda_c &node) {
   _current_phase = emission_phase_e::FUNCTION_DEFINITION;
   _current_function_name = lambda_name;
   _current_function_return_type = node.return_type();
-  _function_defers.clear();
 
   if (node.body()) {
     _functions << " ";
-    node.body()->accept(*this);
+    push_defer_scope(defer_scope_s::scope_type_e::LAMBDA, &node);
+    
+    if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+      _functions << "{\n";
+      _indent_level++;
+      for (const auto &stmt : body_block->statements()) {
+        stmt->accept(*this);
+      }
+      emit_scope_defers(_current_defer_scope);
+      _indent_level--;
+      _functions << cdef::indent(_indent_level) << "}";
+    } else {
+      node.body()->accept(*this);
+      emit_scope_defers(_current_defer_scope);
+    }
+    
+    pop_defer_scope();
   }
 
   _functions << "\n";
@@ -718,8 +750,6 @@ void emitter_c::visit(const lambda_c &node) {
   std::string lambda_def = _functions.str();
   _functions.swap(saved_functions);
   _header << lambda_def;
-
-  _function_defers.clear();
 
   _current_expr << lambda_name;
 
@@ -931,7 +961,24 @@ void emitter_c::visit(const while_c &node) {
   _current_expr.clear();
   _functions << ") ";
 
-  node.body()->accept(*this);
+  push_defer_scope(defer_scope_s::scope_type_e::LOOP, &node);
+  
+  if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+    _functions << "{\n";
+    _indent_level++;
+    for (const auto &stmt : body_block->statements()) {
+      stmt->accept(*this);
+    }
+    emit_scope_defers(_current_defer_scope);
+    _indent_level--;
+    _functions << cdef::indent(_indent_level) << "}";
+  } else {
+    node.body()->accept(*this);
+    emit_scope_defers(_current_defer_scope);
+  }
+  
+  pop_defer_scope();
+  
   _functions << "\n";
 }
 
@@ -988,12 +1035,29 @@ void emitter_c::visit(const for_c &node) {
 
   _functions << ") ";
 
-  node.body()->accept(*this);
+  push_defer_scope(defer_scope_s::scope_type_e::LOOP, &node);
+  
+  if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+    _functions << "{\n";
+    _indent_level++;
+    for (const auto &stmt : body_block->statements()) {
+      stmt->accept(*this);
+    }
+    emit_scope_defers(_current_defer_scope);
+    _indent_level--;
+    _functions << cdef::indent(_indent_level) << "}";
+  } else {
+    node.body()->accept(*this);
+    emit_scope_defers(_current_defer_scope);
+  }
+  
+  pop_defer_scope();
+  
   _functions << "\n";
 }
 
 void emitter_c::visit(const return_c &node) {
-  emit_function_defers();
+  emit_all_remaining_defers();
 
   _functions << cdef::indent(_indent_level) << "return";
 
@@ -1011,16 +1075,32 @@ void emitter_c::visit(const return_c &node) {
 }
 
 void emitter_c::visit(const break_c &node) {
+  defer_scope_s *loop_scope = find_enclosing_loop_scope();
+  
+  defer_scope_s *scope = _current_defer_scope;
+  while (scope && scope != loop_scope) {
+    emit_scope_defers(scope);
+    scope = scope->parent;
+  }
+  
   _functions << cdef::indent(_indent_level) << "break;\n";
 }
 
 void emitter_c::visit(const continue_c &node) {
+  defer_scope_s *loop_scope = find_enclosing_loop_scope();
+  
+  defer_scope_s *scope = _current_defer_scope;
+  while (scope && scope != loop_scope) {
+    emit_scope_defers(scope);
+    scope = scope->parent;
+  }
+  
   _functions << cdef::indent(_indent_level) << "continue;\n";
 }
 
 void emitter_c::visit(const defer_c &node) {
-  if (node.deferred_code()) {
-    _function_defers.push_back(&node);
+  if (node.deferred_code() && _current_defer_scope) {
+    _current_defer_scope->defers.push_back(&node);
   }
 }
 
@@ -1672,13 +1752,14 @@ void emitter_c::visit(const block_c &node) {
   _functions << "{\n";
   _indent_level++;
 
+  push_defer_scope(defer_scope_s::scope_type_e::BLOCK, &node);
+
   for (const auto &stmt : node.statements()) {
     stmt->accept(*this);
   }
 
-  if (_current_function_name.empty()) {
-    emit_function_defers();
-  }
+  emit_scope_defers(_current_defer_scope);
+  pop_defer_scope();
 
   _indent_level--;
   _functions << cdef::indent(_indent_level) << "}";
@@ -1712,14 +1793,33 @@ void emitter_c::visit(const struct_literal_c &node) {
 
 void emitter_c::visit(const type_param_c &node) {}
 
-void emitter_c::emit_function_defers() {
-  for (auto it = _function_defers.rbegin(); it != _function_defers.rend();
-       ++it) {
+void emitter_c::push_defer_scope(defer_scope_s::scope_type_e type,
+                                  const base_c *owner) {
+  auto scope = std::make_unique<defer_scope_s>(type, owner, _current_defer_scope);
+  _current_defer_scope = scope.get();
+  _defer_scope_stack.push_back(std::move(scope));
+}
+
+void emitter_c::pop_defer_scope() {
+  if (!_defer_scope_stack.empty()) {
+    _defer_scope_stack.pop_back();
+    _current_defer_scope = _defer_scope_stack.empty() 
+        ? nullptr 
+        : _defer_scope_stack.back().get();
+  }
+}
+
+void emitter_c::emit_scope_defers(defer_scope_s *scope) {
+  if (!scope) {
+    return;
+  }
+  
+  for (auto it = scope->defers.rbegin(); it != scope->defers.rend(); ++it) {
     const auto *defer_node = *it;
     if (defer_node->deferred_code()) {
       if (auto block =
               dynamic_cast<const block_c *>(defer_node->deferred_code())) {
-        _functions << "{\n";
+        _functions << cdef::indent(_indent_level) << "{\n";
         _indent_level++;
         for (const auto &stmt : block->statements()) {
           stmt->accept(*this);
@@ -1738,6 +1838,33 @@ void emitter_c::emit_function_defers() {
       }
     }
   }
+}
+
+void emitter_c::emit_all_remaining_defers() {
+  std::vector<defer_scope_s *> scopes_to_emit;
+  defer_scope_s *scope = _current_defer_scope;
+  
+  while (scope) {
+    scopes_to_emit.push_back(scope);
+    scope = scope->parent;
+  }
+  
+  for (auto *s : scopes_to_emit) {
+    emit_scope_defers(s);
+  }
+}
+
+defer_scope_s *emitter_c::find_enclosing_loop_scope() {
+  defer_scope_s *scope = _current_defer_scope;
+  
+  while (scope) {
+    if (scope->type == defer_scope_s::scope_type_e::LOOP) {
+      return scope;
+    }
+    scope = scope->parent;
+  }
+  
+  return nullptr;
 }
 
 void emitter_c::visit(const import_c &node) {}

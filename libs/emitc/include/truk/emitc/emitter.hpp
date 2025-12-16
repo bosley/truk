@@ -32,6 +32,19 @@ enum class emission_phase_e {
 
 const char *emission_phase_name(emission_phase_e phase);
 
+struct defer_scope_s {
+  enum class scope_type_e { FUNCTION, LAMBDA, BLOCK, LOOP };
+  
+  std::vector<const truk::language::nodes::defer_c *> defers;
+  scope_type_e type;
+  const truk::language::nodes::base_c *owner_node;
+  defer_scope_s *parent;
+  
+  defer_scope_s(scope_type_e t, const truk::language::nodes::base_c *owner,
+                defer_scope_s *p)
+      : type(t), owner_node(owner), parent(p) {}
+};
+
 struct error_s {
   std::string message;
   const truk::language::nodes::base_c *node;
@@ -194,12 +207,18 @@ private:
   std::string _current_function_name;
   const truk::language::nodes::type_c *_current_function_return_type{nullptr};
   int _lambda_counter{0};
-  std::vector<const truk::language::nodes::defer_c *> _function_defers;
+  std::vector<std::unique_ptr<defer_scope_s>> _defer_scope_stack;
+  defer_scope_s *_current_defer_scope{nullptr};
   emission_phase_e _current_phase{emission_phase_e::COLLECTION};
   std::string _current_node_context;
   std::vector<truk::language::nodes::c_import_s> _c_imports;
 
-  void emit_function_defers();
+  void push_defer_scope(defer_scope_s::scope_type_e type,
+                        const truk::language::nodes::base_c *owner);
+  void pop_defer_scope();
+  void emit_scope_defers(defer_scope_s *scope);
+  void emit_all_remaining_defers();
+  defer_scope_s *find_enclosing_loop_scope();
 };
 
 } // namespace truk::emitc

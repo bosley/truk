@@ -1,0 +1,9 @@
+fn main() : i32 {
+  var x: i32 = 0;
+  {
+    defer x = x + 5;
+    x = x + 1;
+  }
+  x = x + 4;
+  return x;
+}
