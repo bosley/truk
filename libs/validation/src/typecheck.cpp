@@ -15,6 +15,10 @@ type_checker_c::type_checker_c() {
 
 void type_checker_c::check(const base_c *root) {
   if (root) {
+    auto it = _decl_to_file.find(root);
+    if (it != _decl_to_file.end()) {
+      _current_file = it->second;
+    }
     root->accept(*this);
   }
 }
@@ -389,7 +393,7 @@ bool type_checker_c::is_compatible_for_assignment(const type_entry_s *target,
 
 void type_checker_c::report_error(const std::string &message,
                                   std::size_t source_index) {
-  _detailed_errors.emplace_back(message, source_index);
+  _detailed_errors.emplace_back(message, _current_file, source_index);
 }
 
 std::unique_ptr<type_entry_s>
@@ -1370,6 +1374,13 @@ void type_checker_c::visit(const unary_op_c &node) {
     break;
 
   case unary_op_e::ADDRESS_OF: {
+    if (_current_expression_type->kind == type_kind_e::FUNCTION) {
+      report_error(
+          "Cannot take address of function/lambda (functions are already "
+          "function pointers)",
+          node.source_index());
+      return;
+    }
     auto pointee = std::move(_current_expression_type);
     _current_expression_type =
         std::make_unique<type_entry_s>(type_kind_e::POINTER, pointee->name);

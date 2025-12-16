@@ -113,10 +113,12 @@ struct symbol_entry_s : public truk::core::memory_c<2048>::storeable_if {
 
 struct type_error_s {
   std::string message;
+  std::string file_path;
   std::size_t source_index;
 
-  type_error_s(std::string msg, std::size_t idx)
-      : message(std::move(msg)), source_index(idx) {}
+  type_error_s(std::string msg, std::string file, std::size_t idx)
+      : message(std::move(msg)), file_path(std::move(file)), source_index(idx) {
+  }
 };
 
 class type_checker_c : public truk::language::nodes::visitor_if {
