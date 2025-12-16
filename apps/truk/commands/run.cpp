@@ -64,8 +64,17 @@ int run(const run_options_s &opts) {
 
   if (type_checker.has_errors()) {
     for (const auto &err : type_checker.errors()) {
-      reporter.report_typecheck_error(opts.input_file, source, err.source_index,
-                                      err.message);
+      std::string error_file =
+          err.file_path.empty() ? opts.input_file : err.file_path;
+      std::string error_source = source;
+      if (!err.file_path.empty() && err.file_path != opts.input_file) {
+        try {
+          error_source = ingestion::read_file(err.file_path);
+        } catch (...) {
+        }
+      }
+      reporter.report_typecheck_error(error_file, error_source,
+                                      err.source_index, err.message);
     }
     reporter.print_summary();
     return 1;
