@@ -55,7 +55,7 @@
       "patterns": [
         {
           "name": "keyword.control.truk",
-          "match": "\\b(if|else|while|for|return|break|continue|defer|import|cimport|extern)\\b"
+          "match": "\\b(if|else|while|for|return|break|continue|defer|import|cimport|extern|shard)\\b"
         },
         {
           "name": "keyword.operator.cast.truk",
