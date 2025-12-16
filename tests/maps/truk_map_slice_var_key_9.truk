@@ -1,5 +1,5 @@
 fn main() : i32 {
-  var m: map[i32] = make(@map[i32]);
+  var m: map[*u8, i32] = make(@map[*u8, i32]);
   
   var size: u64 = 10;
   var key: []u8 = make(@u8, size);

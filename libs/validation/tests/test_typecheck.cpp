@@ -1192,7 +1192,7 @@ TEST_GROUP(TypeCheckMapTests) {
 TEST(TypeCheckMapTests, MapCreationWithPrimitiveValue) {
   const char *source = R"(
     fn test(): void {
-      var m: map[i32] = make(@map[i32]);
+      var m: map[*u8, i32] = make(@map[*u8, i32]);
       delete(m);
     }
   )";
@@ -1208,7 +1208,7 @@ TEST(TypeCheckMapTests, MapCreationWithStructValue) {
     }
     
     fn test(): void {
-      var m: map[Point] = make(@map[Point]);
+      var m: map[*u8, Point] = make(@map[*u8, Point]);
       delete(m);
     }
   )";
@@ -1219,7 +1219,7 @@ TEST(TypeCheckMapTests, MapCreationWithStructValue) {
 TEST(TypeCheckMapTests, MapCreationWithPointerValue) {
   const char *source = R"(
     fn test(): void {
-      var m: map[*i32] = make(@map[*i32]);
+      var m: map[*u8, *i32] = make(@map[*u8, *i32]);
       delete(m);
     }
   )";
@@ -1230,7 +1230,7 @@ TEST(TypeCheckMapTests, MapCreationWithPointerValue) {
 TEST(TypeCheckMapTests, MapIndexingWithStringLiteral) {
   const char *source = R"(
     fn test(): void {
-      var m: map[i32] = make(@map[i32]);
+      var m: map[*u8, i32] = make(@map[*u8, i32]);
       m["key"] = 42;
       var ptr: *i32 = m["key"];
       delete(m);
@@ -1243,7 +1243,7 @@ TEST(TypeCheckMapTests, MapIndexingWithStringLiteral) {
 TEST(TypeCheckMapTests, MapIndexingWithU8Pointer) {
   const char *source = R"(
     fn test(): void {
-      var m: map[i32] = make(@map[i32]);
+      var m: map[*u8, i32] = make(@map[*u8, i32]);
       var key: *u8 = "hello";
       m[key] = 42;
       delete(m);
@@ -1256,7 +1256,7 @@ TEST(TypeCheckMapTests, MapIndexingWithU8Pointer) {
 TEST(TypeCheckMapTests, MapIndexingWithI8Pointer) {
   const char *source = R"(
     fn test(): void {
-      var m: map[i32] = make(@map[i32]);
+      var m: map[*u8, i32] = make(@map[*u8, i32]);
       var key: *i8 = "world";
       m[key] = 42;
       delete(m);
@@ -1269,7 +1269,7 @@ TEST(TypeCheckMapTests, MapIndexingWithI8Pointer) {
 TEST(TypeCheckMapTests, MapIndexingWithU8Slice) {
   const char *source = R"(
     fn test(): void {
-      var m: map[i32] = make(@map[i32]);
+      var m: map[*u8, i32] = make(@map[*u8, i32]);
       var size: u64 = 10;
       var key: []u8 = make(@u8, size);
       m[key] = 42;
@@ -1284,7 +1284,7 @@ TEST(TypeCheckMapTests, MapIndexingWithU8Slice) {
 TEST(TypeCheckMapTests, MapIndexingReturnsPointerToValue) {
   const char *source = R"(
     fn test(): void {
-      var m: map[i32] = make(@map[i32]);
+      var m: map[*u8, i32] = make(@map[*u8, i32]);
       m["key"] = 42;
       var ptr: *i32 = m["key"];
       if ptr != nil {
@@ -1300,7 +1300,7 @@ TEST(TypeCheckMapTests, MapIndexingReturnsPointerToValue) {
 TEST(TypeCheckMapTests, MapAssignmentWithCorrectType) {
   const char *source = R"(
     fn test(): void {
-      var m: map[i32] = make(@map[i32]);
+      var m: map[*u8, i32] = make(@map[*u8, i32]);
       m["key"] = 42;
       delete(m);
     }
@@ -1317,7 +1317,7 @@ TEST(TypeCheckMapTests, MapAssignmentWithStructValue) {
     }
     
     fn test(): void {
-      var m: map[Point] = make(@map[Point]);
+      var m: map[*u8, Point] = make(@map[*u8, Point]);
       var p: Point = Point{x: 10, y: 20};
       m["origin"] = p;
       delete(m);
@@ -1330,7 +1330,7 @@ TEST(TypeCheckMapTests, MapAssignmentWithStructValue) {
 TEST(TypeCheckMapTests, MapDeletion) {
   const char *source = R"(
     fn test(): void {
-      var m: map[i32] = make(@map[i32]);
+      var m: map[*u8, i32] = make(@map[*u8, i32]);
       delete(m);
     }
   )";
@@ -1341,7 +1341,7 @@ TEST(TypeCheckMapTests, MapDeletion) {
 TEST(TypeCheckMapTests, MapIndexingWithInvalidKeyType) {
   const char *source = R"(
     fn test(): void {
-      var m: map[i32] = make(@map[i32]);
+      var m: map[*u8, i32] = make(@map[*u8, i32]);
       m[42] = 100;
       delete(m);
     }
@@ -1353,7 +1353,7 @@ TEST(TypeCheckMapTests, MapIndexingWithInvalidKeyType) {
 TEST(TypeCheckMapTests, MapAssignmentWithWrongValueType) {
   const char *source = R"(
     fn test(): void {
-      var m: map[i32] = make(@map[i32]);
+      var m: map[*u8, i32] = make(@map[*u8, i32]);
       m["key"] = true;
       delete(m);
     }
@@ -1365,7 +1365,7 @@ TEST(TypeCheckMapTests, MapAssignmentWithWrongValueType) {
 TEST(TypeCheckMapTests, MapIndexingWrongReturnType) {
   const char *source = R"(
     fn test(): void {
-      var m: map[i32] = make(@map[i32]);
+      var m: map[*u8, i32] = make(@map[*u8, i32]);
       m["key"] = 42;
       var value: i32 = m["key"];
       delete(m);
@@ -1378,7 +1378,7 @@ TEST(TypeCheckMapTests, MapIndexingWrongReturnType) {
 TEST(TypeCheckMapTests, MapWithPointerValuesCorrectUsage) {
   const char *source = R"(
     fn test(): void {
-      var m: map[*i32] = make(@map[*i32]);
+      var m: map[*u8, *i32] = make(@map[*u8, *i32]);
       var value: i32 = 10;
       m["key"] = &value;
       var ptr_ptr: **i32 = m["key"];
@@ -1392,8 +1392,8 @@ TEST(TypeCheckMapTests, MapWithPointerValuesCorrectUsage) {
 TEST(TypeCheckMapTests, MapTypeEqualityDifferentValueTypes) {
   const char *source = R"(
     fn test(): void {
-      var m1: map[i32] = make(@map[i32]);
-      var m2: map[f64] = make(@map[f64]);
+      var m1: map[*u8, i32] = make(@map[*u8, i32]);
+      var m2: map[*u8, f64] = make(@map[*u8, f64]);
       delete(m1);
       delete(m2);
     }
@@ -1405,7 +1405,7 @@ TEST(TypeCheckMapTests, MapTypeEqualityDifferentValueTypes) {
 TEST(TypeCheckMapTests, MapNestedValueTypes) {
   const char *source = R"(
     fn test(): void {
-      var m: map[*i32] = make(@map[*i32]);
+      var m: map[*u8, *i32] = make(@map[*u8, *i32]);
       var value: i32 = 42;
       var ptr: *i32 = &value;
       m["key"] = ptr;

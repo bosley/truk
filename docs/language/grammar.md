@@ -55,7 +55,7 @@ array_type      ::= "[" expression? "]" type
 
 pointer_type    ::= "*" type
 
-map_type        ::= "map" "[" type "]"
+map_type        ::= "map" "[" type "," type "]"
 
 block           ::= "{" statement* "}"
 

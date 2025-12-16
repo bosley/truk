@@ -8,7 +8,7 @@ struct Outer {
 }
 
 fn main() : i32 {
-  var m: map[Outer] = make(@map[Outer]);
+  var m: map[*u8, Outer] = make(@map[*u8, Outer]);
   
   var inner1: Inner = Inner{value: 40};
   var outer1: Outer = Outer{inner: inner1, extra: 8};

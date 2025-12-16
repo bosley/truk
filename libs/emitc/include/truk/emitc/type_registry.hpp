@@ -26,8 +26,10 @@ public:
   bool is_slice_type(const truk::language::nodes::type_c *type);
 
   std::string
-  get_map_type_name(const truk::language::nodes::type_c *value_type);
-  void ensure_map_typedef(const truk::language::nodes::type_c *value_type,
+  get_map_type_name(const truk::language::nodes::type_c *key_type,
+                    const truk::language::nodes::type_c *value_type);
+  void ensure_map_typedef(const truk::language::nodes::type_c *key_type,
+                          const truk::language::nodes::type_c *value_type,
                           std::stringstream &structs_stream);
   bool is_map_type(const truk::language::nodes::type_c *type);
 

@@ -1,21 +1,21 @@
 # Maps in truk
 
-Maps are hash tables with string keys and values of any type. They provide O(1) average-case lookup, insertion, and deletion.
+Maps are hash tables with typed keys and values. They provide O(1) average-case lookup, insertion, and deletion.
 
 ## Syntax
 
 ```truk
-map[V]
+map[K, V]
 ```
 
-Where `V` is the value type. Keys are always string-like types.
+Where `K` is the key type and `V` is the value type. Keys can be primitives (integers, floats, bool) or string pointers (*u8, *i8).
 
 ## Basic Usage
 
 ### Creating a Map
 
 ```truk
-var m: map[i32] = make(@map[i32]);
+var m: map[*u8, i32] = make(@map[*u8, i32]);
 ```
 
 ### Inserting Values
@@ -72,37 +72,86 @@ This frees all internal map structures. See Memory Model section for details on 
 
 ## Key Types
 
-Maps accept **string-like keys**:
+Maps support multiple key types:
 
-### String Literals
+### Primitive Keys
 
+**Integers:**
 ```truk
+var m1: map[*u8, i32, *u8] = make(@map[*u8, i32, *u8]);
+m1[42] = "answer";
+
+var m2: map[*u8, u64, bool] = make(@map[*u8, u64, bool]);
+m2[12345] = true;
+```
+
+**Floats:**
+```truk
+var m: map[*u8, f32, i32] = make(@map[*u8, f32, i32]);
+m[3.14] = 100;
+```
+
+**Booleans:**
+```truk
+var m: map[*u8, bool, *u8] = make(@map[*u8, bool, *u8]);
+m[true] = "yes";
+m[false] = "no";
+```
+
+### String Keys
+
+**String Literals:**
+```truk
+var m: map[*u8, *u8, i32] = make(@map[*u8, *u8, i32]);
 m["literal"] = 42;
 ```
 
 String literals are `*u8` type.
 
-### String Variables
-
+**String Variables:**
 ```truk
+var m: map[*u8, *u8, i32] = make(@map[*u8, *u8, i32]);
 var key1: *u8 = "hello";
 var key2: *i8 = "world";
 m[key1] = 1;
-m[key2] = 2;
 ```
 
 Both `*u8` and `*i8` work as keys.
 
-### Slice Keys
-
+**Slice Keys:**
 ```truk
+var m: map[*u8, *u8, i32] = make(@map[*u8, *u8, i32]);
 var size: u64 = 10;
 var key: []u8 = make(@u8, size);
 m[key] = 42;
 delete(key);
 ```
 
-Slices (`[]u8`, `[]i8`) automatically use their `.data` field as the C string pointer.
+Slices (`[]u8`, `[]i8`) automatically convert to string pointers.
+
+### Key Type Examples
+
+**Integer keys for lookup tables:**
+```truk
+var status_codes: map[i32, *u8] = make(@map[i32, *u8]);
+status_codes[200] = "OK";
+status_codes[404] = "Not Found";
+status_codes[500] = "Internal Server Error";
+```
+
+**Float keys for scientific data:**
+```truk
+var measurements: map[f64, i32] = make(@map[f64, i32]);
+measurements[98.6] = 1;
+measurements[99.1] = 2;
+```
+
+**Boolean keys for binary flags:**
+```truk
+var settings: map[bool, *u8] = make(@map[bool, *u8]);
+settings[true] = "enabled";
+settings[false] = "disabled";
+```
 
 ## Value Types
 
@@ -111,9 +160,9 @@ Maps can store any type as values.
 ### Primitives
 
 ```truk
-var m1: map[i32] = make(@map[i32]);
-var m2: map[f64] = make(@map[f64]);
-var m3: map[bool] = make(@map[bool]);
+var m1: map[*u8, *u8, i32] = make(@map[*u8, *u8, i32]);
+var m2: map[*u8, *u8, f64] = make(@map[*u8, *u8, f64]);
+var m3: map[*u8, *u8, bool] = make(@map[*u8, *u8, bool]);
 
 m1["count"] = 42;
 m2["pi"] = 3.14;
@@ -123,7 +172,7 @@ m3["flag"] = true;
 ### Pointers
 
 ```truk
-var m: map[*i32] = make(@map[*i32]);
+var m: map[*u8, *u8, *i32] = make(@map[*u8, *u8, *i32]);
 
 var x: i32 = 100;
 m["ptr"] = &x;
@@ -144,7 +193,7 @@ struct Point {
   y: i32
 }
 
-var m: map[Point] = make(@map[Point]);
+var m: map[*u8, *u8, Point] = make(@map[*u8, *u8, Point]);
 
 var p: Point = Point{x: 10, y: 20};
 m["origin"] = p;
@@ -165,7 +214,7 @@ if ptr != nil {
 #### Stack Values are Safe
 
 ```truk
-var m: map[Point] = make(@map[Point]);
+var m: map[*u8, Point] = make(@map[*u8, Point]);
 
 var stack_point: Point = Point{x: 10, y: 20};
 m["key"] = stack_point;
@@ -178,7 +227,7 @@ delete(m);
 #### Modifications Don't Affect Original
 
 ```truk
-var m: map[Point] = make(@map[Point]);
+var m: map[*u8, Point] = make(@map[*u8, Point]);
 
 var original: Point = Point{x: 10, y: 20};
 m["key"] = original;
@@ -197,7 +246,7 @@ When storing pointers, **the map copies the pointer value** (the address), not w
 #### Correct Pattern: Manual Cleanup
 
 ```truk
-var m: map[*Point] = make(@map[*Point]);
+var m: map[*u8, *Point] = make(@map[*u8, *Point]);
 
 m["data"] = make(@Point);
 
@@ -214,7 +263,7 @@ delete(m);
 #### Memory Leak Example
 
 ```truk
-var m: map[*i32] = make(@map[*i32]);
+var m: map[*u8, *i32] = make(@map[*u8, *i32]);
 
 m["key"] = make(@i32);
 
@@ -239,7 +288,7 @@ When you call `delete(m)`, the map implementation:
 Since map indexing returns a pointer, you can modify values in place:
 
 ```truk
-var m: map[i32] = make(@map[i32]);
+var m: map[*u8, i32] = make(@map[*u8, i32]);
 
 m["counter"] = 0;
 
@@ -261,7 +310,7 @@ The modifications persist because you're modifying the map's internal storage th
 ### Check-Then-Insert
 
 ```truk
-var m: map[i32] = make(@map[i32]);
+var m: map[*u8, i32] = make(@map[*u8, i32]);
 
 var ptr: *i32 = m["key"];
 if ptr == nil {
@@ -272,7 +321,7 @@ if ptr == nil {
 ### Accumulator Pattern
 
 ```truk
-var m: map[i32] = make(@map[i32]);
+var m: map[*u8, i32] = make(@map[*u8, i32]);
 
 m["total"] = 0;
 
@@ -285,8 +334,8 @@ if ptr != nil {
 ### Multiple Maps
 
 ```truk
-var cache: map[i32] = make(@map[i32]);
-var index: map[*Data] = make(@map[*Data]);
+var cache: map[*u8, i32] = make(@map[*u8, i32]);
+var index: map[*u8, *Data] = make(@map[*u8, *Data]);
 
 cache["count"] = 42;
 index["user"] = make(@Data);
@@ -310,7 +359,7 @@ struct Container {
   size: i32
 }
 
-var m: map[Container] = make(@map[Container]);
+var m: map[*u8, Container] = make(@map[*u8, Container]);
 
 var heap_data: *i32 = make(@i32);
 *heap_data = 100;
@@ -342,7 +391,7 @@ struct Outer {
   extra: i32
 }
 
-var m: map[Outer] = make(@map[Outer]);
+var m: map[*u8, Outer] = make(@map[*u8, Outer]);
 
 var inner: Inner = Inner{value: 10};
 var outer: Outer = Outer{inner: inner, extra: 20};
@@ -369,15 +418,14 @@ The entire nested structure is copied into the map.
 
 ## Limitations
 
-### String Keys Only
+### Supported Key Types
 
-Keys must be string-like types:
-- `*i8` - C string pointer (signed char)
-- `*u8` - C string pointer (unsigned char)
-- `[]i8` - Byte slice (uses `.data` field)
-- `[]u8` - Byte slice (uses `.data` field)
+Maps support the following key types:
+- **Primitives**: i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, bool
+- **String pointers**: *i8, *u8
+- **String slices**: []i8, []u8 (automatically converted to string pointers)
 
-Integer keys, struct keys, and other types are not supported.
+Struct keys, array keys, and other complex types are not supported.
 
 ### No Iteration
 
@@ -388,7 +436,7 @@ Currently, there is no built-in way to iterate over map keys or values. This is 
 You can remove individual keys from a map using `delete` on the indexed value:
 
 ```truk
-var m: map[i32] = make(@map[i32]);
+var m: map[*u8, i32] = make(@map[*u8, i32]);
 
 m["key"] = 42;
 delete(m["key"]);
@@ -407,12 +455,12 @@ truk maps are similar to Go maps with some differences:
 
 | Feature | Go | truk |
 |---------|-----|------|
-| Syntax | `map[string]int` | `map[i32]` |
-| Keys | Any comparable type | String-like only |
+| Syntax | `map[string]int` | `map[*u8, i32]` or `map[i32, i32]` |
+| Keys | Any comparable type | Primitives + string pointers |
 | Indexing | Returns value + ok | Returns `*V` (nil if missing) |
-| Creation | `make(map[K]V)` | `make(@map[V])` |
+| Creation | `make(map[K]V)` | `make(@map[K, V])` |
 | Deletion | `delete(m, key)` | No key removal |
-| Iteration | `for k, v := range m` | Not supported |
+| Iteration | `for k, v := range m` | `each(m, ctx, callback)` |
 | Memory | Garbage collected | Manual with `delete(m)` |
 
 ## Best Practices
@@ -429,7 +477,7 @@ if ptr != nil {
 ### 2. Free Pointed-To Data
 
 ```truk
-var m: map[*Data] = make(@map[*Data]);
+var m: map[*u8, *Data] = make(@map[*u8, *Data]);
 
 m["item"] = make(@Data);
 
@@ -447,7 +495,7 @@ If you need to share data between map and other code, use pointers as values:
 
 ```truk
 var shared: *Point = make(@Point);
-var m: map[*Point] = make(@map[*Point]);
+var m: map[*u8, *Point] = make(@map[*u8, *Point]);
 m["shared"] = shared;
 
 delete(shared);
@@ -457,7 +505,7 @@ delete(m);
 ### 4. Pair make with delete
 
 ```truk
-var m: map[i32] = make(@map[i32]);
+var m: map[*u8, i32] = make(@map[*u8, i32]);
 defer delete(m);
 ```
 
@@ -472,7 +520,7 @@ struct User {
 }
 
 fn main() : i32 {
-  var users: map[User] = make(@map[User]);
+  var users: map[*u8, User] = make(@map[*u8, User]);
   
   var alice: User = User{id: 1, score: 95};
   var bob: User = User{id: 2, score: 87};

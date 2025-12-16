@@ -1,7 +1,7 @@
 fn main() : i32 {
-  var m1: map[i32] = make(@map[i32]);
-  var m2: map[i32] = make(@map[i32]);
-  var m3: map[i32] = make(@map[i32]);
+  var m1: map[*u8, i32] = make(@map[*u8, i32]);
+  var m2: map[*u8, i32] = make(@map[*u8, i32]);
+  var m3: map[*u8, i32] = make(@map[*u8, i32]);
   
   m1["a"] = 50;
   m2["b"] = 50;

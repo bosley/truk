@@ -3,6 +3,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the MIT license. See LICENSE for details.
+ * - Modified for TRUK by bosley 2025 - Generic key support
  */
 
 #include <stdlib.h>
@@ -13,11 +14,10 @@ struct __truk_map_node_t {
   unsigned hash;
   void *value;
   __truk_map_node_t *next;
-  /* char key[]; */
-  /* char value[]; */
 };
 
-static unsigned __truk_map_hash(const char *str) {
+unsigned __truk_map_hash_str(const void *key, int ksize) {
+  const char *str = *(const char **)key;
   unsigned hash = 5381;
   while (*str) {
     hash = ((hash << 5) + hash) ^ *str++;
@@ -25,24 +25,89 @@ static unsigned __truk_map_hash(const char *str) {
   return hash;
 }
 
-static __truk_map_node_t *__truk_map_newnode(const char *key, void *value,
+unsigned __truk_map_hash_i8(const void *key, int ksize) {
+  return (unsigned)(*(const signed char *)key);
+}
+
+unsigned __truk_map_hash_i16(const void *key, int ksize) {
+  return (unsigned)(*(const short *)key);
+}
+
+unsigned __truk_map_hash_i32(const void *key, int ksize) {
+  return (unsigned)(*(const int *)key);
+}
+
+unsigned __truk_map_hash_i64(const void *key, int ksize) {
+  long long val = *(const long long *)key;
+  return (unsigned)(val ^ (val >> 32));
+}
+
+unsigned __truk_map_hash_u8(const void *key, int ksize) {
+  return (unsigned)(*(const unsigned char *)key);
+}
+
+unsigned __truk_map_hash_u16(const void *key, int ksize) {
+  return (unsigned)(*(const unsigned short *)key);
+}
+
+unsigned __truk_map_hash_u32(const void *key, int ksize) {
+  return *(const unsigned int *)key;
+}
+
+unsigned __truk_map_hash_u64(const void *key, int ksize) {
+  unsigned long long val = *(const unsigned long long *)key;
+  return (unsigned)(val ^ (val >> 32));
+}
+
+unsigned __truk_map_hash_f32(const void *key, int ksize) {
+  union {
+    float f;
+    unsigned u;
+  } conv;
+  conv.f = *(const float *)key;
+  return conv.u;
+}
+
+unsigned __truk_map_hash_f64(const void *key, int ksize) {
+  union {
+    double d;
+    unsigned long long u;
+  } conv;
+  conv.d = *(const double *)key;
+  return (unsigned)(conv.u ^ (conv.u >> 32));
+}
+
+unsigned __truk_map_hash_bool(const void *key, int ksize) {
+  return *(const unsigned char *)key;
+}
+
+int __truk_map_cmp_str(const void *a, const void *b, int ksize) {
+  const char *sa = *(const char **)a;
+  const char *sb = *(const char **)b;
+  return strcmp(sa, sb);
+}
+
+int __truk_map_cmp_mem(const void *a, const void *b, int ksize) {
+  return memcmp(a, b, ksize);
+}
+
+static __truk_map_node_t *__truk_map_newnode(__truk_map_base_t *m,
+                                             const void *key, void *value,
                                              int vsize) {
   __truk_map_node_t *node;
-  int ksize = strlen(key) + 1;
+  int ksize = m->ksize;
   int voffset = ksize + ((sizeof(void *) - ksize) % sizeof(void *));
   node = malloc(sizeof(*node) + voffset + vsize);
   if (!node)
     return NULL;
   memcpy(node + 1, key, ksize);
-  node->hash = __truk_map_hash(key);
+  node->hash = m->hash_fn(key, ksize);
   node->value = ((char *)(node + 1)) + voffset;
   memcpy(node->value, value, vsize);
   return node;
 }
 
 static int __truk_map_bucketidx(__truk_map_base_t *m, unsigned hash) {
-  /* If the implementation is changed to allow a non-power-of-2 bucket count,
-   * the line below should be changed to use mod instead of AND */
   return hash & (m->nbuckets - 1);
 }
 
@@ -56,7 +121,6 @@ static int __truk_map_resize(__truk_map_base_t *m, int nbuckets) {
   __truk_map_node_t *nodes, *node, *next;
   __truk_map_node_t **buckets;
   int i;
-  /* Chain all nodes together */
   nodes = NULL;
   i = m->nbuckets;
   while (i--) {
@@ -68,7 +132,6 @@ static int __truk_map_resize(__truk_map_base_t *m, int nbuckets) {
       node = next;
     }
   }
-  /* Reset buckets */
   buckets = realloc(m->buckets, sizeof(*m->buckets) * nbuckets);
   if (buckets != NULL) {
     m->buckets = buckets;
@@ -76,7 +139,6 @@ static int __truk_map_resize(__truk_map_base_t *m, int nbuckets) {
   }
   if (m->buckets) {
     memset(m->buckets, 0, sizeof(*m->buckets) * m->nbuckets);
-    /* Re-add nodes to buckets */
     node = nodes;
     while (node) {
       next = node->next;
@@ -84,18 +146,18 @@ static int __truk_map_resize(__truk_map_base_t *m, int nbuckets) {
       node = next;
     }
   }
-  /* Return error code if realloc() failed */
   return (buckets == NULL) ? -1 : 0;
 }
 
 static __truk_map_node_t **__truk_map_getref(__truk_map_base_t *m,
-                                             const char *key) {
-  unsigned hash = __truk_map_hash(key);
+                                             const void *key) {
+  unsigned hash = m->hash_fn(key, m->ksize);
   __truk_map_node_t **next;
   if (m->nbuckets > 0) {
     next = &m->buckets[__truk_map_bucketidx(m, hash)];
     while (*next) {
-      if ((*next)->hash == hash && !strcmp((char *)(*next + 1), key)) {
+      if ((*next)->hash == hash &&
+          m->cmp_fn((void *)(*next + 1), key, m->ksize) == 0) {
         return next;
       }
       next = &(*next)->next;
@@ -119,23 +181,21 @@ void __truk_map_deinit_(__truk_map_base_t *m) {
   free(m->buckets);
 }
 
-void *__truk_map_get_(__truk_map_base_t *m, const char *key) {
+void *__truk_map_get_(__truk_map_base_t *m, const void *key) {
   __truk_map_node_t **next = __truk_map_getref(m, key);
   return next ? (*next)->value : NULL;
 }
 
-int __truk_map_set_(__truk_map_base_t *m, const char *key, void *value,
+int __truk_map_set_(__truk_map_base_t *m, const void *key, void *value,
                     int vsize) {
   int n, err;
   __truk_map_node_t **next, *node;
-  /* Find & replace existing node */
   next = __truk_map_getref(m, key);
   if (next) {
     memcpy((*next)->value, value, vsize);
     return 0;
   }
-  /* Add new node */
-  node = __truk_map_newnode(key, value, vsize);
+  node = __truk_map_newnode(m, key, value, vsize);
   if (node == NULL)
     goto fail;
   if (m->nnodes >= m->nbuckets) {
@@ -153,7 +213,7 @@ fail:
   return -1;
 }
 
-void __truk_map_remove_(__truk_map_base_t *m, const char *key) {
+void __truk_map_remove_(__truk_map_base_t *m, const void *key) {
   __truk_map_node_t *node;
   __truk_map_node_t **next = __truk_map_getref(m, key);
   if (next) {
@@ -171,7 +231,7 @@ __truk_map_iter_t __truk_map_iter_(void) {
   return iter;
 }
 
-const char *__truk_map_next_(__truk_map_base_t *m, __truk_map_iter_t *iter) {
+void *__truk_map_next_(__truk_map_base_t *m, __truk_map_iter_t *iter) {
   if (iter->node) {
     iter->node = iter->node->next;
     if (iter->node == NULL)
@@ -185,5 +245,5 @@ const char *__truk_map_next_(__truk_map_base_t *m, __truk_map_iter_t *iter) {
       iter->node = m->buckets[iter->bucketidx];
     } while (iter->node == NULL);
   }
-  return (char *)(iter->node + 1);
+  return (void *)(iter->node + 1);
 }

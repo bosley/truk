@@ -4,7 +4,7 @@ struct Accumulator {
 }
 
 fn main() : i32 {
-  var m: map[i32] = make(@map[i32]);
+  var m: map[*u8, i32] = make(@map[*u8, i32]);
   m["first"] = 5;
   m["second"] = 7;
   m["third"] = 9;

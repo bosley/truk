@@ -188,9 +188,14 @@ private:
   void ensure_slice_typedef(const truk::language::nodes::type_c *element_type);
   bool is_slice_type(const truk::language::nodes::type_c *type);
   std::string
-  get_map_type_name(const truk::language::nodes::type_c *value_type);
-  void ensure_map_typedef(const truk::language::nodes::type_c *value_type);
+  get_map_type_name(const truk::language::nodes::type_c *key_type,
+                    const truk::language::nodes::type_c *value_type);
+  void ensure_map_typedef(const truk::language::nodes::type_c *key_type,
+                          const truk::language::nodes::type_c *value_type);
   bool is_map_type(const truk::language::nodes::type_c *type);
+  std::string get_map_hash_fn(const truk::language::nodes::type_c *key_type);
+  std::string get_map_cmp_fn(const truk::language::nodes::type_c *key_type);
+  int get_key_size(const truk::language::nodes::type_c *key_type);
   void register_variable_type(const std::string &name,
                               const truk::language::nodes::type_c *type);
   bool is_variable_slice(const std::string &name);

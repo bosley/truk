@@ -1,5 +1,5 @@
 fn main() : i32 {
-  var m: map[f64] = make(@map[f64]);
+  var m: map[*u8, f64] = make(@map[*u8, f64]);
   
   m["pi"] = 3.14;
   m["e"] = 2.71;

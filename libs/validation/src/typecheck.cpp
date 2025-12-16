@@ -178,13 +178,15 @@ type_checker_c::resolve_type(const type_c *type_node) {
   }
 
   if (auto *map = dynamic_cast<const map_type_c *>(type_node)) {
+    auto key_type = resolve_type(map->key_type());
     auto value_type = resolve_type(map->value_type());
 
-    if (!value_type) {
+    if (!key_type || !value_type) {
       return nullptr;
     }
 
     auto resolved = std::make_unique<type_entry_s>(type_kind_e::MAP, "map");
+    resolved->map_key_type = std::make_unique<type_entry_s>(*key_type);
     resolved->map_value_type = std::make_unique<type_entry_s>(*value_type);
     return resolved;
   }
@@ -221,7 +223,8 @@ std::string type_checker_c::get_type_name_for_error(const type_c *type_node) {
   }
 
   if (auto *map = dynamic_cast<const map_type_c *>(type_node)) {
-    return "map[" + get_type_name_for_error(map->value_type()) + "]";
+    return "map[" + get_type_name_for_error(map->key_type()) + ", " +
+           get_type_name_for_error(map->value_type()) + "]";
   }
 
   return "<unknown>";
@@ -251,11 +254,11 @@ std::string type_checker_c::get_type_name_from_entry(const type_entry_s *type) {
   }
 
   if (type->kind == type_kind_e::MAP) {
-    if (type->map_value_type) {
-      return "map[" + get_type_name_from_entry(type->map_value_type.get()) +
-             "]";
+    if (type->map_key_type && type->map_value_type) {
+      return "map[" + get_type_name_from_entry(type->map_key_type.get()) +
+             ", " + get_type_name_from_entry(type->map_value_type.get()) + "]";
     }
-    return "map[<unknown>]";
+    return "map[<unknown>, <unknown>]";
   }
 
   return base_name;
@@ -311,9 +314,16 @@ bool type_checker_c::types_equal(const type_entry_s *a, const type_entry_s *b) {
     }
   }
 
-  if (a->kind == type_kind_e::MAP && a->map_value_type && b->map_value_type) {
-    if (!types_equal(a->map_value_type.get(), b->map_value_type.get())) {
-      return false;
+  if (a->kind == type_kind_e::MAP) {
+    if (a->map_key_type && b->map_key_type) {
+      if (!types_equal(a->map_key_type.get(), b->map_key_type.get())) {
+        return false;
+      }
+    }
+    if (a->map_value_type && b->map_value_type) {
+      if (!types_equal(a->map_value_type.get(), b->map_value_type.get())) {
+        return false;
+      }
     }
   }
 
@@ -360,6 +370,25 @@ bool type_checker_c::is_comparable_type(const type_entry_s *type) {
 
   if (type->kind == type_kind_e::POINTER) {
     return true;
+  }
+
+  return false;
+}
+
+bool type_checker_c::is_valid_map_key_type(const type_entry_s *type) {
+  if (!type) {
+    return false;
+  }
+
+  if (type->kind == type_kind_e::PRIMITIVE) {
+    return type->name == "i8" || type->name == "i16" || type->name == "i32" ||
+           type->name == "i64" || type->name == "u8" || type->name == "u16" ||
+           type->name == "u32" || type->name == "u64" || type->name == "f32" ||
+           type->name == "f64" || type->name == "bool";
+  }
+
+  if (type->kind == type_kind_e::POINTER && type->pointer_depth == 1) {
+    return type->name == "u8" || type->name == "i8";
   }
 
   return false;
@@ -618,10 +647,17 @@ void type_checker_c::validate_builtin_call(const call_c &node,
       }
 
       auto &key_param = callback_type->function_param_types[0];
-      if (!key_param || key_param->kind != type_kind_e::POINTER ||
-          key_param->pointer_depth != 1 || key_param->name != "u8") {
+
+      if (!collection_type->map_key_type) {
+        report_error("Map has no key type", node.source_index());
+        return;
+      }
+
+      if (!types_equal(key_param.get(), collection_type->map_key_type.get())) {
         report_error(
-            "First parameter of 'each' callback for map must be *u8 (key)",
+            "First parameter of 'each' callback must match map key type: " +
+                get_type_name_from_entry(collection_type->map_key_type.get()) +
+                " but got " + get_type_name_from_entry(key_param.get()),
             node.source_index());
         return;
       }
@@ -906,14 +942,30 @@ void type_checker_c::visit(const function_type_c &node) {
 }
 
 void type_checker_c::visit(const map_type_c &node) {
+  auto key_type = resolve_type(node.key_type());
   auto value_type = resolve_type(node.value_type());
+
+  if (!key_type) {
+    report_error("Failed to resolve map key type", node.source_index());
+    return;
+  }
 
   if (!value_type) {
     report_error("Failed to resolve map value type", node.source_index());
     return;
   }
 
+  if (!is_valid_map_key_type(key_type.get())) {
+    report_error(
+        "Invalid map key type: " + get_type_name_from_entry(key_type.get()) +
+            ". Keys must be primitives (integers, floats, bool) or "
+            "string pointers (*u8, *i8)",
+        node.source_index());
+    return;
+  }
+
   auto map_type = std::make_unique<type_entry_s>(type_kind_e::MAP, "map");
+  map_type->map_key_type = std::move(key_type);
   map_type->map_value_type = std::move(value_type);
   _current_expression_type = std::move(map_type);
 }
@@ -1547,23 +1599,44 @@ void type_checker_c::visit(const index_c &node) {
       return;
     }
 
-    bool valid_key = false;
-
-    if (index_type->kind == type_kind_e::POINTER &&
-        index_type->pointer_depth == 1 &&
-        (index_type->name == "i8" || index_type->name == "u8")) {
-      valid_key = true;
-    } else if (index_type->kind == type_kind_e::ARRAY &&
-               !index_type->array_size.has_value() &&
-               index_type->element_type &&
-               (index_type->element_type->name == "i8" ||
-                index_type->element_type->name == "u8")) {
-      valid_key = true;
+    if (!object_type->map_key_type) {
+      report_error("Map has no key type", node.source_index());
+      return;
     }
 
-    if (!valid_key) {
-      report_error("Map key must be *i8, *u8, []i8, or []u8",
-                   node.source_index());
+    if (index_type->kind == type_kind_e::ARRAY &&
+        !index_type->array_size.has_value() && index_type->element_type &&
+        (index_type->element_type->name == "i8" ||
+         index_type->element_type->name == "u8")) {
+      auto string_ptr_type =
+          std::make_unique<type_entry_s>(type_kind_e::POINTER, "u8");
+      string_ptr_type->pointer_depth = 1;
+      index_type = std::move(string_ptr_type);
+    }
+
+    index_type = resolve_untyped_literal(index_type.get(),
+                                         object_type->map_key_type.get());
+
+    bool key_types_compatible =
+        types_equal(index_type.get(), object_type->map_key_type.get());
+
+    if (!key_types_compatible && index_type->kind == type_kind_e::POINTER &&
+        object_type->map_key_type->kind == type_kind_e::POINTER &&
+        index_type->pointer_depth == 1 &&
+        object_type->map_key_type->pointer_depth == 1 &&
+        ((index_type->name == "i8" &&
+          object_type->map_key_type->name == "u8") ||
+         (index_type->name == "u8" &&
+          object_type->map_key_type->name == "i8"))) {
+      key_types_compatible = true;
+    }
+
+    if (!key_types_compatible) {
+      report_error(
+          "Map key type mismatch: expected " +
+              get_type_name_from_entry(object_type->map_key_type.get()) +
+              " but got " + get_type_name_from_entry(index_type.get()),
+          node.source_index());
       return;
     }
 
@@ -1719,22 +1792,44 @@ void type_checker_c::visit(const assignment_c &node) {
         return;
       }
 
-      bool valid_key = false;
-      if (index_type->kind == type_kind_e::POINTER &&
-          index_type->pointer_depth == 1 &&
-          (index_type->name == "i8" || index_type->name == "u8")) {
-        valid_key = true;
-      } else if (index_type->kind == type_kind_e::ARRAY &&
-                 !index_type->array_size.has_value() &&
-                 index_type->element_type &&
-                 (index_type->element_type->name == "i8" ||
-                  index_type->element_type->name == "u8")) {
-        valid_key = true;
+      if (!object_type->map_key_type) {
+        report_error("Map has no key type", node.source_index());
+        return;
       }
 
-      if (!valid_key) {
-        report_error("Map key must be *i8, *u8, []i8, or []u8",
-                     node.source_index());
+      if (index_type->kind == type_kind_e::ARRAY &&
+          !index_type->array_size.has_value() && index_type->element_type &&
+          (index_type->element_type->name == "i8" ||
+           index_type->element_type->name == "u8")) {
+        auto string_ptr_type =
+            std::make_unique<type_entry_s>(type_kind_e::POINTER, "u8");
+        string_ptr_type->pointer_depth = 1;
+        index_type = std::move(string_ptr_type);
+      }
+
+      index_type = resolve_untyped_literal(index_type.get(),
+                                           object_type->map_key_type.get());
+
+      bool key_types_compatible =
+          types_equal(index_type.get(), object_type->map_key_type.get());
+
+      if (!key_types_compatible && index_type->kind == type_kind_e::POINTER &&
+          object_type->map_key_type->kind == type_kind_e::POINTER &&
+          index_type->pointer_depth == 1 &&
+          object_type->map_key_type->pointer_depth == 1 &&
+          ((index_type->name == "i8" &&
+            object_type->map_key_type->name == "u8") ||
+           (index_type->name == "u8" &&
+            object_type->map_key_type->name == "i8"))) {
+        key_types_compatible = true;
+      }
+
+      if (!key_types_compatible) {
+        report_error(
+            "Map key type mismatch: expected " +
+                get_type_name_from_entry(object_type->map_key_type.get()) +
+                " but got " + get_type_name_from_entry(index_type.get()),
+            node.source_index());
         return;
       }
 

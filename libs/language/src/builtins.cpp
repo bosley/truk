@@ -142,7 +142,8 @@ static type_ptr build_each_signature(const type_c *type_param) {
 
   // Map parameter
   params.push_back(std::make_unique<map_type_c>(
-      0, std::make_unique<primitive_type_c>(keywords_e::VOID, 0)));
+      0, std::make_unique<primitive_type_c>(keywords_e::VOID, 0),
+      std::make_unique<primitive_type_c>(keywords_e::VOID, 0)));
 
   // Context parameter (void* as placeholder)
   auto void_type = std::make_unique<primitive_type_c>(keywords_e::VOID, 0);

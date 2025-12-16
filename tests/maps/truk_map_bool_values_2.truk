@@ -1,5 +1,5 @@
 fn main() : i32 {
-  var m: map[bool] = make(@map[bool]);
+  var m: map[*u8, bool] = make(@map[*u8, bool]);
   
   m["true_key"] = true;
   m["false_key"] = false;

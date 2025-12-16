@@ -17,13 +17,19 @@ public:
           if (emitter.is_map_type(type_param->type())) {
             auto *map_type =
                 dynamic_cast<const map_type_c *>(type_param->type());
-            emitter.ensure_map_typedef(map_type->value_type());
+            emitter.ensure_map_typedef(map_type->key_type(),
+                                       map_type->value_type());
 
-            std::string map_name =
-                emitter.get_map_type_name(map_type->value_type());
-            emitter._current_expr
-                << "({" << map_name
-                << " __tmp; __truk_map_init(&__tmp); __tmp;})";
+            std::string map_name = emitter.get_map_type_name(
+                map_type->key_type(), map_type->value_type());
+            std::string hash_fn = emitter.get_map_hash_fn(map_type->key_type());
+            std::string cmp_fn = emitter.get_map_cmp_fn(map_type->key_type());
+            int key_size = emitter.get_key_size(map_type->key_type());
+
+            emitter._current_expr << "({" << map_name
+                                  << " __tmp; __truk_map_init_generic(&__tmp, "
+                                  << key_size << ", " << hash_fn << ", "
+                                  << cmp_fn << "); __tmp;})";
             return;
           }
 
@@ -73,17 +79,34 @@ public:
             std::string idx_expr = emitter.emit_expression(idx->index());
 
             bool key_is_slice = false;
+            auto *key_literal = dynamic_cast<const literal_c *>(idx->index());
+            bool key_is_string_literal =
+                key_literal && key_literal->type() == literal_type_e::STRING;
+            bool key_is_non_string_literal =
+                key_literal && !key_is_string_literal;
+
             if (auto key_ident =
                     dynamic_cast<const identifier_c *>(idx->index())) {
               key_is_slice = emitter.is_variable_slice(key_ident->id().name);
             }
 
             if (key_is_slice) {
-              emitter._current_expr << "__truk_map_remove(&(" << obj_expr
-                                    << "), (" << idx_expr << ").data)";
+              emitter._current_expr << "__truk_map_remove_generic(&("
+                                    << obj_expr << "), &((" << idx_expr
+                                    << ").data))";
+            } else if (key_is_string_literal) {
+              emitter._current_expr
+                  << "({ const __truk_u8* __truk_key_tmp = " << idx_expr
+                  << "; __truk_map_remove_generic(&(" << obj_expr
+                  << "), &__truk_key_tmp); })";
+            } else if (key_is_non_string_literal) {
+              emitter._current_expr << "({ typeof(" << idx_expr
+                                    << ") __truk_key_tmp = " << idx_expr
+                                    << "; __truk_map_remove_generic(&("
+                                    << obj_expr << "), &__truk_key_tmp); })";
             } else {
-              emitter._current_expr << "__truk_map_remove(&(" << obj_expr
-                                    << "), " << idx_expr << ")";
+              emitter._current_expr << "__truk_map_remove_generic(&("
+                                    << obj_expr << "), &(" << idx_expr << "))";
             }
             return;
           }
@@ -182,21 +205,26 @@ public:
           emitter._indent_level--;
           emitter._functions << cdef::indent(emitter._indent_level) << "}\n";
         } else {
+          std::string key_type =
+              emitter.emit_type(lambda->params()[0].type.get());
+
           emitter._functions
               << cdef::indent(emitter._indent_level)
               << "__truk_map_iter_t __truk_iter = __truk_map_iter();\n";
+          emitter._functions << cdef::indent(emitter._indent_level) << key_type
+                             << "* __truk_key_ptr;\n";
           emitter._functions << cdef::indent(emitter._indent_level)
-                             << "const char* __truk_key;\n";
-          emitter._functions << cdef::indent(emitter._indent_level)
-                             << "while ((__truk_key = __truk_map_next(&("
-                             << collection_var
+                             << "while ((__truk_key_ptr = (" << key_type
+                             << "*)__truk_map_next_generic(&(" << collection_var
                              << "), &__truk_iter)) != NULL) {\n";
           emitter._indent_level++;
+          emitter._functions << cdef::indent(emitter._indent_level) << key_type
+                             << " __truk_key = *__truk_key_ptr;\n";
           emitter._functions
               << cdef::indent(emitter._indent_level)
               << "__truk_bool __truk_continue = " << callback_func
-              << "((__truk_u8*)__truk_key, __truk_map_get(&(" << collection_var
-              << "), __truk_key), " << context_var << ");\n";
+              << "(__truk_key, __truk_map_get_generic(&(" << collection_var
+              << "), __truk_key_ptr), " << context_var << ");\n";
           emitter._functions << cdef::indent(emitter._indent_level)
                              << "if (!__truk_continue) break;\n";
           emitter._indent_level--;
@@ -227,25 +255,37 @@ public:
           emitter._indent_level--;
           emitter._functions << cdef::indent(emitter._indent_level) << "}\n";
         } else {
-          emitter._functions
-              << cdef::indent(emitter._indent_level)
-              << "__truk_map_iter_t __truk_iter = __truk_map_iter();\n";
-          emitter._functions << cdef::indent(emitter._indent_level)
-                             << "const char* __truk_key;\n";
-          emitter._functions << cdef::indent(emitter._indent_level)
-                             << "while ((__truk_key = __truk_map_next(&("
-                             << collection_var
-                             << "), &__truk_iter)) != NULL) {\n";
-          emitter._indent_level++;
-          emitter._functions
-              << cdef::indent(emitter._indent_level)
-              << "__truk_bool __truk_continue = " << callback_func
-              << "((__truk_u8*)__truk_key, __truk_map_get(&(" << collection_var
-              << "), __truk_key), " << context_var << ");\n";
-          emitter._functions << cdef::indent(emitter._indent_level)
-                             << "if (!__truk_continue) break;\n";
-          emitter._indent_level--;
-          emitter._functions << cdef::indent(emitter._indent_level) << "}\n";
+          if (auto func_call =
+                  dynamic_cast<const call_c *>(node.arguments()[2].get())) {
+            if (auto func_ident =
+                    dynamic_cast<const identifier_c *>(func_call->callee())) {
+              std::string key_type = "__truk_u8*";
+              emitter._functions
+                  << cdef::indent(emitter._indent_level)
+                  << "__truk_map_iter_t __truk_iter = __truk_map_iter();\n";
+              emitter._functions << cdef::indent(emitter._indent_level)
+                                 << key_type << " __truk_key_ptr;\n";
+              emitter._functions << cdef::indent(emitter._indent_level)
+                                 << "while ((__truk_key_ptr = (" << key_type
+                                 << ")__truk_map_next_generic(&("
+                                 << collection_var
+                                 << "), &__truk_iter)) != NULL) {\n";
+              emitter._indent_level++;
+              emitter._functions << cdef::indent(emitter._indent_level)
+                                 << key_type
+                                 << " __truk_key = *__truk_key_ptr;\n";
+              emitter._functions
+                  << cdef::indent(emitter._indent_level)
+                  << "__truk_bool __truk_continue = " << callback_func
+                  << "(__truk_key, __truk_map_get_generic(&(" << collection_var
+                  << "), __truk_key_ptr), " << context_var << ");\n";
+              emitter._functions << cdef::indent(emitter._indent_level)
+                                 << "if (!__truk_continue) break;\n";
+              emitter._indent_level--;
+              emitter._functions << cdef::indent(emitter._indent_level)
+                                 << "}\n";
+            }
+          }
         }
 
         emitter._indent_level--;

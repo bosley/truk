@@ -1,0 +1,17 @@
+fn main() : i32 {
+  var m: map[bool, i32] = make(@map[bool, i32]);
+  
+  m[true] = 1;
+  m[false] = 0;
+  
+  var ptr: *i32 = m[true];
+  if ptr != nil {
+    if *ptr == 1 {
+      delete(m);
+      return 1;
+    }
+  }
+  
+  delete(m);
+  return 0;
+}

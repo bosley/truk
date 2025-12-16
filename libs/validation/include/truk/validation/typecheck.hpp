@@ -55,6 +55,7 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
 
   std::unique_ptr<type_entry_s> pointee_type;
   std::unique_ptr<type_entry_s> element_type;
+  std::unique_ptr<type_entry_s> map_key_type;
   std::unique_ptr<type_entry_s> map_value_type;
 
   bool is_builtin{false};
@@ -89,6 +90,10 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
 
     if (other.element_type) {
       element_type = std::make_unique<type_entry_s>(*other.element_type);
+    }
+
+    if (other.map_key_type) {
+      map_key_type = std::make_unique<type_entry_s>(*other.map_key_type);
     }
 
     if (other.map_value_type) {
@@ -294,6 +299,7 @@ private:
   bool is_integer_type(const type_entry_s *type);
   bool is_boolean_type(const type_entry_s *type);
   bool is_comparable_type(const type_entry_s *type);
+  bool is_valid_map_key_type(const type_entry_s *type);
   bool is_compatible_for_assignment(const type_entry_s *target,
                                     const type_entry_s *source);
   bool is_type_identifier(const truk::language::nodes::identifier_c *id_node);

@@ -152,15 +152,17 @@ private:
 class map_type_c : public type_c {
 public:
   map_type_c() = delete;
-  map_type_c(std::size_t source_index, type_ptr value_type)
-      : type_c(keywords_e::MAP, source_index),
+  map_type_c(std::size_t source_index, type_ptr key_type, type_ptr value_type)
+      : type_c(keywords_e::MAP, source_index), _key_type(std::move(key_type)),
         _value_type(std::move(value_type)) {}
 
+  const type_c *key_type() const { return _key_type.get(); }
   const type_c *value_type() const { return _value_type.get(); }
 
   void accept(visitor_if &visitor) const override;
 
 private:
+  type_ptr _key_type;
   type_ptr _value_type;
 };
 

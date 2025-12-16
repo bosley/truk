@@ -200,16 +200,88 @@ bool emitter_c::is_slice_type(const type_c *type) {
   return _type_registry.is_slice_type(type);
 }
 
-std::string emitter_c::get_map_type_name(const type_c *value_type) {
-  return _type_registry.get_map_type_name(value_type);
+std::string emitter_c::get_map_type_name(const type_c *key_type,
+                                         const type_c *value_type) {
+  return _type_registry.get_map_type_name(key_type, value_type);
 }
 
-void emitter_c::ensure_map_typedef(const type_c *value_type) {
-  _type_registry.ensure_map_typedef(value_type, _structs);
+void emitter_c::ensure_map_typedef(const type_c *key_type,
+                                   const type_c *value_type) {
+  _type_registry.ensure_map_typedef(key_type, value_type, _structs);
 }
 
 bool emitter_c::is_map_type(const type_c *type) {
   return _type_registry.is_map_type(type);
+}
+
+std::string emitter_c::get_map_hash_fn(const type_c *key_type) {
+  if (auto *ptr = dynamic_cast<const pointer_type_c *>(key_type)) {
+    return "__truk_map_hash_str";
+  }
+  if (auto *prim = dynamic_cast<const primitive_type_c *>(key_type)) {
+    switch (prim->keyword()) {
+    case keywords_e::I8:
+      return "__truk_map_hash_i8";
+    case keywords_e::I16:
+      return "__truk_map_hash_i16";
+    case keywords_e::I32:
+      return "__truk_map_hash_i32";
+    case keywords_e::I64:
+      return "__truk_map_hash_i64";
+    case keywords_e::U8:
+      return "__truk_map_hash_u8";
+    case keywords_e::U16:
+      return "__truk_map_hash_u16";
+    case keywords_e::U32:
+      return "__truk_map_hash_u32";
+    case keywords_e::U64:
+      return "__truk_map_hash_u64";
+    case keywords_e::F32:
+      return "__truk_map_hash_f32";
+    case keywords_e::F64:
+      return "__truk_map_hash_f64";
+    case keywords_e::BOOL:
+      return "__truk_map_hash_bool";
+    default:
+      break;
+    }
+  }
+  return "__truk_map_hash_str";
+}
+
+std::string emitter_c::get_map_cmp_fn(const type_c *key_type) {
+  if (auto *ptr = dynamic_cast<const pointer_type_c *>(key_type)) {
+    return "__truk_map_cmp_str";
+  }
+  return "__truk_map_cmp_mem";
+}
+
+int emitter_c::get_key_size(const type_c *key_type) {
+  if (auto *ptr = dynamic_cast<const pointer_type_c *>(key_type)) {
+    return sizeof(void *);
+  }
+  if (auto *prim = dynamic_cast<const primitive_type_c *>(key_type)) {
+    switch (prim->keyword()) {
+    case keywords_e::I8:
+    case keywords_e::U8:
+    case keywords_e::BOOL:
+      return 1;
+    case keywords_e::I16:
+    case keywords_e::U16:
+      return 2;
+    case keywords_e::I32:
+    case keywords_e::U32:
+    case keywords_e::F32:
+      return 4;
+    case keywords_e::I64:
+    case keywords_e::U64:
+    case keywords_e::F64:
+      return 8;
+    default:
+      break;
+    }
+  }
+  return sizeof(void *);
 }
 
 void emitter_c::register_variable_type(const std::string &name,
@@ -244,7 +316,7 @@ void emitter_c::visit(const array_type_c &node) {
 void emitter_c::visit(const function_type_c &node) {}
 
 void emitter_c::visit(const map_type_c &node) {
-  _current_expr << get_map_type_name(node.value_type());
+  _current_expr << get_map_type_name(node.key_type(), node.value_type());
 }
 
 void emitter_c::visit(const fn_c &node) {
@@ -626,7 +698,7 @@ void emitter_c::visit(const var_c &node) {
   register_variable_type(node.name().name, node.type());
 
   if (auto map = dynamic_cast<const map_type_c *>(node.type())) {
-    ensure_map_typedef(map->value_type());
+    ensure_map_typedef(map->key_type(), map->value_type());
   }
 
   bool is_private = is_private_identifier(node.name().name);
@@ -936,16 +1008,37 @@ void emitter_c::visit(const assignment_c &node) {
         key_is_slice = is_variable_slice(key_ident->id().name);
       }
 
+      auto *key_literal = dynamic_cast<const literal_c *>(idx->index());
+      bool key_is_string_literal =
+          key_literal && key_literal->type() == literal_type_e::STRING;
+      bool key_is_non_string_literal = key_literal && !key_is_string_literal;
+
       _functions << cdef::indent(_indent_level);
-      _functions << "{ (" << obj_expr << ").tmp = " << value << "; ";
-      if (key_is_slice) {
-        _functions << "__truk_map_set_(&(" << obj_expr << ").base, ("
-                   << idx_expr << ").data, &(" << obj_expr << ").tmp, sizeof(("
-                   << obj_expr << ").tmp)); }\n";
+      _functions << "{ ";
+      if (key_is_string_literal && !key_is_slice) {
+        _functions << "const __truk_u8* __truk_key_tmp = " << idx_expr << "; ";
+        _functions << "(" << obj_expr << ").tmp = " << value << "; ";
+        _functions << "__truk_map_set_(&(" << obj_expr
+                   << ").base, &__truk_key_tmp, &(" << obj_expr
+                   << ").tmp, sizeof((" << obj_expr << ").tmp)); }\n";
+      } else if (key_is_non_string_literal && !key_is_slice) {
+        _functions << "typeof(" << idx_expr << ") __truk_key_tmp = " << idx_expr
+                   << "; ";
+        _functions << "(" << obj_expr << ").tmp = " << value << "; ";
+        _functions << "__truk_map_set_(&(" << obj_expr
+                   << ").base, &__truk_key_tmp, &(" << obj_expr
+                   << ").tmp, sizeof((" << obj_expr << ").tmp)); }\n";
       } else {
-        _functions << "__truk_map_set_(&(" << obj_expr << ").base, " << idx_expr
-                   << ", &(" << obj_expr << ").tmp, sizeof((" << obj_expr
-                   << ").tmp)); }\n";
+        _functions << "(" << obj_expr << ").tmp = " << value << "; ";
+        if (key_is_slice) {
+          _functions << "__truk_map_set_(&(" << obj_expr << ").base, &(("
+                     << idx_expr << ").data), &(" << obj_expr
+                     << ").tmp, sizeof((" << obj_expr << ").tmp)); }\n";
+        } else {
+          _functions << "__truk_map_set_(&(" << obj_expr << ").base, &("
+                     << idx_expr << "), &(" << obj_expr << ").tmp, sizeof(("
+                     << obj_expr << ").tmp)); }\n";
+        }
       }
       return;
     }
@@ -1171,14 +1264,28 @@ std::string emitter_c::emit_expr_index(const index_c &node) {
 
   if (is_map) {
     bool key_is_slice = false;
+    auto *key_literal = dynamic_cast<const literal_c *>(node.index());
+    bool key_is_string_literal =
+        key_literal && key_literal->type() == literal_type_e::STRING;
+    bool key_is_non_string_literal = key_literal && !key_is_string_literal;
+
     if (auto key_ident = dynamic_cast<const identifier_c *>(node.index())) {
       key_is_slice = is_variable_slice(key_ident->id().name);
     }
 
     if (key_is_slice) {
-      return "__truk_map_get(&(" + obj_expr + "), (" + idx_expr + ").data)";
+      return "__truk_map_get_generic(&(" + obj_expr + "), &((" + idx_expr +
+             ").data))";
+    } else if (key_is_string_literal) {
+      return "({ const __truk_u8* __truk_key_tmp = " + idx_expr +
+             "; __truk_map_get_generic(&(" + obj_expr +
+             "), &__truk_key_tmp); })";
+    } else if (key_is_non_string_literal) {
+      return "({ typeof(" + idx_expr + ") __truk_key_tmp = " + idx_expr +
+             "; __truk_map_get_generic(&(" + obj_expr +
+             "), &__truk_key_tmp); })";
     } else {
-      return "__truk_map_get(&(" + obj_expr + "), " + idx_expr + ")";
+      return "__truk_map_get_generic(&(" + obj_expr + "), &(" + idx_expr + "))";
     }
   } else if (is_slice) {
     return "({ __truk_runtime_sxs_bounds_check(" + idx_expr + ", (" + obj_expr +

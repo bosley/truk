@@ -64,7 +64,7 @@ std::string type_registry_c::get_c_type(const type_c *type) {
   }
 
   if (auto map = dynamic_cast<const map_type_c *>(type)) {
-    return get_map_type_name(map->value_type());
+    return get_map_type_name(map->key_type(), map->value_type());
   }
 
   if (auto func = dynamic_cast<const function_type_c *>(type)) {
@@ -205,21 +205,32 @@ bool type_registry_c::is_slice_type(const type_c *type) {
   return false;
 }
 
-std::string type_registry_c::get_map_type_name(const type_c *value_type) {
+std::string type_registry_c::get_map_type_name(const type_c *key_type,
+                                               const type_c *value_type) {
+  std::string key_str = get_c_type_for_sizeof(key_type);
   std::string value_str = get_c_type_for_sizeof(value_type);
-  std::string sanitized = value_str;
-  for (auto &c : sanitized) {
+  std::string sanitized_key = key_str;
+  std::string sanitized_value = value_str;
+
+  for (auto &c : sanitized_key) {
     if (c == '*')
       c = 'p';
     if (c == '[' || c == ']' || c == ' ')
       c = '_';
   }
-  return "__truk_map_" + sanitized;
+  for (auto &c : sanitized_value) {
+    if (c == '*')
+      c = 'p';
+    if (c == '[' || c == ']' || c == ' ')
+      c = '_';
+  }
+  return "__truk_map_" + sanitized_key + "_" + sanitized_value;
 }
 
-void type_registry_c::ensure_map_typedef(const type_c *value_type,
+void type_registry_c::ensure_map_typedef(const type_c *key_type,
+                                         const type_c *value_type,
                                          std::stringstream &structs_stream) {
-  std::string map_name = get_map_type_name(value_type);
+  std::string map_name = get_map_type_name(key_type, value_type);
 
   if (_map_types_emitted.find(map_name) == _map_types_emitted.end()) {
     _map_types_emitted.insert(map_name);

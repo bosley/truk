@@ -11,14 +11,20 @@
 
 #include <string.h>
 
-#define __TRUK_MAP_VERSION "0.1.0"
+#define __TRUK_MAP_VERSION "0.2.0"
 
 struct __truk_map_node_t;
 typedef struct __truk_map_node_t __truk_map_node_t;
 
+typedef unsigned (*__truk_map_hash_fn)(const void *key, int ksize);
+typedef int (*__truk_map_cmp_fn)(const void *a, const void *b, int ksize);
+
 typedef struct {
   __truk_map_node_t **buckets;
   unsigned nbuckets, nnodes;
+  int ksize;
+  __truk_map_hash_fn hash_fn;
+  __truk_map_cmp_fn cmp_fn;
 } __truk_map_base_t;
 
 typedef struct {
@@ -33,29 +39,52 @@ typedef struct {
     T tmp;                                                                     \
   }
 
-#define __truk_map_init(m) memset(m, 0, sizeof(*(m)))
+#define __truk_map_init_generic(m, keysize, hashfn, cmpfn)                     \
+  do {                                                                         \
+    memset(m, 0, sizeof(*(m)));                                                \
+    (m)->base.ksize = (keysize);                                               \
+    (m)->base.hash_fn = (hashfn);                                              \
+    (m)->base.cmp_fn = (cmpfn);                                                \
+  } while (0)
 
 #define __truk_map_deinit(m) __truk_map_deinit_(&(m)->base)
 
-#define __truk_map_get(m, key) ((m)->ref = __truk_map_get_(&(m)->base, key))
+#define __truk_map_get_generic(m, key)                                         \
+  ((m)->ref = __truk_map_get_(&(m)->base, key))
 
-#define __truk_map_set(m, key, value)                                          \
+#define __truk_map_set_generic(m, key, value)                                  \
   ((m)->tmp = (value),                                                         \
    __truk_map_set_(&(m)->base, key, &(m)->tmp, sizeof((m)->tmp)))
 
-#define __truk_map_remove(m, key) __truk_map_remove_(&(m)->base, key)
+#define __truk_map_remove_generic(m, key) __truk_map_remove_(&(m)->base, key)
 
 #define __truk_map_iter(m) __truk_map_iter_()
 
-#define __truk_map_next(m, iter) __truk_map_next_(&(m)->base, iter)
+#define __truk_map_next_generic(m, iter) __truk_map_next_(&(m)->base, iter)
 
 void __truk_map_deinit_(__truk_map_base_t *m);
-void *__truk_map_get_(__truk_map_base_t *m, const char *key);
-int __truk_map_set_(__truk_map_base_t *m, const char *key, void *value,
+void *__truk_map_get_(__truk_map_base_t *m, const void *key);
+int __truk_map_set_(__truk_map_base_t *m, const void *key, void *value,
                     int vsize);
-void __truk_map_remove_(__truk_map_base_t *m, const char *key);
+void __truk_map_remove_(__truk_map_base_t *m, const void *key);
 __truk_map_iter_t __truk_map_iter_(void);
-const char *__truk_map_next_(__truk_map_base_t *m, __truk_map_iter_t *iter);
+void *__truk_map_next_(__truk_map_base_t *m, __truk_map_iter_t *iter);
+
+unsigned __truk_map_hash_str(const void *key, int ksize);
+unsigned __truk_map_hash_i8(const void *key, int ksize);
+unsigned __truk_map_hash_i16(const void *key, int ksize);
+unsigned __truk_map_hash_i32(const void *key, int ksize);
+unsigned __truk_map_hash_i64(const void *key, int ksize);
+unsigned __truk_map_hash_u8(const void *key, int ksize);
+unsigned __truk_map_hash_u16(const void *key, int ksize);
+unsigned __truk_map_hash_u32(const void *key, int ksize);
+unsigned __truk_map_hash_u64(const void *key, int ksize);
+unsigned __truk_map_hash_f32(const void *key, int ksize);
+unsigned __truk_map_hash_f64(const void *key, int ksize);
+unsigned __truk_map_hash_bool(const void *key, int ksize);
+
+int __truk_map_cmp_str(const void *a, const void *b, int ksize);
+int __truk_map_cmp_mem(const void *a, const void *b, int ksize);
 
 typedef __truk_map_t(void *) __truk_map_void_t;
 typedef __truk_map_t(char *) __truk_map_str_t;

@@ -1,0 +1,17 @@
+fn main() : i32 {
+  var m: map[f32, i32] = make(@map[f32, i32]);
+  
+  var key: f32 = 3.14;
+  m[key] = 50;
+  
+  var ptr: *i32 = m[key];
+  if ptr != nil {
+    if *ptr == 50 {
+      delete(m);
+      return 50;
+    }
+  }
+  
+  delete(m);
+  return 0;
+}

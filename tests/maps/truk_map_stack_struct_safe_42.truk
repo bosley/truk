@@ -4,7 +4,7 @@ struct Point {
 }
 
 fn main() : i32 {
-  var m: map[Point] = make(@map[Point]);
+  var m: map[*u8, Point] = make(@map[*u8, Point]);
   
   var stack_point: Point = Point{x: 21, y: 21};
   m["key"] = stack_point;
