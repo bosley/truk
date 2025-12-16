@@ -43,9 +43,30 @@ void dependency_visitor_c::visit(const map_type_c &node) {
   }
 }
 
-void dependency_visitor_c::visit(const fn_c &) {}
+void dependency_visitor_c::visit(const fn_c &node) {
+  if (node.return_type()) {
+    node.return_type()->accept(*this);
+  }
 
-void dependency_visitor_c::visit(const struct_c &) {}
+  for (const auto &param : node.params()) {
+    if (param.type) {
+      param.type->accept(*this);
+    }
+    _local_scope.insert(param.name.name);
+  }
+
+  if (node.body()) {
+    node.body()->accept(*this);
+  }
+}
+
+void dependency_visitor_c::visit(const struct_c &node) {
+  for (const auto &field : node.fields()) {
+    if (field.type) {
+      field.type->accept(*this);
+    }
+  }
+}
 
 void dependency_visitor_c::visit(const var_c &node) {
   _local_scope.insert(node.name().name);
@@ -54,7 +75,14 @@ void dependency_visitor_c::visit(const var_c &node) {
   }
 }
 
-void dependency_visitor_c::visit(const const_c &) {}
+void dependency_visitor_c::visit(const const_c &node) {
+  if (node.type()) {
+    node.type()->accept(*this);
+  }
+  if (node.value()) {
+    node.value()->accept(*this);
+  }
+}
 
 void dependency_visitor_c::visit(const if_c &node) {
   if (node.condition()) {
@@ -344,43 +372,7 @@ void import_resolver_c::analyze_dependencies(
     const base_c *decl, std::unordered_set<std::string> &deps) {
   std::unordered_set<std::string> local_scope;
   dependency_visitor_c visitor(_symbol_to_decl, deps, local_scope);
-
-  if (auto *fn_node = dynamic_cast<const fn_c *>(decl)) {
-    if (fn_node->return_type()) {
-      fn_node->return_type()->accept(visitor);
-    }
-
-    for (const auto &param : fn_node->params()) {
-      if (param.type) {
-        param.type->accept(visitor);
-      }
-      local_scope.insert(param.name.name);
-    }
-
-    if (fn_node->body()) {
-      fn_node->body()->accept(visitor);
-    }
-  } else if (auto *struct_node = dynamic_cast<const struct_c *>(decl)) {
-    for (const auto &field : struct_node->fields()) {
-      if (field.type) {
-        field.type->accept(visitor);
-      }
-    }
-  } else if (auto *var_node = dynamic_cast<const var_c *>(decl)) {
-    if (var_node->type()) {
-      var_node->type()->accept(visitor);
-    }
-    if (var_node->initializer()) {
-      var_node->initializer()->accept(visitor);
-    }
-  } else if (auto *const_node = dynamic_cast<const const_c *>(decl)) {
-    if (const_node->type()) {
-      const_node->type()->accept(visitor);
-    }
-    if (const_node->value()) {
-      const_node->value()->accept(visitor);
-    }
-  }
+  decl->accept(visitor);
 }
 
 std::vector<base_ptr> import_resolver_c::topological_sort() {
