@@ -1,0 +1,24 @@
+struct Counter {
+  total: i32,
+  count: i32
+}
+
+fn main() : i32 {
+  var m: map[*u8, i32] = make(@map[*u8, i32]);
+  m["a"] = 10;
+  m["b"] = 15;
+  m["c"] = 20;
+  
+  var counter: Counter = Counter{total: 0, count: 0};
+  
+  each(m, &counter, fn(key: *u8, val: *i32, ctx: *Counter) : bool {
+    if val != nil {
+      (*ctx).total = (*ctx).total + *val;
+      (*ctx).count = (*ctx).count + 1;
+    }
+    return true;
+  });
+  
+  delete(m);
+  return counter.total;
+}

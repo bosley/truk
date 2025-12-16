@@ -1,0 +1,5 @@
+fn main(): i32 {
+  var x: u16 = 100;
+  return x;
+}
+

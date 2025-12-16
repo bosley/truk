@@ -1,6 +1,6 @@
 #include "toc.hpp"
 #include <fmt/core.h>
-#include <truk/core/error_display.hpp>
+#include <truk/core/error_reporter.hpp>
 #include <truk/emitc/emitter.hpp>
 #include <truk/ingestion/file_utils.hpp>
 #include <truk/ingestion/import_resolver.hpp>
@@ -10,6 +10,8 @@
 namespace truk::commands {
 
 int toc(const toc_options_s &opts) {
+  core::error_reporter_c reporter;
+
   for (const auto &path : opts.include_paths) {
     fmt::print("Include path: {}\n", path);
   }
@@ -22,40 +24,59 @@ int toc(const toc_options_s &opts) {
 
   if (!resolved.success) {
     for (const auto &err : resolved.errors) {
-      fmt::print(stderr, "Import error in '{}': {}\n", err.file_path,
-                 err.message);
-      if (err.line > 0) {
-        fmt::print(stderr, "  at line {}, column {}\n", err.line, err.column);
+      bool is_parse_error =
+          err.type == ingestion::import_error_type_e::PARSE_ERROR;
+
+      if (is_parse_error && err.line > 0) {
+        try {
+          std::string source = ingestion::read_file(err.file_path);
+          reporter.report_parse_error(err.file_path, source, err.line,
+                                      err.column, err.message);
+        } catch (...) {
+          reporter.report_import_error_with_type(err.file_path, err.message,
+                                                 err.line, err.column, true);
+        }
+      } else {
+        reporter.report_import_error_with_type(
+            err.file_path, err.message, err.line, err.column, is_parse_error);
       }
     }
+    reporter.print_summary();
     return 1;
   }
 
   validation::type_checker_c type_checker;
+  type_checker.set_declaration_file_map(resolved.decl_to_file);
+  type_checker.set_file_to_shards_map(resolved.file_to_shards);
   for (auto &decl : resolved.all_declarations) {
     type_checker.check(decl.get());
   }
 
   if (type_checker.has_errors()) {
-    fmt::print(stderr, "Error: Type check failed\n");
     for (const auto &err : type_checker.errors()) {
-      fmt::print(stderr, "  {}\n", err);
+      reporter.report_generic_error(core::error_phase_e::TYPE_CHECKING,
+                                    err.message);
     }
+    reporter.print_summary();
     return 1;
   }
 
   emitc::emitter_c emitter;
   auto emit_result = emitter.add_declarations(resolved.all_declarations)
+                         .set_declaration_file_map(resolved.decl_to_file)
+                         .set_file_to_shards_map(resolved.file_to_shards)
                          .set_c_imports(resolved.c_imports)
                          .finalize();
 
   if (emit_result.has_errors()) {
     for (const auto &err : emit_result.errors) {
-      std::string enhanced_message =
-          fmt::format("{} (phase: {}, context: {})", err.message,
+      std::string phase_context =
+          fmt::format("phase: {}, context: {}",
                       emitc::emission_phase_name(err.phase), err.node_context);
-      fmt::print(stderr, "Emission error: {}\n", enhanced_message);
+      reporter.report_generic_error(core::error_phase_e::CODE_EMISSION,
+                                    err.message + " (" + phase_context + ")");
     }
+    reporter.print_summary();
     return 1;
   }
 
@@ -83,14 +104,14 @@ int toc(const toc_options_s &opts) {
   if (assembly_type == emitc::assembly_type_e::LIBRARY) {
 
     if (!ingestion::write_file(header_file, assembly_result.header)) {
-      fmt::print(stderr, "Error: Could not write header file '{}'\n",
-                 header_file);
+      reporter.report_file_error(header_file, "Could not write header file");
+      reporter.print_summary();
       return 1;
     }
 
     if (!ingestion::write_file(source_file, assembly_result.source)) {
-      fmt::print(stderr, "Error: Could not write source file '{}'\n",
-                 source_file);
+      reporter.report_file_error(source_file, "Could not write source file");
+      reporter.print_summary();
       return 1;
     }
 
@@ -98,8 +119,9 @@ int toc(const toc_options_s &opts) {
                source_file);
   } else {
     if (!ingestion::write_file(opts.output_file, assembly_result.source)) {
-      fmt::print(stderr, "Error: Could not write output file '{}'\n",
-                 opts.output_file);
+      reporter.report_file_error(opts.output_file,
+                                 "Could not write output file");
+      reporter.print_summary();
       return 1;
     }
 

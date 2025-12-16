@@ -1,0 +1,20 @@
+shard "set_a_internal";
+
+import "file1.truk";
+import "file2.truk";
+
+fn api_create_data(v: i32) : DataA {
+  return data_a_create(v);
+}
+
+fn api_process_data(d: *DataA) : i32 {
+  return data_a_process(d);
+}
+
+fn api_get_value(d: *DataA) : i32 {
+  return data_a_get_value(d);
+}
+
+fn api_reset_data(d: *DataA) : void {
+  data_a_reset(d);
+}

@@ -1,0 +1,36 @@
+fn main() : i32 {
+  var m: map[*u8, i32] = make(@map[*u8, i32]);
+  m["small"] = 3;
+  m["medium"] = 7;
+  m["large"] = 10;
+  
+  var total: i32 = 0;
+  each(m, &total, fn(key: *u8, val: *i32, ctx: *i32) : bool {
+    if val != nil {
+      if *val < 5 {
+        var i: i32 = 0;
+        while i < *val {
+          *ctx = *ctx + 2;
+          i = i + 1;
+        }
+      } else {
+        var inner: map[*u8, i32] = make(@map[*u8, i32]);
+        inner["a"] = 2;
+        inner["b"] = 3;
+        
+        each(inner, ctx, fn(inner_key: *u8, inner_val: *i32, inner_ctx: *i32) : bool {
+          if inner_val != nil {
+            *inner_ctx = *inner_ctx + *inner_val;
+          }
+          return true;
+        });
+        
+        delete(inner);
+      }
+    }
+    return true;
+  });
+  
+  delete(m);
+  return total + 68;
+}

@@ -1,0 +1,41 @@
+struct Stats {
+  min: i32,
+  max: i32,
+  sum: i32,
+  initialized: bool
+}
+
+fn main() : i32 {
+  var m: map[*u8, i32] = make(@map[*u8, i32]);
+  m["x"] = 20;
+  m["y"] = 30;
+  m["z"] = 10;
+  m["w"] = 20;
+  
+  var stats: Stats = Stats{min: 0, max: 0, sum: 0, initialized: false};
+  
+  each(m, &stats, fn(key: *u8, val: *i32, ctx: *Stats) : bool {
+    if val != nil {
+      var v: i32 = *val;
+      if !(*ctx).initialized {
+        (*ctx).min = v;
+        (*ctx).max = v;
+        (*ctx).sum = v;
+        (*ctx).initialized = true;
+      } else {
+        if v < (*ctx).min {
+          (*ctx).min = v;
+        }
+        if v > (*ctx).max {
+          (*ctx).max = v;
+        }
+        (*ctx).sum = (*ctx).sum + v;
+      }
+    }
+    return true;
+  });
+  
+  delete(m);
+  // Return sum (80)
+  return stats.sum;
+}

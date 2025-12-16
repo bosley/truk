@@ -1,0 +1,27 @@
+shard "set_b_internal";
+
+import "innser_set_x/api.truk";
+
+struct ServiceB {
+  name: *u8,
+  _logger: LoggerX,
+  _initialized: bool
+}
+
+fn _init_service(svc: *ServiceB) : void {
+  (*svc)._logger = logger_api_create((*svc).name);
+  (*svc)._initialized = true;
+  logger_api_log(&(*svc)._logger, "Service initialized");
+}
+
+fn service_b_create(name: *u8) : ServiceB {
+  var svc: ServiceB = ServiceB{
+    name: name,
+    _logger: logger_api_create("temp"),
+    _initialized: false
+  };
+  
+  _init_service(&svc);
+  
+  return svc;
+}

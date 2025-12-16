@@ -1,0 +1,17 @@
+struct Data {
+  value: i32,
+  _internal: i32
+}
+
+fn data_new(v: i32) : Data {
+  var d: Data = Data{value: v, _internal: v * 2};
+  return d;
+}
+
+fn data_get_value(d: *Data) : i32 {
+  return d.value;
+}
+
+fn data_get_internal(d: *Data) : i32 {
+  return d._internal;
+}

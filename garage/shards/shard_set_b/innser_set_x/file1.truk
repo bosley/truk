@@ -1,0 +1,28 @@
+shard "set_x_internal";
+
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args) : i32;
+
+struct LoggerX {
+  prefix: *u8,
+  _enabled: bool,
+  _count: i32
+}
+
+var _global_log_level: i32 = 1;
+
+fn _format_message(logger: *LoggerX, msg: *u8) : void {
+  if (*logger)._enabled {
+    printf("[%s] %s\n", (*logger).prefix, msg);
+    (*logger)._count = (*logger)._count + 1;
+  }
+}
+
+fn logger_x_create(prefix: *u8) : LoggerX {
+  return LoggerX{
+    prefix: prefix,
+    _enabled: true,
+    _count: 0
+  };
+}

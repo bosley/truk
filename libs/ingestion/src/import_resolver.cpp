@@ -43,9 +43,47 @@ void dependency_visitor_c::visit(const map_type_c &node) {
   }
 }
 
-void dependency_visitor_c::visit(const fn_c &) {}
+void dependency_visitor_c::visit(const fn_c &node) {
+  if (node.return_type()) {
+    node.return_type()->accept(*this);
+  }
 
-void dependency_visitor_c::visit(const struct_c &) {}
+  for (const auto &param : node.params()) {
+    if (param.type) {
+      param.type->accept(*this);
+    }
+    _local_scope.insert(param.name.name);
+  }
+
+  if (node.body()) {
+    node.body()->accept(*this);
+  }
+}
+
+void dependency_visitor_c::visit(const lambda_c &node) {
+  if (node.return_type()) {
+    node.return_type()->accept(*this);
+  }
+
+  for (const auto &param : node.params()) {
+    if (param.type) {
+      param.type->accept(*this);
+    }
+    _local_scope.insert(param.name.name);
+  }
+
+  if (node.body()) {
+    node.body()->accept(*this);
+  }
+}
+
+void dependency_visitor_c::visit(const struct_c &node) {
+  for (const auto &field : node.fields()) {
+    if (field.type) {
+      field.type->accept(*this);
+    }
+  }
+}
 
 void dependency_visitor_c::visit(const var_c &node) {
   _local_scope.insert(node.name().name);
@@ -54,7 +92,14 @@ void dependency_visitor_c::visit(const var_c &node) {
   }
 }
 
-void dependency_visitor_c::visit(const const_c &) {}
+void dependency_visitor_c::visit(const const_c &node) {
+  if (node.type()) {
+    node.type()->accept(*this);
+  }
+  if (node.value()) {
+    node.value()->accept(*this);
+  }
+}
 
 void dependency_visitor_c::visit(const if_c &node) {
   if (node.condition()) {
@@ -225,6 +270,8 @@ void dependency_visitor_c::visit(const import_c &) {}
 
 void dependency_visitor_c::visit(const cimport_c &) {}
 
+void dependency_visitor_c::visit(const shard_c &) {}
+
 std::string
 import_resolver_c::resolve_import_path(const std::string &import_path,
                                        const std::string &current_file) {
@@ -252,6 +299,8 @@ resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
   _decl_dependencies.clear();
   _errors.clear();
   _c_imports.clear();
+  _decl_to_file.clear();
+  _file_to_shards.clear();
 
   process_file(entry_file);
 
@@ -264,6 +313,8 @@ resolved_imports_s import_resolver_c::resolve(const std::string &entry_file) {
   }
 
   result.c_imports = std::move(_c_imports);
+  result.decl_to_file = _decl_to_file;
+  result.file_to_shards = _file_to_shards;
 
   return result;
 }
@@ -302,7 +353,8 @@ void import_resolver_c::process_file(const std::string &file_path) {
 
   if (!parse_result.success) {
     _errors.push_back({parse_result.error_message, file_path,
-                       parse_result.error_line, parse_result.error_column});
+                       parse_result.error_line, parse_result.error_column,
+                       import_error_type_e::PARSE_ERROR});
     _import_stack.pop_back();
     return;
   }
@@ -330,18 +382,13 @@ void import_resolver_c::extract_imports_and_declarations(
       _c_imports.push_back(
           {.path = cimport_node->path(),
            .is_angle_bracket = cimport_node->is_angle_bracket()});
+    } else if (auto *shard_node = dynamic_cast<const shard_c *>(decl.get())) {
+      _file_to_shards[file_path].push_back(shard_node->name());
     } else {
-      if (auto *fn_node = dynamic_cast<const fn_c *>(decl.get())) {
-        _symbol_to_decl[fn_node->name().name] = decl.get();
-      } else if (auto *struct_node =
-                     dynamic_cast<const struct_c *>(decl.get())) {
-        _symbol_to_decl[struct_node->name().name] = decl.get();
-      } else if (auto *var_node = dynamic_cast<const var_c *>(decl.get())) {
-        _symbol_to_decl[var_node->name().name] = decl.get();
-      } else if (auto *const_node = dynamic_cast<const const_c *>(decl.get())) {
-        _symbol_to_decl[const_node->name().name] = decl.get();
+      _decl_to_file[decl.get()] = file_path;
+      if (auto name = decl->symbol_name()) {
+        _symbol_to_decl[*name] = decl.get();
       }
-
       _all_declarations.push_back(std::move(decl));
     }
   }
@@ -351,43 +398,7 @@ void import_resolver_c::analyze_dependencies(
     const base_c *decl, std::unordered_set<std::string> &deps) {
   std::unordered_set<std::string> local_scope;
   dependency_visitor_c visitor(_symbol_to_decl, deps, local_scope);
-
-  if (auto *fn_node = dynamic_cast<const fn_c *>(decl)) {
-    if (fn_node->return_type()) {
-      fn_node->return_type()->accept(visitor);
-    }
-
-    for (const auto &param : fn_node->params()) {
-      if (param.type) {
-        param.type->accept(visitor);
-      }
-      local_scope.insert(param.name.name);
-    }
-
-    if (fn_node->body()) {
-      fn_node->body()->accept(visitor);
-    }
-  } else if (auto *struct_node = dynamic_cast<const struct_c *>(decl)) {
-    for (const auto &field : struct_node->fields()) {
-      if (field.type) {
-        field.type->accept(visitor);
-      }
-    }
-  } else if (auto *var_node = dynamic_cast<const var_c *>(decl)) {
-    if (var_node->type()) {
-      var_node->type()->accept(visitor);
-    }
-    if (var_node->initializer()) {
-      var_node->initializer()->accept(visitor);
-    }
-  } else if (auto *const_node = dynamic_cast<const const_c *>(decl)) {
-    if (const_node->type()) {
-      const_node->type()->accept(visitor);
-    }
-    if (const_node->value()) {
-      const_node->value()->accept(visitor);
-    }
-  }
+  decl->accept(visitor);
 }
 
 std::vector<base_ptr> import_resolver_c::topological_sort() {

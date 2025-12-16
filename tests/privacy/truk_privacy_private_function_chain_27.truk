@@ -1,0 +1,19 @@
+fn _step1(x: i32) : i32 {
+  return x + 1;
+}
+
+fn _step2(x: i32) : i32 {
+  return _step1(x) * 2;
+}
+
+fn _step3(x: i32) : i32 {
+  return _step2(x) + 5;
+}
+
+fn process(x: i32) : i32 {
+  return _step3(x);
+}
+
+fn main() : i32 {
+  return process(10);
+}

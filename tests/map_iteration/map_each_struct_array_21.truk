@@ -1,0 +1,30 @@
+struct Accumulator {
+  values: [3]i32,
+  index: i32
+}
+
+fn main() : i32 {
+  var m: map[*u8, i32] = make(@map[*u8, i32]);
+  m["first"] = 5;
+  m["second"] = 7;
+  m["third"] = 9;
+  
+  var acc: Accumulator = Accumulator{
+    values: [0, 0, 0],
+    index: 0
+  };
+  
+  each(m, &acc, fn(key: *u8, val: *i32, ctx: *Accumulator) : bool {
+    if val != nil {
+      if (*ctx).index < 3 {
+        (*ctx).values[(*ctx).index] = *val;
+        (*ctx).index = (*ctx).index + 1;
+      }
+    }
+    return true;
+  });
+  
+  delete(m);
+  // Return sum of collected values
+  return acc.values[0] + acc.values[1] + acc.values[2];
+}

@@ -1,0 +1,28 @@
+fn main() : i32 {
+  var m: map[i32, i32] = make(@map[i32, i32]);
+  
+  m[10] = 10;
+  
+  var key: i32 = 20;
+  m[key] = 20;
+  
+  m[3] = 3;
+  
+  var p1: *i32 = m[10];
+  var p2: *i32 = m[key];
+  var p3: *i32 = m[3];
+  
+  var sum: i32 = 0;
+  if p1 != nil {
+    sum = sum + *p1;
+  }
+  if p2 != nil {
+    sum = sum + *p2;
+  }
+  if p3 != nil {
+    sum = sum + *p3;
+  }
+  
+  delete(m);
+  return sum;
+}

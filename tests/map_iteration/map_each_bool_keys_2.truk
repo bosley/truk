@@ -1,0 +1,17 @@
+fn main() : i32 {
+  var m: map[bool, i32] = make(@map[bool, i32]);
+  
+  m[true] = 100;
+  m[false] = 50;
+  
+  var count: i32 = 0;
+  each(m, &count, fn(key: bool, val: *i32, ctx: *i32) : bool {
+    if val != nil {
+      *ctx = *ctx + 1;
+    }
+    return true;
+  });
+  
+  delete(m);
+  return count;
+}

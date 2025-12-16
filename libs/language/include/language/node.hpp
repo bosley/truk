@@ -20,6 +20,9 @@ public:
   std::size_t source_index() const { return _idx; }
 
   virtual void accept(visitor_if &visitor) const = 0;
+  virtual std::optional<std::string> symbol_name() const {
+    return std::nullopt;
+  }
 
   virtual ~base_c() = default;
 
@@ -149,15 +152,17 @@ private:
 class map_type_c : public type_c {
 public:
   map_type_c() = delete;
-  map_type_c(std::size_t source_index, type_ptr value_type)
-      : type_c(keywords_e::MAP, source_index),
+  map_type_c(std::size_t source_index, type_ptr key_type, type_ptr value_type)
+      : type_c(keywords_e::MAP, source_index), _key_type(std::move(key_type)),
         _value_type(std::move(value_type)) {}
 
+  const type_c *key_type() const { return _key_type.get(); }
   const type_c *value_type() const { return _value_type.get(); }
 
   void accept(visitor_if &visitor) const override;
 
 private:
+  type_ptr _key_type;
   type_ptr _value_type;
 };
 
@@ -178,6 +183,7 @@ public:
   bool is_extern() const { return _is_extern; }
 
   void accept(visitor_if &visitor) const override;
+  std::optional<std::string> symbol_name() const override { return _name.name; }
 
 private:
   identifier_s _name;
@@ -185,6 +191,29 @@ private:
   type_ptr _return_type;
   std::optional<base_ptr> _body;
   bool _is_extern{false};
+};
+
+class lambda_c : public base_c {
+public:
+  lambda_c() = delete;
+  lambda_c(std::size_t source_index, std::vector<parameter_s> params,
+           type_ptr return_type, base_ptr body, bool is_capturing = false)
+      : base_c(keywords_e::FN, source_index), _params(std::move(params)),
+        _return_type(std::move(return_type)), _body(std::move(body)),
+        _is_capturing(is_capturing) {}
+
+  const std::vector<parameter_s> &params() const { return _params; }
+  const type_c *return_type() const { return _return_type.get(); }
+  const base_c *body() const { return _body.get(); }
+  bool is_capturing() const { return _is_capturing; }
+
+  void accept(visitor_if &visitor) const override;
+
+private:
+  std::vector<parameter_s> _params;
+  type_ptr _return_type;
+  base_ptr _body;
+  bool _is_capturing{false};
 };
 
 class struct_c : public base_c {
@@ -200,6 +229,7 @@ public:
   bool is_extern() const { return _is_extern; }
 
   void accept(visitor_if &visitor) const override;
+  std::optional<std::string> symbol_name() const override { return _name.name; }
 
 private:
   identifier_s _name;
@@ -211,22 +241,27 @@ class var_c : public base_c {
 public:
   var_c() = delete;
   var_c(std::size_t source_index, identifier_s name, type_ptr type,
-        std::optional<base_ptr> initializer = std::nullopt)
+        std::optional<base_ptr> initializer = std::nullopt,
+        bool is_extern = false)
       : base_c(keywords_e::VAR, source_index), _name(std::move(name)),
-        _type(std::move(type)), _initializer(std::move(initializer)) {}
+        _type(std::move(type)), _initializer(std::move(initializer)),
+        _is_extern(is_extern) {}
 
   const identifier_s &name() const { return _name; }
   const type_c *type() const { return _type.get(); }
   const base_c *initializer() const {
     return _initializer ? _initializer->get() : nullptr;
   }
+  bool is_extern() const { return _is_extern; }
 
   void accept(visitor_if &visitor) const override;
+  std::optional<std::string> symbol_name() const override { return _name.name; }
 
 private:
   identifier_s _name;
   type_ptr _type;
   std::optional<base_ptr> _initializer;
+  bool _is_extern{false};
 };
 
 class const_c : public base_c {
@@ -242,6 +277,7 @@ public:
   const base_c *value() const { return _value.get(); }
 
   void accept(visitor_if &visitor) const override;
+  std::optional<std::string> symbol_name() const override { return _name.name; }
 
 private:
   identifier_s _name;
@@ -654,6 +690,20 @@ public:
 private:
   std::string _path;
   bool _is_angle_bracket;
+};
+
+class shard_c : public base_c {
+public:
+  shard_c() = delete;
+  shard_c(std::size_t source_index, std::string name)
+      : base_c(keywords_e::SHARD, source_index), _name(std::move(name)) {}
+
+  const std::string &name() const { return _name; }
+
+  void accept(visitor_if &visitor) const override;
+
+private:
+  std::string _name;
 };
 
 } // namespace truk::language::nodes

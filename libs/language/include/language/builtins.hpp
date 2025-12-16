@@ -14,6 +14,7 @@ enum class builtin_kind_e {
   LEN,
   SIZEOF,
   PANIC,
+  EACH,
   VA_ARG_I32,
   VA_ARG_I64,
   VA_ARG_F64,

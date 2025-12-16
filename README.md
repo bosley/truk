@@ -23,8 +23,9 @@ Arrays:
 - Multi-dimensional: `[5][10]i32`
 
 Maps:
-- Hash tables with string keys: `map[i32]`
-- Indexing returns pointer: `m["key"]` returns `*i32`
+- Hash tables with typed keys and values: `map[K, V]`
+- Key types: primitives (i8-i64, u8-u64, f32, f64, bool) or string pointers (*u8, *i8)
+- Indexing returns pointer: `m["key"]` returns `*V` (nil if key doesn't exist)
 - Nil checking: `if m["key"] != nil { ... }`
 
 Pointers:
@@ -36,7 +37,7 @@ User-defined types:
 
 ### Control Flow
 
-- `if`/`else` statements
+- `if`/`else if`/`else` statements
 - `while` loops
 - `for` loops with C-style syntax
 - `break` and `continue`
@@ -63,11 +64,13 @@ Runtime bounds checking on all array accesses. Out-of-bounds access causes a pan
 
 - `make(@type)` - allocate single value on heap
 - `make(@type, count)` - allocate array on heap
-- `make(@map[V])` - allocate and initialize map
+- `make(@map[K, V])` - allocate and initialize map with key type K and value type V
 - `delete(ptr)` - free allocated memory (single value, array, or map)
+- `delete(m[key])` - remove key-value pair from map
 - `len(arr)` - get array length
 - `sizeof(@type)` - get type size in bytes
-- `panic(message)` - abort with error message
+- `panic(message: []u8)` - abort with error message
+- `each(collection, context, callback)` - iterate over maps or slices
 
 Type parameters use `@` prefix syntax to pass types to builtins.
 
@@ -97,7 +100,7 @@ fn main() : i32 {
   points[0] = p1;
   points[1] = p2;
   
-  var cache: map[Point] = make(@map[Point]);
+  var cache: map[*u8, Point] = make(@map[*u8, Point]);
   cache["origin"] = p1;
   cache["target"] = p2;
   
@@ -112,14 +115,98 @@ fn main() : i32 {
 }
 ```
 
+### C Interoperability
+
+truk provides seamless interoperability with C through `cimport` and `extern` declarations.
+
+**Importing C headers:**
+```truk
+cimport <stdio.h>;
+cimport <math.h>;
+cimport "myheader.h";
+```
+
+**Declaring C functions:**
+```truk
+extern fn printf(fmt: *i8, ...args): i32;
+extern fn sqrt(x: f64): f64;
+extern fn fopen(filename: *i8, mode: *i8): *FILE;
+```
+
+**Opaque structs (forward declarations):**
+```truk
+extern struct FILE;
+
+extern fn fopen(filename: *i8, mode: *i8): *FILE;
+extern fn fclose(file: *FILE): i32;
+```
+
+**Defined structs (with layout):**
+```truk
+cimport <time.h>;
+
+extern struct tm {
+    tm_sec: i32,
+    tm_min: i32,
+    tm_hour: i32,
+    tm_mday: i32,
+    tm_mon: i32,
+    tm_year: i32
+}
+
+extern fn time(timer: *i64): i64;
+extern fn localtime(timer: *i64): *tm;
+```
+
+**C variables:**
+```truk
+cimport <errno.h>;
+
+extern var errno: i32;
+extern var stdin: *FILE;
+```
+
+**Complete example:**
+```truk
+cimport <stdio.h>;
+cimport <math.h>;
+
+extern struct FILE;
+extern fn fopen(filename: *i8, mode: *i8): *FILE;
+extern fn fclose(file: *FILE): i32;
+extern fn fprintf(file: *FILE, fmt: *i8, ...args): i32;
+extern fn sqrt(x: f64): f64;
+
+fn main(): i32 {
+    var result: f64 = sqrt(16.0);
+    
+    var f: *FILE = fopen("output.txt", "w");
+    if f != nil {
+        fprintf(f, "sqrt(16) = %f\n", result);
+        fclose(f);
+    }
+    
+    return 0;
+}
+```
+
+See `docs/language/imports.md` for complete details on C interop.
+
 ## Compilation
 
 truk compiles to C and uses TCC (Tiny C Compiler) internally as the backend. The compiler performs type checking and validation before emitting C code.
 
 ## Documentation
 
-- `docs/grammar.md` - Complete language grammar
-- `docs/builtins.md` - Builtin function reference
+**[📚 Start Here - Complete Documentation Guide](docs/start-here.md)**
+
+The documentation is organized into three sections:
+
+- **Getting Started** - Build and compile truk programs
+- **Language Reference** - Complete language features and syntax
+- **Compiler Internals** - Implementation details for contributors
+
+Visit [docs/start-here.md](docs/start-here.md) for the full documentation index with navigation and examples.
 
 ## Memory Model
 

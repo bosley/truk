@@ -1,6 +1,7 @@
 #include <language/builtins.hpp>
 #include <language/keywords.hpp>
 #include <set>
+#include <truk/emitc/builtin_handler.hpp>
 #include <truk/emitc/cdef.hpp>
 #include <truk/emitc/emitter.hpp>
 
@@ -28,7 +29,9 @@ const char *emission_phase_name(emission_phase_e phase) {
   }
 }
 
-emitter_c::emitter_c() : _collecting_declarations(false) {}
+emitter_c::emitter_c() : _collecting_declarations(false) {
+  register_builtin_handlers(_builtin_registry);
+}
 
 emitter_c &emitter_c::add_declaration(const base_c *decl) {
   if (decl) {
@@ -140,234 +143,158 @@ void emitter_c::internal_finalize() {
   _result.chunks.push_back(_functions.str());
 
   _result.metadata.defined_functions = _function_names;
-  _result.metadata.defined_structs = _struct_names;
-  _result.metadata.extern_structs = _extern_struct_names;
+  _result.metadata.defined_structs = _type_registry.get_struct_names();
+  _result.metadata.extern_structs = _type_registry.get_extern_struct_names();
 
   _result.metadata.main_function_count = 0;
+  std::string main_file;
   for (const auto &func_name : _function_names) {
     if (func_name == "main") {
       _result.metadata.main_function_count++;
+      for (const auto &[decl, file] : _decl_to_file) {
+        if (auto *fn = dynamic_cast<const fn_c *>(decl)) {
+          if (fn->name().name == "main") {
+            main_file = file;
+            break;
+          }
+        }
+      }
     }
   }
   _result.metadata.has_main_function = _result.metadata.main_function_count > 0;
+
+  if (_result.metadata.has_main_function && !main_file.empty()) {
+    auto shard_it = _file_to_shards.find(main_file);
+    if (shard_it != _file_to_shards.end() && !shard_it->second.empty()) {
+      add_error(
+          "Shard declarations are not allowed in files containing a main "
+          "function. Shards are for sharing implementation details between "
+          "library files, not for application entry points",
+          nullptr);
+    }
+  }
 }
 
 std::string emitter_c::emit_type(const type_c *type) {
-  if (!type) {
-    return "__truk_void";
-  }
-
-  if (auto prim = dynamic_cast<const primitive_type_c *>(type)) {
-    switch (prim->keyword()) {
-    case keywords_e::I8:
-      return "__truk_i8";
-    case keywords_e::I16:
-      return "__truk_i16";
-    case keywords_e::I32:
-      return "__truk_i32";
-    case keywords_e::I64:
-      return "__truk_i64";
-    case keywords_e::U8:
-      return "__truk_u8";
-    case keywords_e::U16:
-      return "__truk_u16";
-    case keywords_e::U32:
-      return "__truk_u32";
-    case keywords_e::U64:
-      return "__truk_u64";
-    case keywords_e::F32:
-      return "__truk_f32";
-    case keywords_e::F64:
-      return "__truk_f64";
-    case keywords_e::BOOL:
-      return "__truk_bool";
-    case keywords_e::VOID:
-      return "__truk_void";
-    default:
-      return "__truk_void";
-    }
-  }
-
-  if (auto named = dynamic_cast<const named_type_c *>(type)) {
-    const std::string &name = named->name().name;
-    if (_extern_struct_names.count(name)) {
-      return "struct " + name;
-    }
-    return name;
-  }
-
-  if (auto ptr = dynamic_cast<const pointer_type_c *>(type)) {
-    return emit_type(ptr->pointee_type()) + "*";
-  }
-
-  if (auto arr = dynamic_cast<const array_type_c *>(type)) {
-    if (arr->size().has_value()) {
-      return emit_type(arr->element_type());
-    } else {
-      return get_slice_type_name(arr->element_type());
-    }
-  }
-
-  if (auto map = dynamic_cast<const map_type_c *>(type)) {
-    return get_map_type_name(map->value_type());
-  }
-
-  return "__truk_void";
+  return _type_registry.get_c_type(type);
 }
 
 std::string emitter_c::emit_type_for_sizeof(const type_c *type) {
-  if (!type) {
-    return "__truk_void";
-  }
-
-  if (auto prim = dynamic_cast<const primitive_type_c *>(type)) {
-    return emit_type(prim);
-  }
-
-  if (auto named = dynamic_cast<const named_type_c *>(type)) {
-    return named->name().name;
-  }
-
-  if (auto ptr = dynamic_cast<const pointer_type_c *>(type)) {
-    return emit_type_for_sizeof(ptr->pointee_type()) + "*";
-  }
-
-  if (auto arr = dynamic_cast<const array_type_c *>(type)) {
-    if (arr->size().has_value()) {
-      std::string base = emit_type_for_sizeof(arr->element_type());
-      return base + "[" + std::to_string(arr->size().value()) + "]";
-    } else {
-      return get_slice_type_name(arr->element_type());
-    }
-  }
-
-  return "__truk_void";
+  return _type_registry.get_c_type_for_sizeof(type);
 }
 
 std::string emitter_c::emit_array_pointer_type(const type_c *array_type,
                                                const std::string &identifier) {
-  if (!array_type) {
-    return "";
-  }
-
-  auto arr = dynamic_cast<const array_type_c *>(array_type);
-  if (!arr || !arr->size().has_value()) {
-    return "";
-  }
-
-  std::string base_type;
-  std::vector<size_t> dimensions;
-
-  const type_c *current = array_type;
-  while (auto current_arr = dynamic_cast<const array_type_c *>(current)) {
-    if (current_arr->size().has_value()) {
-      dimensions.push_back(current_arr->size().value());
-      current = current_arr->element_type();
-    } else {
-      break;
-    }
-  }
-
-  base_type = emit_type(current);
-
-  std::string result = base_type + " (*";
-  if (!identifier.empty()) {
-    result += identifier;
-  }
-  result += ")";
-  for (size_t dim : dimensions) {
-    result += "[" + std::to_string(dim) + "]";
-  }
-
-  return result;
+  return _type_registry.get_array_pointer_type(array_type, identifier);
 }
 
 std::string emitter_c::get_slice_type_name(const type_c *element_type) {
-  std::string elem_type_str = emit_type_for_sizeof(element_type);
-  std::string slice_name = "truk_slice_" + elem_type_str;
-  for (auto &c : slice_name) {
-    if (c == '*')
-      c = 'p';
-    if (c == '[' || c == ']')
-      c = '_';
-  }
-  return slice_name;
+  return _type_registry.get_slice_type_name(element_type);
 }
 
 void emitter_c::ensure_slice_typedef(const type_c *element_type) {
-  std::string slice_name = get_slice_type_name(element_type);
-  if (_slice_types_emitted.find(slice_name) == _slice_types_emitted.end()) {
-    _slice_types_emitted.insert(slice_name);
-    std::string elem_type_for_sizeof = emit_type_for_sizeof(element_type);
-
-    if (auto arr = dynamic_cast<const array_type_c *>(element_type)) {
-      if (arr->size().has_value()) {
-        std::string pointer_type =
-            emit_array_pointer_type(element_type, "data");
-        _header << "typedef struct {\n  " << pointer_type
-                << ";\n  __truk_u64 len;\n} " << slice_name << ";\n\n";
-        return;
-      }
-    }
-
-    _header << cdef::emit_slice_typedef(elem_type_for_sizeof, slice_name);
-  }
+  _type_registry.ensure_slice_typedef(element_type, _header, _structs);
 }
 
 bool emitter_c::is_slice_type(const type_c *type) {
-  if (auto arr = dynamic_cast<const array_type_c *>(type)) {
-    return !arr->size().has_value();
-  }
-  return false;
+  return _type_registry.is_slice_type(type);
 }
 
-std::string emitter_c::get_map_type_name(const type_c *value_type) {
-  std::string value_str = emit_type_for_sizeof(value_type);
-  std::string sanitized = value_str;
-  for (auto &c : sanitized) {
-    if (c == '*')
-      c = 'p';
-    if (c == '[' || c == ']' || c == ' ')
-      c = '_';
-  }
-  return "__truk_map_" + sanitized;
+std::string emitter_c::get_map_type_name(const type_c *key_type,
+                                         const type_c *value_type) {
+  return _type_registry.get_map_type_name(key_type, value_type);
 }
 
-void emitter_c::ensure_map_typedef(const type_c *value_type) {
-  std::string map_name = get_map_type_name(value_type);
-
-  if (_map_types_emitted.find(map_name) == _map_types_emitted.end()) {
-    _map_types_emitted.insert(map_name);
-    std::string value_str = emit_type_for_sizeof(value_type);
-    _structs << "typedef __truk_map_t(" << value_str << ") " << map_name
-             << ";\n\n";
-  }
+void emitter_c::ensure_map_typedef(const type_c *key_type,
+                                   const type_c *value_type) {
+  _type_registry.ensure_map_typedef(key_type, value_type, _structs);
 }
 
 bool emitter_c::is_map_type(const type_c *type) {
-  return dynamic_cast<const map_type_c *>(type) != nullptr;
+  return _type_registry.is_map_type(type);
+}
+
+std::string emitter_c::get_map_hash_fn(const type_c *key_type) {
+  if (auto *ptr = dynamic_cast<const pointer_type_c *>(key_type)) {
+    return "__truk_map_hash_str";
+  }
+  if (auto *prim = dynamic_cast<const primitive_type_c *>(key_type)) {
+    switch (prim->keyword()) {
+    case keywords_e::I8:
+      return "__truk_map_hash_i8";
+    case keywords_e::I16:
+      return "__truk_map_hash_i16";
+    case keywords_e::I32:
+      return "__truk_map_hash_i32";
+    case keywords_e::I64:
+      return "__truk_map_hash_i64";
+    case keywords_e::U8:
+      return "__truk_map_hash_u8";
+    case keywords_e::U16:
+      return "__truk_map_hash_u16";
+    case keywords_e::U32:
+      return "__truk_map_hash_u32";
+    case keywords_e::U64:
+      return "__truk_map_hash_u64";
+    case keywords_e::F32:
+      return "__truk_map_hash_f32";
+    case keywords_e::F64:
+      return "__truk_map_hash_f64";
+    case keywords_e::BOOL:
+      return "__truk_map_hash_bool";
+    default:
+      break;
+    }
+  }
+  return "__truk_map_hash_str";
+}
+
+std::string emitter_c::get_map_cmp_fn(const type_c *key_type) {
+  if (auto *ptr = dynamic_cast<const pointer_type_c *>(key_type)) {
+    return "__truk_map_cmp_str";
+  }
+  return "__truk_map_cmp_mem";
+}
+
+int emitter_c::get_key_size(const type_c *key_type) {
+  if (auto *ptr = dynamic_cast<const pointer_type_c *>(key_type)) {
+    return sizeof(void *);
+  }
+  if (auto *prim = dynamic_cast<const primitive_type_c *>(key_type)) {
+    switch (prim->keyword()) {
+    case keywords_e::I8:
+    case keywords_e::U8:
+    case keywords_e::BOOL:
+      return 1;
+    case keywords_e::I16:
+    case keywords_e::U16:
+      return 2;
+    case keywords_e::I32:
+    case keywords_e::U32:
+    case keywords_e::F32:
+      return 4;
+    case keywords_e::I64:
+    case keywords_e::U64:
+    case keywords_e::F64:
+      return 8;
+    default:
+      break;
+    }
+  }
+  return sizeof(void *);
 }
 
 void emitter_c::register_variable_type(const std::string &name,
                                        const type_c *type) {
-  _variable_is_slice[name] = is_slice_type(type);
-  _variable_is_map[name] = is_map_type(type);
+  _variable_registry.register_variable(name, type, _type_registry);
 }
 
 bool emitter_c::is_variable_slice(const std::string &name) {
-  auto it = _variable_is_slice.find(name);
-  if (it != _variable_is_slice.end()) {
-    return it->second;
-  }
-  return false;
+  return _variable_registry.is_slice(name);
 }
 
 bool emitter_c::is_variable_map(const std::string &name) {
-  auto it = _variable_is_map.find(name);
-  if (it != _variable_is_map.end()) {
-    return it->second;
-  }
-  return false;
+  return _variable_registry.is_map(name);
 }
 
 void emitter_c::visit(const primitive_type_c &node) {
@@ -389,7 +316,7 @@ void emitter_c::visit(const array_type_c &node) {
 void emitter_c::visit(const function_type_c &node) {}
 
 void emitter_c::visit(const map_type_c &node) {
-  _current_expr << get_map_type_name(node.value_type());
+  _current_expr << get_map_type_name(node.key_type(), node.value_type());
 }
 
 void emitter_c::visit(const fn_c &node) {
@@ -408,8 +335,28 @@ void emitter_c::visit(const fn_c &node) {
   _current_phase = emission_phase_e::FUNCTION_DEFINITION;
   _current_node_context = "function '" + node.name().name + "'";
 
-  std::string return_type = emit_type(node.return_type());
-  _functions << return_type << " " << node.name().name << "(";
+  bool is_private = is_private_identifier(node.name().name);
+  bool is_library = _result.metadata.is_library();
+
+  if (auto func_return =
+          dynamic_cast<const function_type_c *>(node.return_type())) {
+    // Function returning a function pointer - needs special syntax
+    std::string ret_type = emit_type(func_return->return_type());
+
+    if (is_private && is_library) {
+      _functions << "static ";
+    }
+
+    _functions << ret_type << " (*" << node.name().name << "(";
+  } else {
+    std::string return_type = emit_type(node.return_type());
+
+    if (is_private && is_library) {
+      _functions << "static ";
+    }
+
+    _functions << return_type << " " << node.name().name << "(";
+  }
 
   bool has_variadic = false;
   std::string variadic_name;
@@ -430,8 +377,34 @@ void emitter_c::visit(const fn_c &node) {
         _functions << ", ";
       register_variable_type(param.name.name, param.type.get());
 
-      std::string param_type = emit_type(param.type.get());
-      _functions << param_type << " " << param.name.name;
+      if (auto func = dynamic_cast<const function_type_c *>(param.type.get())) {
+        std::string ret_type = emit_type(func->return_type());
+        _functions << ret_type << " (*" << param.name.name << ")(";
+
+        const auto &func_param_types = func->param_types();
+        for (size_t j = 0; j < func_param_types.size(); ++j) {
+          if (j > 0) {
+            _functions << ", ";
+          }
+          _functions << emit_type(func_param_types[j].get());
+        }
+
+        if (func_param_types.empty()) {
+          _functions << "void";
+        }
+
+        if (func->has_variadic()) {
+          if (!func_param_types.empty()) {
+            _functions << ", ";
+          }
+          _functions << "...";
+        }
+
+        _functions << ")";
+      } else {
+        std::string param_type = emit_type(param.type.get());
+        _functions << param_type << " " << param.name.name;
+      }
 
       const type_c *current_type = param.type.get();
       while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
@@ -449,15 +422,43 @@ void emitter_c::visit(const fn_c &node) {
 
   _functions << ")";
 
+  // If returning a function pointer, add the return type parameters
+  if (auto func_return =
+          dynamic_cast<const function_type_c *>(node.return_type())) {
+    _functions << ")(";
+
+    const auto &ret_param_types = func_return->param_types();
+    for (size_t i = 0; i < ret_param_types.size(); ++i) {
+      if (i > 0) {
+        _functions << ", ";
+      }
+      _functions << emit_type(ret_param_types[i].get());
+    }
+
+    if (ret_param_types.empty()) {
+      _functions << "void";
+    }
+
+    if (func_return->has_variadic()) {
+      if (!ret_param_types.empty()) {
+        _functions << ", ";
+      }
+      _functions << "...";
+    }
+
+    _functions << ")";
+  }
+
   _current_function_name = node.name().name;
   _current_function_return_type = node.return_type();
-  _function_defers.clear();
 
   if (node.body()) {
     _functions << " ";
     if (has_variadic) {
       _functions << "{\n";
       _indent_level++;
+
+      push_defer_scope(defer_scope_s::scope_type_e::FUNCTION, &node);
 
       _functions << cdef::indent(_indent_level) << "va_list __truk_va_args;\n";
       _functions << cdef::indent(_indent_level) << "va_start(__truk_va_args, ";
@@ -471,30 +472,178 @@ void emitter_c::visit(const fn_c &node) {
         }
       }
 
-      emit_function_defers();
+      emit_scope_defers(_current_defer_scope);
+      pop_defer_scope();
 
       _functions << cdef::indent(_indent_level) << "va_end(__truk_va_args);\n";
       _indent_level--;
       _functions << "}\n";
     } else {
-      node.body()->accept(*this);
+      push_defer_scope(defer_scope_s::scope_type_e::FUNCTION, &node);
+
+      if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+        _functions << "{\n";
+        _indent_level++;
+        for (const auto &stmt : body_block->statements()) {
+          stmt->accept(*this);
+        }
+        emit_scope_defers(_current_defer_scope);
+        _indent_level--;
+        _functions << cdef::indent(_indent_level) << "}";
+      } else {
+        node.body()->accept(*this);
+        emit_scope_defers(_current_defer_scope);
+      }
+
+      pop_defer_scope();
     }
   }
 
   _functions << "\n";
 
-  _function_defers.clear();
   _current_function_name = "";
 
   _current_phase = saved_phase;
   _current_node_context = saved_context;
 }
 
+void emitter_c::visit(const lambda_c &node) {
+  if (_collecting_declarations) {
+    return;
+  }
+
+  // Skip lambda generation if it's going to be inlined (e.g., in each())
+  if (_skip_lambda_generation) {
+    return;
+  }
+
+  emission_phase_e saved_phase = _current_phase;
+  std::string saved_context = _current_node_context;
+  std::string saved_function_name = _current_function_name;
+  const type_c *saved_return_type = _current_function_return_type;
+  std::stringstream saved_functions;
+
+  std::string lambda_name =
+      "__truk_lambda_" + std::to_string(++_lambda_counter);
+  _current_node_context = "lambda '" + lambda_name + "'";
+
+  std::string return_type = emit_type(node.return_type());
+
+  _header << "static " << return_type << " " << lambda_name << "(";
+
+  saved_functions.swap(_functions);
+  _functions.str("");
+  _functions.clear();
+
+  _functions << "static " << return_type << " " << lambda_name << "(";
+
+  for (size_t i = 0; i < node.params().size(); ++i) {
+    const auto &param = node.params()[i];
+    if (i > 0) {
+      _header << ", ";
+      _functions << ", ";
+    }
+
+    register_variable_type(param.name.name, param.type.get());
+
+    if (auto func = dynamic_cast<const function_type_c *>(param.type.get())) {
+      std::string ret_type = emit_type(func->return_type());
+      std::string func_param = ret_type + " (*" + param.name.name + ")(";
+
+      const auto &func_param_types = func->param_types();
+      for (size_t j = 0; j < func_param_types.size(); ++j) {
+        if (j > 0) {
+          func_param += ", ";
+        }
+        func_param += emit_type(func_param_types[j].get());
+      }
+
+      if (func_param_types.empty()) {
+        func_param += "void";
+      }
+
+      if (func->has_variadic()) {
+        if (!func_param_types.empty()) {
+          func_param += ", ";
+        }
+        func_param += "...";
+      }
+
+      func_param += ")";
+
+      _header << func_param;
+      _functions << func_param;
+    } else {
+      std::string param_type = emit_type(param.type.get());
+      _header << param_type << " " << param.name.name;
+      _functions << param_type << " " << param.name.name;
+    }
+
+    const type_c *current_type = param.type.get();
+    while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+      if (arr->size().has_value()) {
+        _header << "[" << arr->size().value() << "]";
+        _functions << "[" << arr->size().value() << "]";
+        current_type = arr->element_type();
+      } else {
+        ensure_slice_typedef(arr->element_type());
+        break;
+      }
+    }
+  }
+
+  if (node.params().empty()) {
+    _header << "void";
+    _functions << "void";
+  }
+
+  _header << ");\n";
+  _functions << ")";
+
+  _current_phase = emission_phase_e::FUNCTION_DEFINITION;
+  _current_function_name = lambda_name;
+  _current_function_return_type = node.return_type();
+
+  if (node.body()) {
+    _functions << " ";
+    push_defer_scope(defer_scope_s::scope_type_e::LAMBDA, &node);
+
+    if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+      _functions << "{\n";
+      _indent_level++;
+      for (const auto &stmt : body_block->statements()) {
+        stmt->accept(*this);
+      }
+      emit_scope_defers(_current_defer_scope);
+      _indent_level--;
+      _functions << cdef::indent(_indent_level) << "}";
+    } else {
+      node.body()->accept(*this);
+      emit_scope_defers(_current_defer_scope);
+    }
+
+    pop_defer_scope();
+  }
+
+  _functions << "\n";
+
+  std::string lambda_def = _functions.str();
+  _functions.swap(saved_functions);
+  _header << lambda_def;
+
+  _current_expr << lambda_name;
+
+  _current_function_name = saved_function_name;
+  _current_function_return_type = saved_return_type;
+  _current_phase = saved_phase;
+  _current_node_context = saved_context;
+}
+
 void emitter_c::visit(const struct_c &node) {
   if (_collecting_declarations) {
-    _struct_names.insert(node.name().name);
+    _type_registry.register_struct_name(node.name().name);
     if (node.is_extern()) {
-      _extern_struct_names.insert(node.name().name);
+      _type_registry.register_extern_struct_name(node.name().name);
     }
     return;
   }
@@ -542,19 +691,64 @@ void emitter_c::visit(const var_c &node) {
     return;
   }
 
+  if (node.is_extern()) {
+    return;
+  }
+
   register_variable_type(node.name().name, node.type());
 
   if (auto map = dynamic_cast<const map_type_c *>(node.type())) {
-    ensure_map_typedef(map->value_type());
+    ensure_map_typedef(map->key_type(), map->value_type());
   }
 
-  std::string type_str = emit_type(node.type());
+  bool is_private = is_private_identifier(node.name().name);
+  bool is_library = _result.metadata.is_library();
 
-  if (_indent_level == 0) {
-    _functions << type_str << " " << node.name().name;
+  if (auto func = dynamic_cast<const function_type_c *>(node.type())) {
+    std::string ret_type = emit_type(func->return_type());
+    std::string func_decl = ret_type + " (*" + node.name().name + ")(";
+
+    const auto &param_types = func->param_types();
+    for (size_t i = 0; i < param_types.size(); ++i) {
+      if (i > 0) {
+        func_decl += ", ";
+      }
+      func_decl += emit_type(param_types[i].get());
+    }
+
+    if (param_types.empty()) {
+      func_decl += "void";
+    }
+
+    if (func->has_variadic()) {
+      if (!param_types.empty()) {
+        func_decl += ", ";
+      }
+      func_decl += "...";
+    }
+
+    func_decl += ")";
+
+    if (_indent_level == 0) {
+      if (is_private && is_library) {
+        _functions << "static ";
+      }
+      _functions << func_decl;
+    } else {
+      _functions << cdef::indent(_indent_level) << func_decl;
+    }
   } else {
-    _functions << cdef::indent(_indent_level) << type_str << " "
-               << node.name().name;
+    std::string type_str = emit_type(node.type());
+
+    if (_indent_level == 0) {
+      if (is_private && is_library) {
+        _functions << "static ";
+      }
+      _functions << type_str << " " << node.name().name;
+    } else {
+      _functions << cdef::indent(_indent_level) << type_str << " "
+                 << node.name().name;
+    }
   }
 
   const type_c *current_type = node.type();
@@ -569,13 +763,8 @@ void emitter_c::visit(const var_c &node) {
   }
 
   if (node.initializer()) {
-    _functions << " = ";
-    _in_expression = true;
-    node.initializer()->accept(*this);
-    _in_expression = false;
-    _functions << _current_expr.str();
-    _current_expr.str("");
-    _current_expr.clear();
+    std::string init = emit_expression(node.initializer());
+    _functions << " = " << init;
   }
 
   _functions << ";\n";
@@ -607,25 +796,13 @@ void emitter_c::visit(const const_c &node) {
     }
   }
 
-  _functions << " = ";
-  _in_expression = true;
-  node.value()->accept(*this);
-  _in_expression = false;
-  _functions << _current_expr.str();
-  _current_expr.str("");
-  _current_expr.clear();
-  _functions << ";\n";
+  std::string value = emit_expression(node.value());
+  _functions << " = " << value << ";\n";
 }
 
 void emitter_c::visit(const if_c &node) {
-  _functions << cdef::indent(_indent_level) << "if (";
-  _in_expression = true;
-  node.condition()->accept(*this);
-  _in_expression = false;
-  _functions << _current_expr.str();
-  _current_expr.str("");
-  _current_expr.clear();
-  _functions << ") ";
+  std::string condition = emit_expression(node.condition());
+  _functions << cdef::indent(_indent_level) << "if (" << condition << ") ";
 
   node.then_block()->accept(*this);
 
@@ -638,16 +815,27 @@ void emitter_c::visit(const if_c &node) {
 }
 
 void emitter_c::visit(const while_c &node) {
-  _functions << cdef::indent(_indent_level) << "while (";
-  _in_expression = true;
-  node.condition()->accept(*this);
-  _in_expression = false;
-  _functions << _current_expr.str();
-  _current_expr.str("");
-  _current_expr.clear();
-  _functions << ") ";
+  std::string condition = emit_expression(node.condition());
+  _functions << cdef::indent(_indent_level) << "while (" << condition << ") ";
 
-  node.body()->accept(*this);
+  push_defer_scope(defer_scope_s::scope_type_e::LOOP, &node);
+
+  if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+    _functions << "{\n";
+    _indent_level++;
+    for (const auto &stmt : body_block->statements()) {
+      stmt->accept(*this);
+    }
+    emit_scope_defers(_current_defer_scope);
+    _indent_level--;
+    _functions << cdef::indent(_indent_level) << "}";
+  } else {
+    node.body()->accept(*this);
+    emit_scope_defers(_current_defer_scope);
+  }
+
+  pop_defer_scope();
+
   _functions << "\n";
 }
 
@@ -673,397 +861,386 @@ void emitter_c::visit(const for_c &node) {
       }
       _functions << init_str;
     } else {
-      _in_expression = true;
-      node.init()->accept(*this);
-      _in_expression = false;
-      _functions << _current_expr.str();
-      _current_expr.str("");
-      _current_expr.clear();
+      std::string init_expr = emit_expression(node.init());
+      _functions << init_expr;
     }
   }
   _functions << "; ";
 
   if (node.condition()) {
-    _in_expression = true;
-    node.condition()->accept(*this);
-    _in_expression = false;
-    _functions << _current_expr.str();
-    _current_expr.str("");
-    _current_expr.clear();
+    std::string cond_expr = emit_expression(node.condition());
+    _functions << cond_expr;
   }
   _functions << "; ";
 
   if (node.post()) {
-    _in_expression = true;
-    node.post()->accept(*this);
-    _in_expression = false;
-    _functions << _current_expr.str();
-    _current_expr.str("");
-    _current_expr.clear();
+    std::string post_expr = emit_expression(node.post());
+    _functions << post_expr;
   }
 
   _functions << ") ";
 
-  node.body()->accept(*this);
+  push_defer_scope(defer_scope_s::scope_type_e::LOOP, &node);
+
+  if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+    _functions << "{\n";
+    _indent_level++;
+    for (const auto &stmt : body_block->statements()) {
+      stmt->accept(*this);
+    }
+    emit_scope_defers(_current_defer_scope);
+    _indent_level--;
+    _functions << cdef::indent(_indent_level) << "}";
+  } else {
+    node.body()->accept(*this);
+    emit_scope_defers(_current_defer_scope);
+  }
+
+  pop_defer_scope();
+
   _functions << "\n";
 }
 
 void emitter_c::visit(const return_c &node) {
-  emit_function_defers();
+  emit_all_remaining_defers();
 
   _functions << cdef::indent(_indent_level) << "return";
 
   if (node.expression()) {
-    _functions << " ";
-    _in_expression = true;
-    node.expression()->accept(*this);
-    _in_expression = false;
-    _functions << _current_expr.str();
-    _current_expr.str("");
-    _current_expr.clear();
+    std::string expr = emit_expression(node.expression());
+    _functions << " " << expr;
   }
 
   _functions << ";\n";
 }
 
 void emitter_c::visit(const break_c &node) {
+  defer_scope_s *loop_scope = find_enclosing_loop_scope();
+
+  defer_scope_s *scope = _current_defer_scope;
+  while (scope && scope != loop_scope) {
+    emit_scope_defers(scope);
+    scope = scope->parent;
+  }
+
   _functions << cdef::indent(_indent_level) << "break;\n";
 }
 
 void emitter_c::visit(const continue_c &node) {
+  defer_scope_s *loop_scope = find_enclosing_loop_scope();
+
+  defer_scope_s *scope = _current_defer_scope;
+  while (scope && scope != loop_scope) {
+    emit_scope_defers(scope);
+    scope = scope->parent;
+  }
+
   _functions << cdef::indent(_indent_level) << "continue;\n";
 }
 
 void emitter_c::visit(const defer_c &node) {
-  if (node.deferred_code()) {
-    _function_defers.push_back(&node);
+  if (node.deferred_code() && _current_defer_scope) {
+    _current_defer_scope->defers.push_back(&node);
   }
 }
 
 void emitter_c::visit(const binary_op_c &node) {
-  _current_expr << "(";
-  node.left()->accept(*this);
-
-  switch (node.op()) {
-  case binary_op_e::ADD:
-    _current_expr << " + ";
-    break;
-  case binary_op_e::SUB:
-    _current_expr << " - ";
-    break;
-  case binary_op_e::MUL:
-    _current_expr << " * ";
-    break;
-  case binary_op_e::DIV:
-    _current_expr << " / ";
-    break;
-  case binary_op_e::MOD:
-    _current_expr << " % ";
-    break;
-  case binary_op_e::EQ:
-    _current_expr << " == ";
-    break;
-  case binary_op_e::NE:
-    _current_expr << " != ";
-    break;
-  case binary_op_e::LT:
-    _current_expr << " < ";
-    break;
-  case binary_op_e::LE:
-    _current_expr << " <= ";
-    break;
-  case binary_op_e::GT:
-    _current_expr << " > ";
-    break;
-  case binary_op_e::GE:
-    _current_expr << " >= ";
-    break;
-  case binary_op_e::AND:
-    _current_expr << " && ";
-    break;
-  case binary_op_e::OR:
-    _current_expr << " || ";
-    break;
-  case binary_op_e::BITWISE_AND:
-    _current_expr << " & ";
-    break;
-  case binary_op_e::BITWISE_OR:
-    _current_expr << " | ";
-    break;
-  case binary_op_e::BITWISE_XOR:
-    _current_expr << " ^ ";
-    break;
-  case binary_op_e::LEFT_SHIFT:
-    _current_expr << " << ";
-    break;
-  case binary_op_e::RIGHT_SHIFT:
-    _current_expr << " >> ";
-    break;
-  }
-
-  node.right()->accept(*this);
-  _current_expr << ")";
+  _current_expr << emit_expr_binary_op(node);
 }
 
 void emitter_c::visit(const unary_op_c &node) {
-  switch (node.op()) {
-  case unary_op_e::NEG:
-    _current_expr << "(-";
-    break;
-  case unary_op_e::NOT:
-    _current_expr << "(!";
-    break;
-  case unary_op_e::BITWISE_NOT:
-    _current_expr << "(~";
-    break;
-  case unary_op_e::ADDRESS_OF:
-    _current_expr << "(&";
-    break;
-  case unary_op_e::DEREF:
-    _current_expr << "(*";
-    break;
-  }
-
-  node.operand()->accept(*this);
-  _current_expr << ")";
+  _current_expr << emit_expr_unary_op(node);
 }
 
 void emitter_c::visit(const cast_c &node) {
-  _current_expr << "((" << emit_type(node.target_type()) << ")";
-  node.expression()->accept(*this);
-  _current_expr << ")";
+  _current_expr << emit_expr_cast(node);
 }
 
 void emitter_c::visit(const call_c &node) {
-  if (auto ident = dynamic_cast<const identifier_c *>(node.callee())) {
-    const std::string &func_name = ident->id().name;
-    auto builtin = builtins::lookup_builtin(func_name);
-
-    if (builtin) {
-      switch (builtin->kind) {
-      case builtins::builtin_kind_e::MAKE: {
-        if (!node.arguments().empty()) {
-          if (auto type_param = dynamic_cast<const type_param_c *>(
-                  node.arguments()[0].get())) {
-            if (node.arguments().size() == 1) {
-              if (is_map_type(type_param->type())) {
-                auto *map_type =
-                    dynamic_cast<const map_type_c *>(type_param->type());
-                ensure_map_typedef(map_type->value_type());
-
-                std::string map_name =
-                    get_map_type_name(map_type->value_type());
-                _current_expr << "({" << map_name
-                              << " __tmp; __truk_map_init(&__tmp); __tmp;})";
-                return;
-              }
-
-              std::string type_str = emit_type(type_param->type());
-              _current_expr << cdef::emit_builtin_make(type_str);
-              return;
-            } else if (node.arguments().size() == 2) {
-              std::string elem_type_for_sizeof =
-                  emit_type_for_sizeof(type_param->type());
-              ensure_slice_typedef(type_param->type());
-
-              std::stringstream count_stream;
-              std::swap(count_stream, _current_expr);
-              node.arguments()[1]->accept(*this);
-              std::string count_expr = _current_expr.str();
-              std::swap(count_stream, _current_expr);
-
-              std::string slice_type = get_slice_type_name(type_param->type());
-
-              std::string cast_type;
-              if (auto arr =
-                      dynamic_cast<const array_type_c *>(type_param->type())) {
-                if (arr->size().has_value()) {
-                  cast_type = emit_array_pointer_type(type_param->type());
-                } else {
-                  cast_type = elem_type_for_sizeof + "*";
-                }
-              } else {
-                cast_type = elem_type_for_sizeof + "*";
-              }
-
-              _current_expr << cdef::emit_builtin_make_array(
-                  cast_type, elem_type_for_sizeof, count_expr);
-              return;
-            }
-          }
-        }
-        break;
-      }
-      case builtins::builtin_kind_e::DELETE: {
-        if (!node.arguments().empty()) {
-          if (auto idx =
-                  dynamic_cast<const index_c *>(node.arguments()[0].get())) {
-            if (auto ident =
-                    dynamic_cast<const identifier_c *>(idx->object())) {
-              if (is_variable_map(ident->id().name)) {
-                std::stringstream obj_stream;
-                std::swap(obj_stream, _current_expr);
-                _in_expression = true;
-                idx->object()->accept(*this);
-                std::string obj_expr = _current_expr.str();
-                std::swap(obj_stream, _current_expr);
-
-                std::stringstream idx_stream;
-                std::swap(idx_stream, _current_expr);
-                idx->index()->accept(*this);
-                std::string idx_expr = _current_expr.str();
-                std::swap(idx_stream, _current_expr);
-                _in_expression = false;
-
-                bool key_is_slice = false;
-                if (auto key_ident =
-                        dynamic_cast<const identifier_c *>(idx->index())) {
-                  key_is_slice = is_variable_slice(key_ident->id().name);
-                }
-
-                if (!_in_expression) {
-                  _functions << cdef::indent(_indent_level);
-                }
-                if (key_is_slice) {
-                  _current_expr << "__truk_map_remove(&(" << obj_expr << "), ("
-                                << idx_expr << ").data)";
-                } else {
-                  _current_expr << "__truk_map_remove(&(" << obj_expr << "), "
-                                << idx_expr << ")";
-                }
-
-                if (!_in_expression) {
-                  _functions << _current_expr.str() << ";\n";
-                  _current_expr.str("");
-                  _current_expr.clear();
-                }
-                return;
-              }
-            }
-          }
-
-          std::stringstream arg_stream;
-          std::swap(arg_stream, _current_expr);
-          node.arguments()[0]->accept(*this);
-          std::string arg = _current_expr.str();
-          std::swap(arg_stream, _current_expr);
-
-          if (is_variable_map(arg)) {
-            _current_expr << "__truk_map_deinit(&(" << arg << "))";
-          } else if (is_variable_slice(arg)) {
-            _current_expr << cdef::emit_builtin_delete_array(arg);
-          } else {
-            _current_expr << cdef::emit_builtin_delete(arg);
-          }
-
-          if (!_in_expression) {
-            _functions << cdef::indent(_indent_level) << _current_expr.str()
-                       << ";\n";
-            _current_expr.str("");
-            _current_expr.clear();
-          }
-          return;
-        }
-        break;
-      }
-      case builtins::builtin_kind_e::LEN: {
-        if (!node.arguments().empty()) {
-          std::stringstream arg_stream;
-          std::swap(arg_stream, _current_expr);
-          node.arguments()[0]->accept(*this);
-          std::string arg = _current_expr.str();
-          std::swap(arg_stream, _current_expr);
-          _current_expr << "(" << arg << ").len";
-          return;
-        }
-        break;
-      }
-      case builtins::builtin_kind_e::SIZEOF: {
-        if (!node.arguments().empty()) {
-          if (auto type_param = dynamic_cast<const type_param_c *>(
-                  node.arguments()[0].get())) {
-            std::string type_str = emit_type_for_sizeof(type_param->type());
-            _current_expr << cdef::emit_builtin_sizeof(type_str);
-            return;
-          }
-        }
-        break;
-      }
-      case builtins::builtin_kind_e::PANIC: {
-        if (!node.arguments().empty()) {
-          std::stringstream arg_stream;
-          std::swap(arg_stream, _current_expr);
-          node.arguments()[0]->accept(*this);
-          std::string arg = _current_expr.str();
-          std::swap(arg_stream, _current_expr);
-          _current_expr << "TRUK_PANIC((" << arg << ").data, (" << arg
-                        << ").len)";
-
-          if (!_in_expression) {
-            _functions << cdef::indent(_indent_level) << _current_expr.str()
-                       << ";\n";
-            _current_expr.str("");
-            _current_expr.clear();
-          }
-          return;
-        }
-        break;
-      }
-      case builtins::builtin_kind_e::VA_ARG_I32: {
-        _current_expr << "va_arg(__truk_va_args, __truk_i32)";
-        return;
-      }
-      case builtins::builtin_kind_e::VA_ARG_I64: {
-        _current_expr << "va_arg(__truk_va_args, __truk_i64)";
-        return;
-      }
-      case builtins::builtin_kind_e::VA_ARG_F64: {
-        _current_expr << "va_arg(__truk_va_args, __truk_f64)";
-        return;
-      }
-      case builtins::builtin_kind_e::VA_ARG_PTR: {
-        _current_expr << "va_arg(__truk_va_args, __truk_void*)";
-        return;
-      }
-      }
-    }
-  }
-
-  bool was_in_expr = _in_expression;
-  _in_expression = true;
-
-  node.callee()->accept(*this);
-  _current_expr << "(";
-
-  for (size_t i = 0; i < node.arguments().size(); ++i) {
-    if (i > 0)
-      _current_expr << ", ";
-    node.arguments()[i]->accept(*this);
-  }
-
-  _current_expr << ")";
-
-  _in_expression = was_in_expr;
-
-  if (!_in_expression) {
-    _functions << cdef::indent(_indent_level) << _current_expr.str() << ";\n";
-    _current_expr.str("");
-    _current_expr.clear();
+  if (_in_expression) {
+    _current_expr << emit_expr_call(node);
+  } else {
+    std::string call_expr = emit_expr_call(node);
+    _functions << cdef::indent(_indent_level) << call_expr << ";\n";
   }
 }
 
 void emitter_c::visit(const index_c &node) {
-  std::stringstream obj_stream;
-  std::swap(obj_stream, _current_expr);
-  node.object()->accept(*this);
-  std::string obj_expr = _current_expr.str();
-  std::swap(obj_stream, _current_expr);
+  _current_expr << emit_expr_index(node);
+}
 
-  std::stringstream idx_stream;
-  std::swap(idx_stream, _current_expr);
-  node.index()->accept(*this);
-  std::string idx_expr = _current_expr.str();
-  std::swap(idx_stream, _current_expr);
+void emitter_c::visit(const member_access_c &node) {
+  _current_expr << emit_expr_member_access(node);
+}
+
+void emitter_c::visit(const literal_c &node) {
+  _current_expr << emit_expr_literal(node);
+}
+
+void emitter_c::visit(const identifier_c &node) {
+  _current_expr << emit_expr_identifier(node);
+}
+
+void emitter_c::visit(const assignment_c &node) {
+  bool was_in_expr = _in_expression;
+
+  if (auto idx = dynamic_cast<const index_c *>(node.target())) {
+    bool is_slice = false;
+    bool is_map = false;
+    if (auto ident = dynamic_cast<const identifier_c *>(idx->object())) {
+      is_slice = is_variable_slice(ident->id().name);
+      is_map = is_variable_map(ident->id().name);
+    } else if (auto inner_idx = dynamic_cast<const index_c *>(idx->object())) {
+      is_slice = false;
+      is_map = false;
+    } else {
+      is_slice = false;
+      is_map = false;
+    }
+
+    if (is_map && !was_in_expr) {
+      std::string obj_expr = emit_expression(idx->object());
+      std::string idx_expr = emit_expression(idx->index());
+      std::string value = emit_expression(node.value());
+
+      bool key_is_slice = false;
+      if (auto key_ident = dynamic_cast<const identifier_c *>(idx->index())) {
+        key_is_slice = is_variable_slice(key_ident->id().name);
+      }
+
+      auto *key_literal = dynamic_cast<const literal_c *>(idx->index());
+      bool key_is_string_literal =
+          key_literal && key_literal->type() == literal_type_e::STRING;
+      bool key_is_non_string_literal = key_literal && !key_is_string_literal;
+
+      _functions << cdef::indent(_indent_level);
+      _functions << "{ ";
+      if (key_is_string_literal && !key_is_slice) {
+        _functions << "const __truk_u8* __truk_key_tmp = " << idx_expr << "; ";
+        _functions << "(" << obj_expr << ").tmp = " << value << "; ";
+        _functions << "__truk_map_set_(&(" << obj_expr
+                   << ").base, &__truk_key_tmp, &(" << obj_expr
+                   << ").tmp, sizeof((" << obj_expr << ").tmp)); }\n";
+      } else if (key_is_non_string_literal && !key_is_slice) {
+        _functions << "typeof(" << idx_expr << ") __truk_key_tmp = " << idx_expr
+                   << "; ";
+        _functions << "(" << obj_expr << ").tmp = " << value << "; ";
+        _functions << "__truk_map_set_(&(" << obj_expr
+                   << ").base, &__truk_key_tmp, &(" << obj_expr
+                   << ").tmp, sizeof((" << obj_expr << ").tmp)); }\n";
+      } else {
+        _functions << "(" << obj_expr << ").tmp = " << value << "; ";
+        if (key_is_slice) {
+          _functions << "__truk_map_set_(&(" << obj_expr << ").base, &(("
+                     << idx_expr << ").data), &(" << obj_expr
+                     << ").tmp, sizeof((" << obj_expr << ").tmp)); }\n";
+        } else {
+          _functions << "__truk_map_set_(&(" << obj_expr << ").base, &("
+                     << idx_expr << "), &(" << obj_expr << ").tmp, sizeof(("
+                     << obj_expr << ").tmp)); }\n";
+        }
+      }
+      return;
+    }
+
+    if (is_slice && !was_in_expr) {
+      std::string obj_expr = emit_expression(idx->object());
+      std::string idx_expr = emit_expression(idx->index());
+      std::string value = emit_expression(node.value());
+
+      _functions << cdef::indent(_indent_level);
+      _functions << "__truk_runtime_sxs_bounds_check(" << idx_expr << ", ("
+                 << obj_expr << ").len);\n";
+      _functions << cdef::indent(_indent_level);
+      _functions << "(" << obj_expr << ").data[" << idx_expr << "] = " << value
+                 << ";\n";
+      return;
+    }
+  }
+
+  std::string target = emit_expression(node.target());
+  std::string value = emit_expression(node.value());
+
+  if (was_in_expr) {
+    _current_expr << target << " = " << value;
+  } else {
+    _functions << cdef::indent(_indent_level) << target << " = " << value
+               << ";\n";
+  }
+}
+
+void emitter_c::visit(const block_c &node) {
+  _functions << "{\n";
+  _indent_level++;
+
+  push_defer_scope(defer_scope_s::scope_type_e::BLOCK, &node);
+
+  for (const auto &stmt : node.statements()) {
+    stmt->accept(*this);
+  }
+
+  emit_scope_defers(_current_defer_scope);
+  pop_defer_scope();
+
+  _indent_level--;
+  _functions << cdef::indent(_indent_level) << "}";
+}
+
+void emitter_c::visit(const array_literal_c &node) {
+  _current_expr << emit_expr_array_literal(node);
+}
+
+void emitter_c::visit(const struct_literal_c &node) {
+  _current_expr << emit_expr_struct_literal(node);
+}
+
+void emitter_c::visit(const type_param_c &node) {}
+
+std::string emitter_c::get_binary_op_string(binary_op_e op) {
+  switch (op) {
+  case binary_op_e::ADD:
+    return "+";
+  case binary_op_e::SUB:
+    return "-";
+  case binary_op_e::MUL:
+    return "*";
+  case binary_op_e::DIV:
+    return "/";
+  case binary_op_e::MOD:
+    return "%";
+  case binary_op_e::EQ:
+    return "==";
+  case binary_op_e::NE:
+    return "!=";
+  case binary_op_e::LT:
+    return "<";
+  case binary_op_e::LE:
+    return "<=";
+  case binary_op_e::GT:
+    return ">";
+  case binary_op_e::GE:
+    return ">=";
+  case binary_op_e::AND:
+    return "&&";
+  case binary_op_e::OR:
+    return "||";
+  case binary_op_e::BITWISE_AND:
+    return "&";
+  case binary_op_e::BITWISE_OR:
+    return "|";
+  case binary_op_e::BITWISE_XOR:
+    return "^";
+  case binary_op_e::LEFT_SHIFT:
+    return "<<";
+  case binary_op_e::RIGHT_SHIFT:
+    return ">>";
+  }
+  return "";
+}
+
+std::string emitter_c::get_unary_op_string(unary_op_e op) {
+  switch (op) {
+  case unary_op_e::NEG:
+    return "-";
+  case unary_op_e::NOT:
+    return "!";
+  case unary_op_e::BITWISE_NOT:
+    return "~";
+  case unary_op_e::ADDRESS_OF:
+    return "&";
+  case unary_op_e::DEREF:
+    return "*";
+  }
+  return "";
+}
+
+std::string emitter_c::emit_expr_binary_op(const binary_op_c &node) {
+  std::string left = emit_expression(node.left());
+  std::string right = emit_expression(node.right());
+  std::string op = get_binary_op_string(node.op());
+  return "(" + left + " " + op + " " + right + ")";
+}
+
+std::string emitter_c::emit_expr_unary_op(const unary_op_c &node) {
+  std::string operand = emit_expression(node.operand());
+  std::string op = get_unary_op_string(node.op());
+  return "(" + op + operand + ")";
+}
+
+std::string emitter_c::emit_expr_cast(const cast_c &node) {
+  std::string expr = emit_expression(node.expression());
+  std::string type = emit_type(node.target_type());
+  return "((" + type + ")" + expr + ")";
+}
+
+std::string emitter_c::emit_expr_literal(const literal_c &node) {
+  switch (node.type()) {
+  case literal_type_e::INTEGER: {
+    const std::string &val = node.value();
+    if (val.size() >= 2 && val[0] == '0' && val[1] == 'b') {
+      unsigned long long result = 0;
+      for (size_t i = 2; i < val.size(); ++i) {
+        result = (result << 1) | (val[i] - '0');
+      }
+      return std::to_string(result);
+    } else if (val.size() >= 2 && val[0] == '0' && val[1] == 'o') {
+      unsigned long long result = 0;
+      for (size_t i = 2; i < val.size(); ++i) {
+        result = (result << 3) | (val[i] - '0');
+      }
+      return std::to_string(result);
+    } else {
+      return val;
+    }
+  }
+  case literal_type_e::FLOAT:
+    return node.value();
+  case literal_type_e::STRING:
+    return node.value();
+  case literal_type_e::BOOL:
+    return (node.value() == "true" ? "true" : "false");
+  case literal_type_e::NIL:
+    return "NULL";
+  }
+  return "";
+}
+
+std::string emitter_c::emit_expr_identifier(const identifier_c &node) {
+  return node.id().name;
+}
+
+std::string emitter_c::emit_expr_member_access(const member_access_c &node) {
+  std::string obj = emit_expression(node.object());
+  return obj + "." + node.field().name;
+}
+
+std::string emitter_c::emit_expr_array_literal(const array_literal_c &node) {
+  std::string result = "{";
+  for (size_t i = 0; i < node.elements().size(); ++i) {
+    if (i > 0)
+      result += ", ";
+    result += emit_expression(node.elements()[i].get());
+  }
+  result += "}";
+  return result;
+}
+
+std::string emitter_c::emit_expr_struct_literal(const struct_literal_c &node) {
+  std::string result = "(" + node.struct_name().name + "){";
+  for (size_t i = 0; i < node.field_initializers().size(); ++i) {
+    if (i > 0)
+      result += ", ";
+    const auto &field_init = node.field_initializers()[i];
+    result += "." + field_init.field_name.name + " = ";
+    result += emit_expression(field_init.value.get());
+  }
+  result += "}";
+  return result;
+}
+
+std::string emitter_c::emit_expr_index(const index_c &node) {
+  std::string obj_expr = emit_expression(node.object());
+  std::string idx_expr = emit_expression(node.index());
 
   bool is_slice = false;
   bool is_map = false;
@@ -1087,232 +1264,98 @@ void emitter_c::visit(const index_c &node) {
 
   if (is_map) {
     bool key_is_slice = false;
+    auto *key_literal = dynamic_cast<const literal_c *>(node.index());
+    bool key_is_string_literal =
+        key_literal && key_literal->type() == literal_type_e::STRING;
+    bool key_is_non_string_literal = key_literal && !key_is_string_literal;
+
     if (auto key_ident = dynamic_cast<const identifier_c *>(node.index())) {
       key_is_slice = is_variable_slice(key_ident->id().name);
     }
 
     if (key_is_slice) {
-      _current_expr << "__truk_map_get(&(" << obj_expr << "), (" << idx_expr
-                    << ").data)";
+      return "__truk_map_get_generic(&(" + obj_expr + "), &((" + idx_expr +
+             ").data))";
+    } else if (key_is_string_literal) {
+      return "({ const __truk_u8* __truk_key_tmp = " + idx_expr +
+             "; __truk_map_get_generic(&(" + obj_expr +
+             "), &__truk_key_tmp); })";
+    } else if (key_is_non_string_literal) {
+      return "({ typeof(" + idx_expr + ") __truk_key_tmp = " + idx_expr +
+             "; __truk_map_get_generic(&(" + obj_expr +
+             "), &__truk_key_tmp); })";
     } else {
-      _current_expr << "__truk_map_get(&(" << obj_expr << "), " << idx_expr
-                    << ")";
+      return "__truk_map_get_generic(&(" + obj_expr + "), &(" + idx_expr + "))";
     }
   } else if (is_slice) {
-    _current_expr << "({ __truk_runtime_sxs_bounds_check(" << idx_expr << ", ("
-                  << obj_expr << ").len); (" << obj_expr << ").data["
-                  << idx_expr << "]; })";
+    return "({ __truk_runtime_sxs_bounds_check(" + idx_expr + ", (" + obj_expr +
+           ").len); (" + obj_expr + ").data[" + idx_expr + "]; })";
   } else {
-    _current_expr << obj_expr << "[" << idx_expr << "]";
+    return obj_expr + "[" + idx_expr + "]";
   }
 }
 
-void emitter_c::visit(const member_access_c &node) {
-  node.object()->accept(*this);
-  _current_expr << "." << node.field().name;
-}
-
-void emitter_c::visit(const literal_c &node) {
-  switch (node.type()) {
-  case literal_type_e::INTEGER: {
-    const std::string &val = node.value();
-    if (val.size() >= 2 && val[0] == '0' && val[1] == 'b') {
-      unsigned long long result = 0;
-      for (size_t i = 2; i < val.size(); ++i) {
-        result = (result << 1) | (val[i] - '0');
-      }
-      _current_expr << result;
-    } else if (val.size() >= 2 && val[0] == '0' && val[1] == 'o') {
-      unsigned long long result = 0;
-      for (size_t i = 2; i < val.size(); ++i) {
-        result = (result << 3) | (val[i] - '0');
-      }
-      _current_expr << result;
-    } else {
-      _current_expr << val;
-    }
-    break;
-  }
-  case literal_type_e::FLOAT:
-    _current_expr << node.value();
-    break;
-  case literal_type_e::STRING:
-    _current_expr << node.value();
-    break;
-  case literal_type_e::BOOL:
-    _current_expr << (node.value() == "true" ? "true" : "false");
-    break;
-  case literal_type_e::NIL:
-    _current_expr << "NULL";
-    break;
-  }
-}
-
-void emitter_c::visit(const identifier_c &node) {
-  _current_expr << node.id().name;
-}
-
-void emitter_c::visit(const assignment_c &node) {
-  bool was_in_expr = _in_expression;
-
-  if (auto idx = dynamic_cast<const index_c *>(node.target())) {
-    bool is_slice = false;
-    bool is_map = false;
-    if (auto ident = dynamic_cast<const identifier_c *>(idx->object())) {
-      is_slice = is_variable_slice(ident->id().name);
-      is_map = is_variable_map(ident->id().name);
-    } else if (auto inner_idx = dynamic_cast<const index_c *>(idx->object())) {
-      is_slice = false;
-      is_map = false;
-    } else {
-      is_slice = false;
-      is_map = false;
-    }
-
-    if (is_map && !was_in_expr) {
-      std::stringstream obj_stream;
-      std::swap(obj_stream, _current_expr);
-      _in_expression = true;
-      idx->object()->accept(*this);
-      std::string obj_expr = _current_expr.str();
-      std::swap(obj_stream, _current_expr);
-
-      std::stringstream idx_stream;
-      std::swap(idx_stream, _current_expr);
-      idx->index()->accept(*this);
-      std::string idx_expr = _current_expr.str();
-      std::swap(idx_stream, _current_expr);
-
-      bool key_is_slice = false;
-      if (auto key_ident = dynamic_cast<const identifier_c *>(idx->index())) {
-        key_is_slice = is_variable_slice(key_ident->id().name);
-      }
-
-      node.value()->accept(*this);
-      std::string value = _current_expr.str();
-      _current_expr.str("");
-      _current_expr.clear();
-      _in_expression = was_in_expr;
-
-      _functions << cdef::indent(_indent_level);
-      _functions << "{ (" << obj_expr << ").tmp = " << value << "; ";
-      if (key_is_slice) {
-        _functions << "__truk_map_set_(&(" << obj_expr << ").base, ("
-                   << idx_expr << ").data, &(" << obj_expr << ").tmp, sizeof(("
-                   << obj_expr << ").tmp)); }\n";
-      } else {
-        _functions << "__truk_map_set_(&(" << obj_expr << ").base, " << idx_expr
-                   << ", &(" << obj_expr << ").tmp, sizeof((" << obj_expr
-                   << ").tmp)); }\n";
-      }
-      return;
-    }
-
-    if (is_slice && !was_in_expr) {
-      std::stringstream obj_stream;
-      std::swap(obj_stream, _current_expr);
-      _in_expression = true;
-      idx->object()->accept(*this);
-      std::string obj_expr = _current_expr.str();
-      std::swap(obj_stream, _current_expr);
-
-      std::stringstream idx_stream;
-      std::swap(idx_stream, _current_expr);
-      idx->index()->accept(*this);
-      std::string idx_expr = _current_expr.str();
-      std::swap(idx_stream, _current_expr);
-
-      node.value()->accept(*this);
-      std::string value = _current_expr.str();
-      _current_expr.str("");
-      _current_expr.clear();
-      _in_expression = was_in_expr;
-
-      _functions << cdef::indent(_indent_level);
-      _functions << "__truk_runtime_sxs_bounds_check(" << idx_expr << ", ("
-                 << obj_expr << ").len);\n";
-      _functions << cdef::indent(_indent_level);
-      _functions << "(" << obj_expr << ").data[" << idx_expr << "] = " << value
-                 << ";\n";
-      return;
+std::string emitter_c::emit_expr_call(const call_c &node) {
+  if (auto ident = dynamic_cast<const identifier_c *>(node.callee())) {
+    if (auto *handler = _builtin_registry.get_handler(ident->id().name)) {
+      std::stringstream temp_expr;
+      std::swap(temp_expr, _current_expr);
+      handler->emit_call(node, *this);
+      std::string result = _current_expr.str();
+      std::swap(temp_expr, _current_expr);
+      return result;
     }
   }
 
-  if (!was_in_expr) {
-    _functions << cdef::indent(_indent_level);
-  }
+  std::string callee = emit_expression(node.callee());
+  std::string result = callee + "(";
 
-  _in_expression = true;
-  node.target()->accept(*this);
-  std::string target = _current_expr.str();
-  _current_expr.str("");
-  _current_expr.clear();
-
-  node.value()->accept(*this);
-  std::string value = _current_expr.str();
-  _current_expr.str("");
-  _current_expr.clear();
-  _in_expression = was_in_expr;
-
-  if (was_in_expr) {
-    _current_expr << target << " = " << value;
-  } else {
-    _functions << target << " = " << value << ";\n";
-  }
-}
-
-void emitter_c::visit(const block_c &node) {
-  _functions << "{\n";
-  _indent_level++;
-
-  for (const auto &stmt : node.statements()) {
-    stmt->accept(*this);
-  }
-
-  if (_current_function_name.empty()) {
-    emit_function_defers();
-  }
-
-  _indent_level--;
-  _functions << cdef::indent(_indent_level) << "}";
-}
-
-void emitter_c::visit(const array_literal_c &node) {
-  _current_expr << "{";
-
-  for (size_t i = 0; i < node.elements().size(); ++i) {
+  for (size_t i = 0; i < node.arguments().size(); ++i) {
     if (i > 0)
-      _current_expr << ", ";
-    node.elements()[i]->accept(*this);
+      result += ", ";
+    result += emit_expression(node.arguments()[i].get());
   }
 
-  _current_expr << "}";
+  result += ")";
+  return result;
 }
 
-void emitter_c::visit(const struct_literal_c &node) {
-  _current_expr << "(" << node.struct_name().name << "){";
+std::string emitter_c::emit_expression(const base_c *node) {
+  if (!node)
+    return "";
 
-  for (size_t i = 0; i < node.field_initializers().size(); ++i) {
-    if (i > 0)
-      _current_expr << ", ";
-    const auto &field_init = node.field_initializers()[i];
-    _current_expr << "." << field_init.field_name.name << " = ";
-    field_init.value->accept(*this);
+  expression_visitor_c expr_visitor(*this);
+  node->accept(expr_visitor);
+  return expr_visitor.get_result();
+}
+
+void emitter_c::push_defer_scope(defer_scope_s::scope_type_e type,
+                                 const base_c *owner) {
+  auto scope =
+      std::make_unique<defer_scope_s>(type, owner, _current_defer_scope);
+  _current_defer_scope = scope.get();
+  _defer_scope_stack.push_back(std::move(scope));
+}
+
+void emitter_c::pop_defer_scope() {
+  if (!_defer_scope_stack.empty()) {
+    _defer_scope_stack.pop_back();
+    _current_defer_scope =
+        _defer_scope_stack.empty() ? nullptr : _defer_scope_stack.back().get();
+  }
+}
+
+void emitter_c::emit_scope_defers(defer_scope_s *scope) {
+  if (!scope) {
+    return;
   }
 
-  _current_expr << "}";
-}
-
-void emitter_c::visit(const type_param_c &node) {}
-
-void emitter_c::emit_function_defers() {
-  for (auto it = _function_defers.rbegin(); it != _function_defers.rend();
-       ++it) {
+  for (auto it = scope->defers.rbegin(); it != scope->defers.rend(); ++it) {
     const auto *defer_node = *it;
     if (defer_node->deferred_code()) {
       if (auto block =
               dynamic_cast<const block_c *>(defer_node->deferred_code())) {
-        _functions << "{\n";
+        _functions << cdef::indent(_indent_level) << "{\n";
         _indent_level++;
         for (const auto &stmt : block->statements()) {
           stmt->accept(*this);
@@ -1320,22 +1363,45 @@ void emitter_c::emit_function_defers() {
         _indent_level--;
         _functions << cdef::indent(_indent_level) << "}\n";
       } else {
-        _functions << cdef::indent(_indent_level);
-        _in_expression = true;
-        defer_node->deferred_code()->accept(*this);
-        _in_expression = false;
-        _functions << _current_expr.str();
-        _current_expr.str("");
-        _current_expr.clear();
-        _functions << ";\n";
+        std::string expr = emit_expression(defer_node->deferred_code());
+        _functions << cdef::indent(_indent_level) << expr << ";\n";
       }
     }
   }
 }
 
+void emitter_c::emit_all_remaining_defers() {
+  std::vector<defer_scope_s *> scopes_to_emit;
+  defer_scope_s *scope = _current_defer_scope;
+
+  while (scope) {
+    scopes_to_emit.push_back(scope);
+    scope = scope->parent;
+  }
+
+  for (auto *s : scopes_to_emit) {
+    emit_scope_defers(s);
+  }
+}
+
+defer_scope_s *emitter_c::find_enclosing_loop_scope() {
+  defer_scope_s *scope = _current_defer_scope;
+
+  while (scope) {
+    if (scope->type == defer_scope_s::scope_type_e::LOOP) {
+      return scope;
+    }
+    scope = scope->parent;
+  }
+
+  return nullptr;
+}
+
 void emitter_c::visit(const import_c &node) {}
 
 void emitter_c::visit(const cimport_c &node) {}
+
+void emitter_c::visit(const shard_c &node) {}
 
 std::string result_c::assemble_code() const {
   std::string output;
@@ -1473,7 +1539,9 @@ assembly_result_s result_c::assemble(assembly_type_e type,
       signature.pop_back();
     }
 
-    if (!signature.empty()) {
+    bool is_static = signature.find("static ") == 0;
+
+    if (!signature.empty() && !is_static) {
       function_declarations << signature << ";\n";
     }
 
@@ -1500,6 +1568,10 @@ assembly_result_s result_c::assemble(assembly_type_e type,
 
   return assembly_result_s(assembly_type_e::LIBRARY, source_content,
                            header_content, header_name);
+}
+
+bool emitter_c::is_private_identifier(const std::string &name) const {
+  return !name.empty() && name[0] == '_';
 }
 
 } // namespace truk::emitc

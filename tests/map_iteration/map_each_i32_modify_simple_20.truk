@@ -1,0 +1,22 @@
+fn main() : i32 {
+  var m: map[i32, i32] = make(@map[i32, i32]);
+  
+  m[1] = 10;
+  
+  var dummy: i32 = 0;
+  each(m, &dummy, fn(key: i32, val: *i32, ctx: *i32) : bool {
+    if val != nil {
+      *val = 20;
+    }
+    return true;
+  });
+  
+  var p: *i32 = m[1];
+  var result: i32 = 0;
+  if p != nil {
+    result = *p;
+  }
+  
+  delete(m);
+  return result;
+}

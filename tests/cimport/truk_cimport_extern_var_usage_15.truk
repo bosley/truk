@@ -1,0 +1,10 @@
+cimport <stdio.h>;
+
+extern struct FILE;
+extern var stdout: *FILE;
+extern fn fprintf(file: *FILE, fmt: *i8, ...args): i32;
+
+fn main(): i32 {
+    fprintf(stdout, "Hello from extern var!\n");
+    return 15;
+}

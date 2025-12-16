@@ -1,0 +1,22 @@
+fn main() : i32 {
+  var m: map[u64, i32] = make(@map[u64, i32]);
+  
+  var k1: u64 = 100;
+  var k2: u64 = 200;
+  var k3: u64 = 300;
+  
+  m[k1] = 10;
+  m[k2] = 20;
+  m[k3] = 30;
+  
+  var sum: i32 = 0;
+  each(m, &sum, fn(key: u64, val: *i32, ctx: *i32) : bool {
+    if val != nil {
+      *ctx = *ctx + *val;
+    }
+    return true;
+  });
+  
+  delete(m);
+  return sum;
+}

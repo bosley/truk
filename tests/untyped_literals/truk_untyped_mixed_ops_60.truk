@@ -1,0 +1,8 @@
+fn main(): i32 {
+  var a: u64 = 10;
+  var b: u64 = 20;
+  var c: u64 = 30;
+  var result: u64 = a + b + c;
+  return result;
+}
+

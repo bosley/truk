@@ -21,6 +21,8 @@ void map_type_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void fn_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
+void lambda_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
+
 void struct_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void var_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
@@ -76,5 +78,7 @@ void type_param_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 void import_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void cimport_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
+
+void shard_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 } // namespace truk::language::nodes

@@ -1,0 +1,9 @@
+fn add(a: u64, b: u64): u64 {
+  return a + b;
+}
+
+fn main(): i32 {
+  var result: u64 = add(10, 23);
+  return result;
+}
+

@@ -1,0 +1,7 @@
+fn _helper(x: i32) : i32 {
+  return x * 2;
+}
+
+fn main() : i32 {
+  return _helper(21);
+}

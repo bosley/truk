@@ -1,0 +1,7 @@
+fn main() : i32 {
+  var calc: fn(i32, i32, i32) : i32 = fn(a: i32, b: i32, c: i32) : i32 {
+    return a * b + c;
+  };
+  
+  return calc(3, 5, 9);
+}

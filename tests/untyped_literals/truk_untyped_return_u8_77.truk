@@ -1,0 +1,9 @@
+fn get_value(): u8 {
+  return 77;
+}
+
+fn main(): i32 {
+  var x: u8 = get_value();
+  return x;
+}
+

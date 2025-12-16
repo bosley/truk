@@ -3,7 +3,7 @@ struct Item {
 }
 
 fn main() : i32 {
-  var m: map[Item] = make(@map[Item]);
+  var m: map[*u8, Item] = make(@map[*u8, Item]);
   
   m["test"] = Item{val: 99};
   

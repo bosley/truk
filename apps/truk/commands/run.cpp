@@ -1,6 +1,6 @@
 #include "run.hpp"
 #include <fmt/core.h>
-#include <truk/core/error_display.hpp>
+#include <truk/core/error_reporter.hpp>
 #include <truk/emitc/emitter.hpp>
 #include <truk/ingestion/file_utils.hpp>
 #include <truk/ingestion/parser.hpp>
@@ -10,6 +10,8 @@
 namespace truk::commands {
 
 int run(const run_options_s &opts) {
+  core::error_reporter_c reporter;
+
   for (const auto &path : opts.include_paths) {
     fmt::print("Include path: {}\n", path);
   }
@@ -30,63 +32,77 @@ int run(const run_options_s &opts) {
 
   if (!parse_result.success) {
     if (!parse_result.error_message.empty() && parse_result.source_data) {
-      core::error_display_c display;
       std::string source_str(parse_result.source_data, parse_result.source_len);
-      display.show_error(opts.input_file, source_str, parse_result.error_line,
-                         parse_result.error_column, parse_result.error_message);
+      reporter.report_parse_error(
+          opts.input_file, source_str, parse_result.error_line,
+          parse_result.error_column, parse_result.error_message);
     } else {
-      fmt::print(stderr, "Error: Parse failed\n");
-      if (!parse_result.error_message.empty()) {
-        fmt::print(stderr, "  {}\n", parse_result.error_message);
-        fmt::print(stderr, "  at line {}, column {}\n", parse_result.error_line,
-                   parse_result.error_column);
-      }
+      reporter.report_generic_error(core::error_phase_e::PARSING,
+                                    "Parse failed");
     }
+    reporter.print_summary();
     return 1;
   }
 
+  std::unordered_map<const truk::language::nodes::base_c *, std::string>
+      decl_to_file;
+  std::unordered_map<std::string, std::vector<std::string>> file_to_shards;
+  for (const auto &decl : parse_result.declarations) {
+    decl_to_file[decl.get()] = opts.input_file;
+    if (auto *shard_node =
+            dynamic_cast<const truk::language::nodes::shard_c *>(decl.get())) {
+      file_to_shards[opts.input_file].push_back(shard_node->name());
+    }
+  }
+
   validation::type_checker_c type_checker;
+  type_checker.set_declaration_file_map(decl_to_file);
+  type_checker.set_file_to_shards_map(file_to_shards);
   for (auto &decl : parse_result.declarations) {
     type_checker.check(decl.get());
   }
 
   if (type_checker.has_errors()) {
-    core::error_display_c display;
-    const auto &detailed_errors = type_checker.detailed_errors();
-
-    if (!detailed_errors.empty()) {
-      for (const auto &err : detailed_errors) {
-        display.show_error_at_index(opts.input_file, source, err.source_index,
-                                    err.message);
+    for (const auto &err : type_checker.errors()) {
+      std::string error_file =
+          err.file_path.empty() ? opts.input_file : err.file_path;
+      std::string error_source = source;
+      if (!err.file_path.empty() && err.file_path != opts.input_file) {
+        try {
+          error_source = ingestion::read_file(err.file_path);
+        } catch (...) {
+        }
       }
-    } else {
-      fmt::print(stderr, "Error: Type check failed\n");
-      for (const auto &err : type_checker.errors()) {
-        fmt::print(stderr, "  {}\n", err);
-      }
+      reporter.report_typecheck_error(error_file, error_source,
+                                      err.source_index, err.message);
     }
+    reporter.print_summary();
     return 1;
   }
 
   emitc::emitter_c emitter;
   auto emit_result = emitter.add_declarations(parse_result.declarations)
+                         .set_declaration_file_map(decl_to_file)
+                         .set_file_to_shards_map(file_to_shards)
                          .set_c_imports(parse_result.c_imports)
                          .finalize();
 
   if (emit_result.has_errors()) {
-    core::error_display_c display;
     for (const auto &err : emit_result.errors) {
-      std::string enhanced_message =
-          fmt::format("{} (phase: {}, context: {})", err.message,
+      std::string phase_context =
+          fmt::format("phase: {}, context: {}",
                       emitc::emission_phase_name(err.phase), err.node_context);
-      display.show_error_at_index(opts.input_file, source, err.source_index,
-                                  enhanced_message);
+      reporter.report_emission_error(opts.input_file, source, err.source_index,
+                                     err.message, phase_context);
     }
+    reporter.print_summary();
     return 1;
   }
 
   if (!emit_result.metadata.has_main_function) {
-    fmt::print(stderr, "Error: No main function found. Cannot run program.\n");
+    reporter.report_generic_error(core::error_phase_e::CODE_EMISSION,
+                                  "No main function found. Cannot run program");
+    reporter.print_summary();
     return 1;
   }
 
@@ -117,7 +133,8 @@ int run(const run_options_s &opts) {
   auto run_result = compiler.compile_and_run(c_source, opts.argc, opts.argv);
 
   if (!run_result.success) {
-    fmt::print(stderr, "Error: {}\n", run_result.error_message);
+    reporter.report_compilation_error(run_result.error_message);
+    reporter.print_summary();
     return 1;
   }
 

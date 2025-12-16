@@ -1,0 +1,27 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+struct Accumulator {
+  sum_x: i32,
+  sum_y: i32
+}
+
+fn main() : i32 {
+  var count: u64 = 3;
+  var slice: []Point = make(@Point, count);
+  slice[0] = Point{x: 10, y: 5};
+  slice[1] = Point{x: 15, y: 10};
+  slice[2] = Point{x: 5, y: 15};
+  
+  var acc: Accumulator = Accumulator{sum_x: 0, sum_y: 0};
+  each(slice, &acc, fn(elem: *Point, ctx: *Accumulator) : bool {
+    (*ctx).sum_x = (*ctx).sum_x + (*elem).x;
+    (*ctx).sum_y = (*ctx).sum_y + (*elem).y;
+    return true;
+  });
+  
+  delete(slice);
+  return acc.sum_x + acc.sum_y;
+}

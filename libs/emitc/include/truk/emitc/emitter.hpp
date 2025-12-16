@@ -3,6 +3,10 @@
 #include <language/node.hpp>
 #include <language/visitor.hpp>
 #include <truk/core/exceptions.hpp>
+#include <truk/emitc/builtin_handler.hpp>
+#include <truk/emitc/expression_visitor.hpp>
+#include <truk/emitc/type_registry.hpp>
+#include <truk/emitc/variable_registry.hpp>
 
 #include <memory>
 #include <sstream>
@@ -31,6 +35,19 @@ enum class emission_phase_e {
 };
 
 const char *emission_phase_name(emission_phase_e phase);
+
+struct defer_scope_s {
+  enum class scope_type_e { FUNCTION, LAMBDA, BLOCK, LOOP };
+
+  std::vector<const truk::language::nodes::defer_c *> defers;
+  scope_type_e type;
+  const truk::language::nodes::base_c *owner_node;
+  defer_scope_s *parent;
+
+  defer_scope_s(scope_type_e t, const truk::language::nodes::base_c *owner,
+                defer_scope_s *p)
+      : type(t), owner_node(owner), parent(p) {}
+};
 
 struct error_s {
   std::string message;
@@ -84,6 +101,16 @@ struct result_c {
 };
 
 class emitter_c : public truk::language::nodes::visitor_if {
+  friend class builtin_handler_if;
+  friend class make_builtin_handler_c;
+  friend class delete_builtin_handler_c;
+  friend class len_builtin_handler_c;
+  friend class sizeof_builtin_handler_c;
+  friend class panic_builtin_handler_c;
+  friend class each_builtin_handler_c;
+  friend class va_arg_builtin_handler_c;
+  friend class expression_visitor_c;
+
 public:
   emitter_c();
   ~emitter_c() override = default;
@@ -93,6 +120,17 @@ public:
       const std::vector<std::unique_ptr<truk::language::nodes::base_c>> &decls);
   emitter_c &
   set_c_imports(const std::vector<truk::language::nodes::c_import_s> &imports);
+  emitter_c &set_declaration_file_map(
+      const std::unordered_map<const truk::language::nodes::base_c *,
+                               std::string> &map) {
+    _decl_to_file = map;
+    return *this;
+  }
+  emitter_c &set_file_to_shards_map(
+      const std::unordered_map<std::string, std::vector<std::string>> &map) {
+    _file_to_shards = map;
+    return *this;
+  }
 
   result_c finalize();
 
@@ -103,6 +141,7 @@ public:
   void visit(const truk::language::nodes::function_type_c &node) override;
   void visit(const truk::language::nodes::map_type_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
+  void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
@@ -128,6 +167,7 @@ public:
   void visit(const truk::language::nodes::type_param_c &node) override;
   void visit(const truk::language::nodes::import_c &node) override;
   void visit(const truk::language::nodes::cimport_c &node) override;
+  void visit(const truk::language::nodes::shard_c &node) override;
 
 private:
   void collect_declarations(const truk::language::nodes::base_c *root);
@@ -148,15 +188,43 @@ private:
   void ensure_slice_typedef(const truk::language::nodes::type_c *element_type);
   bool is_slice_type(const truk::language::nodes::type_c *type);
   std::string
-  get_map_type_name(const truk::language::nodes::type_c *value_type);
-  void ensure_map_typedef(const truk::language::nodes::type_c *value_type);
+  get_map_type_name(const truk::language::nodes::type_c *key_type,
+                    const truk::language::nodes::type_c *value_type);
+  void ensure_map_typedef(const truk::language::nodes::type_c *key_type,
+                          const truk::language::nodes::type_c *value_type);
   bool is_map_type(const truk::language::nodes::type_c *type);
+  std::string get_map_hash_fn(const truk::language::nodes::type_c *key_type);
+  std::string get_map_cmp_fn(const truk::language::nodes::type_c *key_type);
+  int get_key_size(const truk::language::nodes::type_c *key_type);
   void register_variable_type(const std::string &name,
                               const truk::language::nodes::type_c *type);
   bool is_variable_slice(const std::string &name);
   bool is_variable_map(const std::string &name);
+  bool is_private_identifier(const std::string &name) const;
+
+  std::string emit_expression(const truk::language::nodes::base_c *node);
+  std::string
+  emit_expr_binary_op(const truk::language::nodes::binary_op_c &node);
+  std::string emit_expr_unary_op(const truk::language::nodes::unary_op_c &node);
+  std::string emit_expr_cast(const truk::language::nodes::cast_c &node);
+  std::string emit_expr_call(const truk::language::nodes::call_c &node);
+  std::string emit_expr_index(const truk::language::nodes::index_c &node);
+  std::string
+  emit_expr_member_access(const truk::language::nodes::member_access_c &node);
+  std::string emit_expr_literal(const truk::language::nodes::literal_c &node);
+  std::string
+  emit_expr_identifier(const truk::language::nodes::identifier_c &node);
+  std::string
+  emit_expr_array_literal(const truk::language::nodes::array_literal_c &node);
+  std::string
+  emit_expr_struct_literal(const truk::language::nodes::struct_literal_c &node);
+  std::string get_binary_op_string(truk::language::nodes::binary_op_e op);
+  std::string get_unary_op_string(truk::language::nodes::unary_op_e op);
 
   std::vector<const truk::language::nodes::base_c *> _declarations;
+  std::unordered_map<const truk::language::nodes::base_c *, std::string>
+      _decl_to_file;
+  std::unordered_map<std::string, std::vector<std::string>> _file_to_shards;
   result_c _result;
   std::stringstream _current_expr;
   std::stringstream _header;
@@ -164,23 +232,28 @@ private:
   std::stringstream _structs;
   std::stringstream _functions;
   int _indent_level{0};
-  std::unordered_set<std::string> _slice_types_emitted;
-  std::unordered_set<std::string> _map_types_emitted;
-  std::unordered_set<std::string> _struct_names;
-  std::unordered_set<std::string> _extern_struct_names;
   std::unordered_set<std::string> _function_names;
-  std::unordered_map<std::string, bool> _variable_is_slice;
-  std::unordered_map<std::string, bool> _variable_is_map;
+  type_registry_c _type_registry;
+  variable_registry_c _variable_registry;
+  builtin_registry_c _builtin_registry;
   bool _in_expression{false};
   bool _collecting_declarations{false};
+  bool _skip_lambda_generation{false};
   std::string _current_function_name;
   const truk::language::nodes::type_c *_current_function_return_type{nullptr};
-  std::vector<const truk::language::nodes::defer_c *> _function_defers;
+  int _lambda_counter{0};
+  std::vector<std::unique_ptr<defer_scope_s>> _defer_scope_stack;
+  defer_scope_s *_current_defer_scope{nullptr};
   emission_phase_e _current_phase{emission_phase_e::COLLECTION};
   std::string _current_node_context;
   std::vector<truk::language::nodes::c_import_s> _c_imports;
 
-  void emit_function_defers();
+  void push_defer_scope(defer_scope_s::scope_type_e type,
+                        const truk::language::nodes::base_c *owner);
+  void pop_defer_scope();
+  void emit_scope_defers(defer_scope_s *scope);
+  void emit_all_remaining_defers();
+  defer_scope_s *find_enclosing_loop_scope();
 };
 
 } // namespace truk::emitc

@@ -1,0 +1,31 @@
+struct Result {
+  value: i32
+}
+
+struct Context {
+  result: *Result,
+  multiplier: i32
+}
+
+fn main() : i32 {
+  var m: map[*u8, i32] = make(@map[*u8, i32]);
+  m["a"] = 10;
+  m["b"] = 15;
+  
+  var result: Result = Result{value: 0};
+  var ctx: Context = Context{
+    result: &result,
+    multiplier: 2
+  };
+  
+  each(m, &ctx, fn(key: *u8, val: *i32, ctx: *Context) : bool {
+    if val != nil {
+      (*(*ctx).result).value = (*(*ctx).result).value + (*val * (*ctx).multiplier);
+    }
+    return true;
+  });
+  
+  delete(m);
+  // 10*2 + 15*2 = 50
+  return result.value;
+}

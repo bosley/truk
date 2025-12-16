@@ -1,0 +1,13 @@
+cimport <stdio.h>;
+
+extern struct FILE;
+extern var stdin: *FILE;
+extern var stdout: *FILE;
+extern var stderr: *FILE;
+extern fn fprintf(file: *FILE, fmt: *i8, ...args): i32;
+
+fn main(): i32 {
+    fprintf(stdout, "stdout message\n");
+    fprintf(stderr, "stderr message\n");
+    return 20;
+}

@@ -4,7 +4,7 @@ struct Data {
 }
 
 fn main() : i32 {
-  var m: map[Data] = make(@map[Data]);
+  var m: map[*u8, Data] = make(@map[*u8, Data]);
   
   var x: i32 = 25;
   var data: Data = Data{ptr: &x, value: 25};

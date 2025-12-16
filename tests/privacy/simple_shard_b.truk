@@ -1,0 +1,11 @@
+shard "simple";
+
+import "simple_shard_a.truk";
+
+fn point_double_y(p: *Point) : i32 {
+  return _helper(p);
+}
+
+fn point_set_y(p: *Point, y: i32) : void {
+  (*p)._y = y;
+}

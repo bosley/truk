@@ -9,17 +9,29 @@
 
 namespace truk::ingestion {
 
+enum class import_error_type_e { IMPORT_ERROR, PARSE_ERROR, FILE_ERROR };
+
 struct import_error_s {
   std::string message;
   std::string file_path;
   std::size_t line;
   std::size_t column;
+  import_error_type_e type;
+
+  import_error_s(std::string msg, std::string path, std::size_t ln,
+                 std::size_t col,
+                 import_error_type_e t = import_error_type_e::IMPORT_ERROR)
+      : message(std::move(msg)), file_path(std::move(path)), line(ln),
+        column(col), type(t) {}
 };
 
 struct resolved_imports_s {
   std::vector<truk::language::nodes::base_ptr> all_declarations;
   std::vector<import_error_s> errors;
   std::vector<truk::language::nodes::c_import_s> c_imports;
+  std::unordered_map<const truk::language::nodes::base_c *, std::string>
+      decl_to_file;
+  std::unordered_map<std::string, std::vector<std::string>> file_to_shards;
   bool success;
 };
 
@@ -40,6 +52,7 @@ public:
   void visit(const truk::language::nodes::function_type_c &node) override;
   void visit(const truk::language::nodes::map_type_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
+  void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
@@ -65,6 +78,7 @@ public:
   void visit(const truk::language::nodes::type_param_c &node) override;
   void visit(const truk::language::nodes::import_c &node) override;
   void visit(const truk::language::nodes::cimport_c &node) override;
+  void visit(const truk::language::nodes::shard_c &node) override;
 
 private:
   const std::unordered_map<std::string, const truk::language::nodes::base_c *>
@@ -106,6 +120,9 @@ private:
       _decl_dependencies;
   std::vector<import_error_s> _errors;
   std::vector<truk::language::nodes::c_import_s> _c_imports;
+  std::unordered_map<const truk::language::nodes::base_c *, std::string>
+      _decl_to_file;
+  std::unordered_map<std::string, std::vector<std::string>> _file_to_shards;
 };
 
 } // namespace truk::ingestion

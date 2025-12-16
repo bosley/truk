@@ -169,6 +169,9 @@ language::nodes::base_ptr parser_c::parse_declaration() {
   if (check_keyword(language::keywords_e::CIMPORT)) {
     return parse_cimport_decl();
   }
+  if (check_keyword(language::keywords_e::SHARD)) {
+    return parse_shard_decl();
+  }
   if (check_keyword(language::keywords_e::EXTERN)) {
     return parse_extern_decl();
   }
@@ -186,7 +189,7 @@ language::nodes::base_ptr parser_c::parse_declaration() {
   }
   const auto &token = peek();
   throw parse_error("Expected declaration (fn, struct, var, const, import, "
-                    "cimport, or extern)",
+                    "cimport, shard, or extern)",
                     token.line, token.column);
 }
 
@@ -251,6 +254,25 @@ language::nodes::base_ptr parser_c::parse_cimport_decl() {
       cimport_token.source_index, path, is_angle_bracket);
 }
 
+language::nodes::base_ptr parser_c::parse_shard_decl() {
+  const auto &shard_token =
+      consume_keyword(language::keywords_e::SHARD, "Expected 'shard' keyword");
+
+  const auto &name_token =
+      consume(token_type_e::STRING_LITERAL,
+              "Expected string literal name after 'shard'");
+
+  consume(token_type_e::SEMICOLON, "Expected ';' after shard name");
+
+  std::string name = name_token.lexeme;
+  if (name.size() >= 2 && name.front() == '"' && name.back() == '"') {
+    name = name.substr(1, name.size() - 2);
+  }
+
+  return std::make_unique<language::nodes::shard_c>(shard_token.source_index,
+                                                    name);
+}
+
 language::nodes::base_ptr parser_c::parse_extern_decl() {
   consume_keyword(language::keywords_e::EXTERN, "Expected 'extern' keyword");
 
@@ -258,10 +280,12 @@ language::nodes::base_ptr parser_c::parse_extern_decl() {
     return parse_fn_decl(true);
   } else if (check_keyword(language::keywords_e::STRUCT)) {
     return parse_struct_decl(true);
+  } else if (check_keyword(language::keywords_e::VAR)) {
+    return parse_var_decl(true);
   } else {
     const auto &token = peek();
-    throw parse_error("Expected 'fn' or 'struct' after 'extern'", token.line,
-                      token.column);
+    throw parse_error("Expected 'fn', 'struct', or 'var' after 'extern'",
+                      token.line, token.column);
   }
 }
 
@@ -303,6 +327,43 @@ language::nodes::base_ptr parser_c::parse_fn_decl(bool is_extern) {
       std::move(return_type), std::move(body), is_extern);
 }
 
+language::nodes::base_ptr parser_c::parse_lambda() {
+  const auto &fn_token = previous();
+
+  consume(token_type_e::LEFT_PAREN, "Expected '(' after 'fn' in lambda");
+
+  std::vector<language::nodes::parameter_s> params;
+  if (!check(token_type_e::RIGHT_PAREN)) {
+    params = parse_param_list();
+  }
+
+  consume(token_type_e::RIGHT_PAREN, "Expected ')' after lambda parameters");
+
+  language::nodes::type_ptr return_type;
+  if (check(token_type_e::COLON)) {
+    return_type = parse_type_annotation();
+  } else {
+    return_type = std::make_unique<language::nodes::primitive_type_c>(
+        language::keywords_e::VOID, fn_token.source_index);
+  }
+
+  language::nodes::base_ptr body;
+  if (check(token_type_e::LEFT_BRACE)) {
+    body = parse_block();
+  } else {
+    auto expr = parse_expression();
+    std::vector<language::nodes::base_ptr> statements;
+    statements.push_back(std::make_unique<language::nodes::return_c>(
+        expr->source_index(), std::move(expr)));
+    body = std::make_unique<language::nodes::block_c>(fn_token.source_index,
+                                                      std::move(statements));
+  }
+
+  return std::make_unique<language::nodes::lambda_c>(
+      fn_token.source_index, std::move(params), std::move(return_type),
+      std::move(body), false);
+}
+
 language::nodes::base_ptr parser_c::parse_struct_decl(bool is_extern) {
   const auto &struct_token = consume_keyword(language::keywords_e::STRUCT,
                                              "Expected 'struct' keyword");
@@ -328,7 +389,7 @@ language::nodes::base_ptr parser_c::parse_struct_decl(bool is_extern) {
       struct_token.source_index, std::move(name), std::move(fields), is_extern);
 }
 
-language::nodes::base_ptr parser_c::parse_var_decl() {
+language::nodes::base_ptr parser_c::parse_var_decl(bool is_extern) {
   const auto &var_token =
       consume_keyword(language::keywords_e::VAR, "Expected 'var' keyword");
   const auto &name_token = consume_identifier("Expected variable name");
@@ -338,15 +399,24 @@ language::nodes::base_ptr parser_c::parse_var_decl() {
   auto type = parse_type_annotation();
 
   std::optional<language::nodes::base_ptr> initializer = std::nullopt;
-  if (match(token_type_e::EQUAL)) {
-    initializer = parse_expression();
+
+  if (is_extern) {
+    if (check(token_type_e::EQUAL)) {
+      const auto &token = peek();
+      throw parse_error("extern var cannot have initializer", token.line,
+                        token.column);
+    }
+  } else {
+    if (match(token_type_e::EQUAL)) {
+      initializer = parse_expression();
+    }
   }
 
   consume(token_type_e::SEMICOLON, "Expected ';' after variable declaration");
 
   return std::make_unique<language::nodes::var_c>(
       var_token.source_index, std::move(name), std::move(type),
-      std::move(initializer));
+      std::move(initializer), is_extern);
 }
 
 language::nodes::base_ptr parser_c::parse_const_decl() {
@@ -404,6 +474,12 @@ language::nodes::type_ptr parser_c::parse_type_internal() {
       case language::keywords_e::MAP: {
         const auto &map_token = advance();
         consume(token_type_e::LEFT_BRACKET, "Expected '[' after 'map'");
+        auto key_type = parse_type_internal();
+        if (!key_type) {
+          throw parse_error("Expected key type in map", peek().line,
+                            peek().column);
+        }
+        consume(token_type_e::COMMA, "Expected ',' after key type");
         auto value_type = parse_type_internal();
         if (!value_type) {
           throw parse_error("Expected value type in map", peek().line,
@@ -411,7 +487,7 @@ language::nodes::type_ptr parser_c::parse_type_internal() {
         }
         consume(token_type_e::RIGHT_BRACKET, "Expected ']' after value type");
         return std::make_unique<language::nodes::map_type_c>(
-            map_token.source_index, std::move(value_type));
+            map_token.source_index, std::move(key_type), std::move(value_type));
       }
       default:
         break;
@@ -1194,6 +1270,10 @@ language::nodes::base_ptr parser_c::parse_primary() {
 
   if (check(token_type_e::LEFT_BRACKET)) {
     return parse_array_literal();
+  }
+
+  if (match_keyword(language::keywords_e::FN)) {
+    return parse_lambda();
   }
 
   const auto &token = peek();

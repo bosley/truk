@@ -1,5 +1,6 @@
 add_library(truk_validation STATIC
     src/typecheck.cpp
+    src/control_flow_checker.cpp
 )
 
 target_include_directories(truk_validation

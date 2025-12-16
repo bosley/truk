@@ -1,0 +1,21 @@
+struct Data {
+  value: i32
+}
+
+fn main() : i32 {
+  var m: map[*u8, Data] = make(@map[*u8, Data]);
+  m["item1"] = Data{value: 25};
+  m["item2"] = Data{value: 35};
+  m["item3"] = Data{value: 40};
+  
+  var total: i32 = 0;
+  each(m, &total, fn(key: *u8, val: *Data, ctx: *i32) : bool {
+    if val != nil {
+      *ctx = *ctx + (*val).value;
+    }
+    return true;
+  });
+  
+  delete(m);
+  return total;
+}
