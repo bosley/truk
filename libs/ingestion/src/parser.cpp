@@ -1165,6 +1165,17 @@ language::nodes::base_ptr parser_c::parse_postfix() {
                                           field_token.source_index);
       expr = std::make_unique<language::nodes::member_access_c>(
           dot_token.source_index, std::move(expr), std::move(field));
+    } else if (match(token_type_e::ARROW)) {
+      const auto &arrow_token = previous();
+      const auto &field_token =
+          consume_identifier("Expected field name after '->'");
+      language::nodes::identifier_s field(field_token.lexeme,
+                                          field_token.source_index);
+      auto deref = std::make_unique<language::nodes::unary_op_c>(
+          arrow_token.source_index, language::nodes::unary_op_e::DEREF,
+          std::move(expr));
+      expr = std::make_unique<language::nodes::member_access_c>(
+          arrow_token.source_index, std::move(deref), std::move(field));
     } else if (check(token_type_e::KEYWORD)) {
       const auto &tok = peek();
       if (tok.keyword && tok.keyword.value() == language::keywords_e::AS) {

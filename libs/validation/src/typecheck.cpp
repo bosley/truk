@@ -1699,8 +1699,18 @@ void type_checker_c::visit(const index_c &node) {
 void type_checker_c::visit(const member_access_c &node) {
   node.object()->accept(*this);
 
-  if (!_current_expression_type ||
-      _current_expression_type->kind != type_kind_e::STRUCT) {
+  if (!_current_expression_type) {
+    report_error("Member access requires struct type", node.source_index());
+    return;
+  }
+
+  if (_current_expression_type->kind == type_kind_e::POINTER) {
+    report_error("Cannot use '.' on pointer type, use '->' instead",
+                 node.source_index());
+    return;
+  }
+
+  if (_current_expression_type->kind != type_kind_e::STRUCT) {
     report_error("Member access requires struct type", node.source_index());
     return;
   }

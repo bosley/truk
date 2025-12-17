@@ -244,6 +244,11 @@ std::optional<token_s> tokenizer_c::next_token() {
 
   case '-':
     advance();
+    if (!is_at_end() && current_char() == '>') {
+      advance();
+      return make_token(token_type_e::ARROW, start_pos, start_line,
+                        start_column);
+    }
     if (!is_at_end() && current_char() == '=') {
       advance();
       return make_token(token_type_e::MINUS_EQUAL, start_pos, start_line,

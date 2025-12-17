@@ -1,0 +1,11 @@
+struct Node {
+  value: i32,
+  next: *Node
+}
+
+fn main() : i32 {
+  var node2: Node = Node{value: 30, next: nil};
+  var node1: Node = Node{value: 25, next: &node2};
+  var ptr: *Node = &node1;
+  return ptr->value + ptr->next->value;
+}

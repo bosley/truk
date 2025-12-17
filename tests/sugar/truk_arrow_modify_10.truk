@@ -1,0 +1,10 @@
+struct Counter {
+  count: i32
+}
+
+fn main() : i32 {
+  var c: Counter = Counter{count: 5};
+  var ptr: *Counter = &c;
+  ptr->count = ptr->count + 5;
+  return ptr->count;
+}

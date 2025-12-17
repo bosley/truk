@@ -1,0 +1,17 @@
+struct Value {
+  data: i32
+}
+
+fn get_ptr() : *Value {
+  var v: Value = Value{data: 77};
+  var ptr: *Value = make(@Value);
+  *ptr = v;
+  return ptr;
+}
+
+fn main() : i32 {
+  var ptr: *Value = get_ptr();
+  var result: i32 = ptr->data;
+  delete(ptr);
+  return result;
+}

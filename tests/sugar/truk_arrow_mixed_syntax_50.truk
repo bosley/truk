@@ -1,0 +1,12 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+fn main() : i32 {
+  var p: Point = Point{x: 25, y: 25};
+  var ptr: *Point = &p;
+  var a: i32 = ptr->x;
+  var b: i32 = (*ptr).y;
+  return a + b;
+}

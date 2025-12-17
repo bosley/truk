@@ -1,0 +1,13 @@
+struct Inner {
+  value: i32
+}
+
+struct Outer {
+  inner: Inner
+}
+
+fn main() : i32 {
+  var outer: Outer = Outer{inner: Inner{value: 100}};
+  var ptr: *Outer = &outer;
+  return ptr->inner.value;
+}
