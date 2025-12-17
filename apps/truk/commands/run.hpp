@@ -11,8 +11,7 @@ struct run_options_s {
   std::vector<std::string> library_paths;
   std::vector<std::string> libraries;
   std::vector<std::string> rpaths;
-  int argc;
-  char **argv;
+  std::vector<std::string> program_args;
 };
 
 int run(const run_options_s &opts);

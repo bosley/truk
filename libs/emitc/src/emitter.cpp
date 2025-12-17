@@ -1982,8 +1982,6 @@ std::string result_c::assemble_test_runner() const {
   }
 
   output += "\nint main(int argc, char** argv) {\n";
-  output += "    (void)argc;\n";
-  output += "    (void)argv;\n";
   output += "    int total_tests = 0;\n";
   output += "    int total_failed = 0;\n\n";
 
@@ -1991,6 +1989,8 @@ std::string result_c::assemble_test_runner() const {
     output += "    {\n";
     output += "        __truk_test_context_s ctx = {0};\n";
     output += "        ctx.current_test_name = \"" + test_name + "\";\n";
+    output += "        ctx.argc = argc;\n";
+    output += "        ctx.argv = argv;\n";
     output +=
         "        printf(\"Running %s...\\n\", ctx.current_test_name);\n\n";
 

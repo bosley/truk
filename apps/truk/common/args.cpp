@@ -19,7 +19,7 @@ void print_usage(const char *program_name) {
                      "file)\n\n");
   fmt::print(stderr,
              "  {} test <file.truk> [-I path]... [-L path]... "
-             "[-l lib]... [-rpath path]...\n",
+             "[-l lib]... [-rpath path]... [-- args...]\n",
              program_name);
   fmt::print(stderr, "    Run test functions (fn test_*)\n\n");
   fmt::print(stderr, "  {} toc <file.truk> -o output.c [-I path]...\n",
@@ -37,8 +37,8 @@ void print_usage(const char *program_name) {
   fmt::print(stderr, "  -l <name>   Link library (multiple allowed)\n");
   fmt::print(stderr, "  -rpath <p>  Runtime library search path (multiple "
                      "allowed)\n");
-  fmt::print(stderr, "  --          Separator for program arguments (run "
-                     "command only)\n");
+  fmt::print(stderr, "  --          Separator for program arguments (run/test "
+                     "commands)\n");
 }
 
 parsed_args_s parse_args(int argc, char **argv) {
@@ -66,6 +66,10 @@ parsed_args_s parse_args(int argc, char **argv) {
 
   while (idx < argc) {
     if (std::strcmp(argv[idx], "--") == 0) {
+      idx++;
+      while (idx < argc) {
+        args.program_args.push_back(argv[idx++]);
+      }
       break;
     } else if (std::strcmp(argv[idx], "-o") == 0 && idx + 1 < argc) {
       args.output_file = argv[idx + 1];

@@ -279,3 +279,7 @@ __truk_void __truk_test_assert_bytes_eq(__truk_test_context_s *t,
     t->passed++;
   }
 }
+
+__truk_i32 __truk_test_get_argc(__truk_test_context_s *t) { return t->argc; }
+
+char **__truk_test_get_argv(__truk_test_context_s *t) { return t->argv; }

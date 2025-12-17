@@ -130,7 +130,19 @@ int run(const run_options_s &opts) {
     compiler.set_rpath(path);
   }
 
-  auto run_result = compiler.compile_and_run(c_source, opts.argc, opts.argv);
+  int argc = static_cast<int>(opts.program_args.size()) + 1;
+  std::vector<char *> argv_ptrs;
+  argv_ptrs.reserve(argc + 1);
+
+  std::string program_name = opts.input_file;
+  argv_ptrs.push_back(const_cast<char *>(program_name.c_str()));
+
+  for (const auto &arg : opts.program_args) {
+    argv_ptrs.push_back(const_cast<char *>(arg.c_str()));
+  }
+  argv_ptrs.push_back(nullptr);
+
+  auto run_result = compiler.compile_and_run(c_source, argc, argv_ptrs.data());
 
   if (!run_result.success) {
     reporter.report_compilation_error(run_result.error_message);

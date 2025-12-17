@@ -13,6 +13,7 @@ struct parsed_args_s {
   std::vector<std::string> library_paths;
   std::vector<std::string> libraries;
   std::vector<std::string> rpaths;
+  std::vector<std::string> program_args;
 };
 
 parsed_args_s parse_args(int argc, char **argv);

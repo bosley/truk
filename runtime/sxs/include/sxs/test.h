@@ -13,6 +13,8 @@ typedef struct {
   __truk_i32 passed;
   const char *current_test_name;
   __truk_bool has_failed;
+  __truk_i32 argc;
+  char **argv;
 } __truk_test_context_s;
 
 __truk_void __truk_test_fail(__truk_test_context_s *t, const char *msg);
@@ -61,6 +63,9 @@ __truk_void __truk_test_assert_bytes_eq(__truk_test_context_s *t,
                                         const __truk_u8 *expected,
                                         const __truk_u8 *actual, __truk_u64 len,
                                         const char *msg);
+
+__truk_i32 __truk_test_get_argc(__truk_test_context_s *t);
+char **__truk_test_get_argv(__truk_test_context_s *t);
 
 #ifdef __cplusplus
 }
