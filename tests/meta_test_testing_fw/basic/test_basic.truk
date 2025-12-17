@@ -1,3 +1,10 @@
+/*
+    The actual __truk_test_context_s is defined in our runtime/ library an is included into the user program.
+    These externs are essentially an artifact required solely for the sake of the type checker
+    When truk is more established and firm in its foundation we will add a stdlib file that masks the cinterop
+    for these calls and then the importer of "test.truk" via `import <test>;` (not yet existing variation of import)
+    we can then access via truk only interface
+*/
 extern struct __truk_test_context_s;
 extern fn __truk_test_fail(t: *__truk_test_context_s, msg: *u8) : void;
 extern fn __truk_test_log(t: *__truk_test_context_s, msg: *u8) : void;

@@ -1,0 +1,10 @@
+Type error: Invalid map key type: Point. Keys must be primitives (integers, floats, bool) or string pointers (*u8, *i8)
+Type error: Unknown variable type: map[Point, i32]
+Type error: Undefined identifier: m
+Type error: Undefined identifier: m
+Type error: Index operation on invalid type
+Type error: Assignment with invalid types
+Type error: Undefined identifier: m
+Type error: Failed to resolve argument type for delete
+
+Compilation failed with 8 error(s)

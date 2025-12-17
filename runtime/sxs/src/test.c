@@ -1,5 +1,5 @@
-#include <sxs/test.h>
 #include <string.h>
+#include <sxs/test.h>
 
 __truk_void __truk_test_fail(__truk_test_context_s *t, const char *msg) {
   t->has_failed = 1;
@@ -12,11 +12,11 @@ __truk_void __truk_test_log(__truk_test_context_s *t, const char *msg) {
   printf("    LOG: %s\n", msg);
 }
 
-__truk_void __truk_test_assert_i8(__truk_test_context_s *t,
-                                  __truk_i8 expected, __truk_i8 actual,
-                                  const char *msg) {
+__truk_void __truk_test_assert_i8(__truk_test_context_s *t, __truk_i8 expected,
+                                  __truk_i8 actual, const char *msg) {
   if (expected != actual) {
-    fprintf(stderr, "    FAIL: Expected %d, got %d", (int)expected, (int)actual);
+    fprintf(stderr, "    FAIL: Expected %d, got %d", (int)expected,
+            (int)actual);
     if (msg && *msg) {
       fprintf(stderr, " - %s", msg);
     }
@@ -32,7 +32,8 @@ __truk_void __truk_test_assert_i16(__truk_test_context_s *t,
                                    __truk_i16 expected, __truk_i16 actual,
                                    const char *msg) {
   if (expected != actual) {
-    fprintf(stderr, "    FAIL: Expected %d, got %d", (int)expected, (int)actual);
+    fprintf(stderr, "    FAIL: Expected %d, got %d", (int)expected,
+            (int)actual);
     if (msg && *msg) {
       fprintf(stderr, " - %s", msg);
     }
@@ -77,11 +78,11 @@ __truk_void __truk_test_assert_i64(__truk_test_context_s *t,
   }
 }
 
-__truk_void __truk_test_assert_u8(__truk_test_context_s *t,
-                                  __truk_u8 expected, __truk_u8 actual,
-                                  const char *msg) {
+__truk_void __truk_test_assert_u8(__truk_test_context_s *t, __truk_u8 expected,
+                                  __truk_u8 actual, const char *msg) {
   if (expected != actual) {
-    fprintf(stderr, "    FAIL: Expected %u, got %u", (unsigned int)expected, (unsigned int)actual);
+    fprintf(stderr, "    FAIL: Expected %u, got %u", (unsigned int)expected,
+            (unsigned int)actual);
     if (msg && *msg) {
       fprintf(stderr, " - %s", msg);
     }
@@ -97,7 +98,8 @@ __truk_void __truk_test_assert_u16(__truk_test_context_s *t,
                                    __truk_u16 expected, __truk_u16 actual,
                                    const char *msg) {
   if (expected != actual) {
-    fprintf(stderr, "    FAIL: Expected %u, got %u", (unsigned int)expected, (unsigned int)actual);
+    fprintf(stderr, "    FAIL: Expected %u, got %u", (unsigned int)expected,
+            (unsigned int)actual);
     if (msg && *msg) {
       fprintf(stderr, " - %s", msg);
     }
@@ -253,8 +255,8 @@ __truk_void __truk_test_assert_ptr_eq_nil(__truk_test_context_s *t,
 
 __truk_void __truk_test_assert_bytes_eq(__truk_test_context_s *t,
                                         const __truk_u8 *expected,
-                                        const __truk_u8 *actual,
-                                        __truk_u64 len, const char *msg) {
+                                        const __truk_u8 *actual, __truk_u64 len,
+                                        const char *msg) {
   if (memcmp(expected, actual, len) != 0) {
     fprintf(stderr, "    FAIL: Byte arrays differ (length %llu)",
             (unsigned long long)len);
@@ -264,8 +266,9 @@ __truk_void __truk_test_assert_bytes_eq(__truk_test_context_s *t,
     fprintf(stderr, "\n");
     for (__truk_u64 i = 0; i < len && i < 16; i++) {
       if (expected[i] != actual[i]) {
-        fprintf(stderr, "      First difference at byte %llu: expected 0x%02x, "
-                        "got 0x%02x\n",
+        fprintf(stderr,
+                "      First difference at byte %llu: expected 0x%02x, "
+                "got 0x%02x\n",
                 (unsigned long long)i, expected[i], actual[i]);
         break;
       }

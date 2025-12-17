@@ -1,0 +1,7 @@
+fn main() : i32 {
+    var x: i32 = 5;
+    var y: *i32 = make(@i32);
+    var result: i32 = x + y;
+    delete(y);
+    return result;
+}

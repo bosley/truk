@@ -185,6 +185,15 @@ type_checker_c::resolve_type(const type_c *type_node) {
       return nullptr;
     }
 
+    if (!is_valid_map_key_type(key_type.get())) {
+      report_error(
+          "Invalid map key type: " + get_type_name_from_entry(key_type.get()) +
+              ". Keys must be primitives (integers, floats, bool) or "
+              "string pointers (*u8, *i8)",
+          map->source_index());
+      return nullptr;
+    }
+
     auto resolved = std::make_unique<type_entry_s>(type_kind_e::MAP, "map");
     resolved->map_key_type = std::make_unique<type_entry_s>(*key_type);
     resolved->map_value_type = std::make_unique<type_entry_s>(*value_type);

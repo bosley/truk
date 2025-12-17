@@ -1,0 +1,6 @@
+Type error: Invalid map key type: (i32, i32). Keys must be primitives (integers, floats, bool) or string pointers (*u8, *i8)
+Type error: Unknown variable type: map[(i32, i32), i32]
+Type error: Undefined identifier: m
+Type error: Failed to resolve argument type for delete
+
+Compilation failed with 4 error(s)
