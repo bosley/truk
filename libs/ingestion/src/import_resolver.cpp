@@ -43,6 +43,14 @@ void dependency_visitor_c::visit(const map_type_c &node) {
   }
 }
 
+void dependency_visitor_c::visit(const tuple_type_c &node) {
+  for (const auto &elem_type : node.element_types()) {
+    if (elem_type) {
+      elem_type->accept(*this);
+    }
+  }
+}
+
 void dependency_visitor_c::visit(const fn_c &node) {
   if (node.return_type()) {
     node.return_type()->accept(*this);
@@ -101,6 +109,17 @@ void dependency_visitor_c::visit(const const_c &node) {
   }
 }
 
+void dependency_visitor_c::visit(const let_c &node) {
+  for (const auto &name : node.names()) {
+    if (name.name != "_") {
+      _local_scope.insert(name.name);
+    }
+  }
+  if (node.initializer()) {
+    node.initializer()->accept(*this);
+  }
+}
+
 void dependency_visitor_c::visit(const if_c &node) {
   if (node.condition()) {
     node.condition()->accept(*this);
@@ -143,8 +162,10 @@ void dependency_visitor_c::visit(const for_c &node) {
 }
 
 void dependency_visitor_c::visit(const return_c &node) {
-  if (node.expression()) {
-    node.expression()->accept(*this);
+  for (const auto &expr : node.expressions()) {
+    if (expr) {
+      expr->accept(*this);
+    }
   }
 }
 
@@ -373,16 +394,15 @@ void import_resolver_c::extract_imports_and_declarations(
     std::vector<base_ptr> &parsed_decls, const std::string &file_path) {
 
   for (auto &decl : parsed_decls) {
-    if (auto *import_node = dynamic_cast<const import_c *>(decl.get())) {
+    if (auto *import_node = decl.get()->as_import()) {
       std::string resolved_path =
           resolve_import_path(import_node->path(), file_path);
       process_file(resolved_path);
-    } else if (auto *cimport_node =
-                   dynamic_cast<const cimport_c *>(decl.get())) {
+    } else if (auto *cimport_node = decl.get()->as_cimport()) {
       _c_imports.push_back(
           {.path = cimport_node->path(),
            .is_angle_bracket = cimport_node->is_angle_bracket()});
-    } else if (auto *shard_node = dynamic_cast<const shard_c *>(decl.get())) {
+    } else if (auto *shard_node = decl.get()->as_shard()) {
       _file_to_shards[file_path].push_back(shard_node->name());
     } else {
       _decl_to_file[decl.get()] = file_path;

@@ -1,0 +1,12 @@
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args) : i32;
+
+fn main() : i32 {
+    printf("Hello, World!\n");
+    printf("Testing integer: %d\n", 42);
+    printf("Testing float: %.2f\n", 3.14);
+    printf("Testing string: %s\n", "truk");
+    printf("Testing multiple values: %d %s %.1f\n", 100, "test", 2.5);
+    return 0;
+}

@@ -1,0 +1,5 @@
+fn main() : i32 {
+    var m: map[(i32, i32), i32] = make(@map[(i32, i32), i32]);
+    delete(m);
+    return 0;
+}

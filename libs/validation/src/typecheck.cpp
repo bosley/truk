@@ -112,7 +112,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return nullptr;
   }
 
-  if (auto *primitive = dynamic_cast<const primitive_type_c *>(type_node)) {
+  if (auto *primitive = type_node->as_primitive_type()) {
     std::string type_name =
         language::keywords_c::to_string(primitive->keyword());
     auto *base_type = lookup_type(type_name);
@@ -122,7 +122,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return std::make_unique<type_entry_s>(*base_type);
   }
 
-  if (auto *named = dynamic_cast<const named_type_c *>(type_node)) {
+  if (auto *named = type_node->as_named_type()) {
     auto *base_type = lookup_type(named->name().name);
     if (!base_type) {
       return nullptr;
@@ -130,7 +130,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return std::make_unique<type_entry_s>(*base_type);
   }
 
-  if (auto *pointer = dynamic_cast<const pointer_type_c *>(type_node)) {
+  if (auto *pointer = type_node->as_pointer_type()) {
     auto pointee = resolve_type(pointer->pointee_type());
     if (!pointee) {
       return nullptr;
@@ -143,7 +143,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return resolved;
   }
 
-  if (auto *array = dynamic_cast<const array_type_c *>(type_node)) {
+  if (auto *array = type_node->as_array_type()) {
     auto element = resolve_type(array->element_type());
     if (!element) {
       return nullptr;
@@ -156,7 +156,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return resolved;
   }
 
-  if (auto *function = dynamic_cast<const function_type_c *>(type_node)) {
+  if (auto *function = type_node->as_function_type()) {
     auto func_type =
         std::make_unique<type_entry_s>(type_kind_e::FUNCTION, "function");
 
@@ -177,7 +177,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return func_type;
   }
 
-  if (auto *map = dynamic_cast<const map_type_c *>(type_node)) {
+  if (auto *map = type_node->as_map_type()) {
     auto key_type = resolve_type(map->key_type());
     auto value_type = resolve_type(map->value_type());
 
@@ -185,10 +185,33 @@ type_checker_c::resolve_type(const type_c *type_node) {
       return nullptr;
     }
 
+    if (!is_valid_map_key_type(key_type.get())) {
+      report_error(
+          "Invalid map key type: " + get_type_name_from_entry(key_type.get()) +
+              ". Keys must be primitives (integers, floats, bool) or "
+              "string pointers (*u8, *i8)",
+          map->source_index());
+      return nullptr;
+    }
+
     auto resolved = std::make_unique<type_entry_s>(type_kind_e::MAP, "map");
     resolved->map_key_type = std::make_unique<type_entry_s>(*key_type);
     resolved->map_value_type = std::make_unique<type_entry_s>(*value_type);
     return resolved;
+  }
+
+  if (auto *tuple = type_node->as_tuple_type()) {
+    auto result = std::make_unique<type_entry_s>(type_kind_e::TUPLE, "tuple");
+
+    for (const auto &elem_type : tuple->element_types()) {
+      auto resolved = resolve_type(elem_type.get());
+      if (!resolved) {
+        return nullptr;
+      }
+      result->tuple_element_types.push_back(std::move(resolved));
+    }
+
+    return result;
   }
 
   return nullptr;
@@ -199,32 +222,43 @@ std::string type_checker_c::get_type_name_for_error(const type_c *type_node) {
     return "<unknown>";
   }
 
-  if (auto *primitive = dynamic_cast<const primitive_type_c *>(type_node)) {
+  if (auto *primitive = type_node->as_primitive_type()) {
     return language::keywords_c::to_string(primitive->keyword());
   }
 
-  if (auto *named = dynamic_cast<const named_type_c *>(type_node)) {
+  if (auto *named = type_node->as_named_type()) {
     return named->name().name;
   }
 
-  if (auto *pointer = dynamic_cast<const pointer_type_c *>(type_node)) {
+  if (auto *pointer = type_node->as_pointer_type()) {
     return "*" + get_type_name_for_error(pointer->pointee_type());
   }
 
-  if (auto *array = dynamic_cast<const array_type_c *>(type_node)) {
+  if (auto *array = type_node->as_array_type()) {
     std::string size_str =
         array->size().has_value() ? std::to_string(array->size().value()) : "";
     return "[" + size_str + "]" +
            get_type_name_for_error(array->element_type());
   }
 
-  if (auto *function = dynamic_cast<const function_type_c *>(type_node)) {
+  if (auto *function = type_node->as_function_type()) {
     return "fn";
   }
 
-  if (auto *map = dynamic_cast<const map_type_c *>(type_node)) {
+  if (auto *map = type_node->as_map_type()) {
     return "map[" + get_type_name_for_error(map->key_type()) + ", " +
            get_type_name_for_error(map->value_type()) + "]";
+  }
+
+  if (auto *tuple = type_node->as_tuple_type()) {
+    std::string result = "(";
+    for (size_t i = 0; i < tuple->element_types().size(); ++i) {
+      if (i > 0)
+        result += ", ";
+      result += get_type_name_for_error(tuple->element_types()[i].get());
+    }
+    result += ")";
+    return result;
   }
 
   return "<unknown>";
@@ -259,6 +293,17 @@ std::string type_checker_c::get_type_name_from_entry(const type_entry_s *type) {
              ", " + get_type_name_from_entry(type->map_value_type.get()) + "]";
     }
     return "map[<unknown>, <unknown>]";
+  }
+
+  if (type->kind == type_kind_e::TUPLE) {
+    std::string result = "(";
+    for (size_t i = 0; i < type->tuple_element_types.size(); ++i) {
+      if (i > 0)
+        result += ", ";
+      result += get_type_name_from_entry(type->tuple_element_types[i].get());
+    }
+    result += ")";
+    return result;
   }
 
   return base_name;
@@ -513,7 +558,7 @@ void type_checker_c::validate_builtin_call(const call_c &node,
     }
 
     const auto *first_arg_type_param =
-        dynamic_cast<const type_param_c *>(node.arguments()[0].get());
+        node.arguments()[0].get()->as_type_param();
     if (!first_arg_type_param) {
       report_error(
           "Builtin 'make' requires a type parameter (use @type syntax)",
@@ -532,6 +577,31 @@ void type_checker_c::validate_builtin_call(const call_c &node,
       }
 
       if (resolved->kind == type_kind_e::MAP) {
+        if (resolved->map_value_type) {
+          auto value_type = resolved->map_value_type.get();
+          if (value_type->kind == type_kind_e::ARRAY &&
+              value_type->array_size.has_value()) {
+            report_error(
+                "Maps with fixed-size array values are not supported: " +
+                    get_type_name_from_entry(value_type) +
+                    ". Consider wrapping the array in a struct",
+                node.source_index());
+            return;
+          }
+          if (value_type->kind == type_kind_e::POINTER &&
+              value_type->pointee_type) {
+            auto pointee = value_type->pointee_type.get();
+            if (pointee->kind == type_kind_e::ARRAY &&
+                pointee->array_size.has_value()) {
+              report_error(
+                  "Maps with pointer-to-array values are not supported: " +
+                      get_type_name_from_entry(value_type) +
+                      ". Consider wrapping the array in a struct",
+                  node.source_index());
+              return;
+            }
+          }
+        }
         _current_expression_type = std::move(resolved);
         return;
       }
@@ -749,7 +819,7 @@ void type_checker_c::validate_builtin_call(const call_c &node,
     }
 
     const auto *first_arg_type_param =
-        dynamic_cast<const type_param_c *>(node.arguments()[0].get());
+        node.arguments()[0].get()->as_type_param();
     if (!first_arg_type_param) {
       report_error("Builtin '" + builtin->name +
                        "' requires a type parameter (use @type syntax)",
@@ -770,7 +840,7 @@ void type_checker_c::validate_builtin_call(const call_c &node,
     return;
   }
 
-  auto *func_sig = dynamic_cast<const function_type_c *>(signature.get());
+  auto *func_sig = signature.get()->as_function_type();
   if (!func_sig) {
     report_error("Internal error: builtin signature is not a function type",
                  node.source_index());
@@ -972,10 +1042,39 @@ void type_checker_c::visit(const map_type_c &node) {
     return;
   }
 
+  if (value_type->kind == type_kind_e::ARRAY &&
+      value_type->array_size.has_value()) {
+    report_error("Maps with fixed-size array values are not supported: " +
+                     get_type_name_from_entry(value_type.get()) +
+                     ". Consider wrapping the array in a struct",
+                 node.source_index());
+    return;
+  }
+
+  if (value_type->kind == type_kind_e::POINTER && value_type->pointee_type) {
+    auto pointee = value_type->pointee_type.get();
+    if (pointee->kind == type_kind_e::ARRAY &&
+        pointee->array_size.has_value()) {
+      report_error("Maps with pointer-to-array values are not supported: " +
+                       get_type_name_from_entry(value_type.get()) +
+                       ". Consider wrapping the array in a struct",
+                   node.source_index());
+      return;
+    }
+  }
+
   auto map_type = std::make_unique<type_entry_s>(type_kind_e::MAP, "map");
   map_type->map_key_type = std::move(key_type);
   map_type->map_value_type = std::move(value_type);
   _current_expression_type = std::move(map_type);
+}
+
+void type_checker_c::visit(const tuple_type_c &node) {
+  for (const auto &elem_type : node.element_types()) {
+    if (elem_type) {
+      elem_type->accept(*this);
+    }
+  }
 }
 
 void type_checker_c::visit(const fn_c &node) {
@@ -1070,6 +1169,7 @@ void type_checker_c::visit(const lambda_c &node) {
 
   push_scope();
 
+  auto saved_return_type = std::move(_current_function_return_type);
   _current_function_return_type = std::move(return_type);
 
   for (const auto &param : node.params()) {
@@ -1088,7 +1188,7 @@ void type_checker_c::visit(const lambda_c &node) {
     node.body()->accept(*this);
   }
 
-  _current_function_return_type.reset();
+  _current_function_return_type = std::move(saved_return_type);
 
   pop_scope();
 
@@ -1169,6 +1269,83 @@ void type_checker_c::visit(const var_c &node) {
 
   register_symbol(node.name().name, std::move(var_type), true,
                   node.source_index());
+}
+
+void type_checker_c::visit(const let_c &node) {
+  auto it = _decl_to_file.find(&node);
+  if (it != _decl_to_file.end()) {
+    for (const auto &name : node.names()) {
+      if (name.name != "_") {
+        _global_to_file[name.name] = it->second;
+      }
+    }
+  }
+
+  if (!node.initializer()) {
+    report_error("let declaration requires an initializer",
+                 node.source_index());
+    return;
+  }
+
+  node.initializer()->accept(*this);
+
+  if (!_current_expression_type) {
+    report_error("Cannot infer type from initializer", node.source_index());
+    return;
+  }
+
+  if (node.is_single()) {
+    auto inferred_type =
+        std::make_unique<type_entry_s>(*_current_expression_type);
+
+    if (inferred_type->kind == type_kind_e::VOID_TYPE) {
+      report_error("Cannot declare variable with void type",
+                   node.source_index());
+      return;
+    }
+
+    std::vector<type_ptr> type_nodes;
+    auto type_node = create_type_node_from_entry(inferred_type.get());
+    if (type_node) {
+      type_nodes.push_back(std::move(type_node));
+      node.set_inferred_types(std::move(type_nodes));
+    }
+
+    const std::string &var_name = node.names()[0].name;
+    if (var_name != "_") {
+      register_symbol(var_name, std::move(inferred_type), true,
+                      node.source_index());
+    }
+  } else {
+    if (_current_expression_type->kind != type_kind_e::TUPLE) {
+      report_error("Destructuring requires a tuple type", node.source_index());
+      return;
+    }
+
+    if (node.names().size() !=
+        _current_expression_type->tuple_element_types.size()) {
+      report_error("Destructuring arity mismatch", node.source_index());
+      return;
+    }
+
+    std::vector<type_ptr> type_nodes;
+    for (size_t i = 0; i < node.names().size(); ++i) {
+      const auto &var_name = node.names()[i].name;
+      auto elem_type = std::make_unique<type_entry_s>(
+          *_current_expression_type->tuple_element_types[i]);
+
+      auto type_node = create_type_node_from_entry(elem_type.get());
+      if (type_node) {
+        type_nodes.push_back(std::move(type_node));
+      }
+
+      if (var_name != "_") {
+        register_symbol(var_name, std::move(elem_type), true,
+                        node.source_index());
+      }
+    }
+    node.set_inferred_types(std::move(type_nodes));
+  }
 }
 
 void type_checker_c::visit(const const_c &node) {
@@ -1270,26 +1447,59 @@ void type_checker_c::visit(const for_c &node) {
 }
 
 void type_checker_c::visit(const return_c &node) {
-  if (node.expression()) {
-    node.expression()->accept(*this);
+  if (!_current_function_return_type) {
+    report_error("Return statement outside of function", node.source_index());
+    return;
+  }
 
-    if (_current_function_return_type) {
-      if (!_current_expression_type) {
-        report_error("Return expression has no type", node.source_index());
-      } else {
-        _current_expression_type =
-            resolve_untyped_literal(_current_expression_type.get(),
-                                    _current_function_return_type.get());
-        if (!is_compatible_for_assignment(_current_function_return_type.get(),
-                                          _current_expression_type.get())) {
-          report_error("Return type mismatch", node.source_index());
-        }
+  if (node.is_void()) {
+    if (_current_function_return_type->kind != type_kind_e::VOID_TYPE) {
+      report_error("Function must return a value", node.source_index());
+    }
+    return;
+  }
+
+  if (node.is_single()) {
+    node.expressions()[0]->accept(*this);
+
+    if (_current_expression_type) {
+      _current_expression_type = resolve_untyped_literal(
+          _current_expression_type.get(), _current_function_return_type.get());
+      if (!is_compatible_for_assignment(_current_function_return_type.get(),
+                                        _current_expression_type.get())) {
+        report_error("Return type mismatch", node.source_index());
       }
     }
-  } else {
-    if (_current_function_return_type &&
-        _current_function_return_type->name != "void") {
-      report_error("Function must return a value", node.source_index());
+    return;
+  }
+
+  if (node.is_multiple()) {
+    if (_current_function_return_type->kind != type_kind_e::TUPLE) {
+      report_error("Function does not return a tuple", node.source_index());
+      return;
+    }
+
+    if (node.expressions().size() !=
+        _current_function_return_type->tuple_element_types.size()) {
+      report_error("Tuple arity mismatch in return", node.source_index());
+      return;
+    }
+
+    for (size_t i = 0; i < node.expressions().size(); ++i) {
+      node.expressions()[i]->accept(*this);
+
+      if (_current_expression_type) {
+        auto expected =
+            _current_function_return_type->tuple_element_types[i].get();
+        _current_expression_type =
+            resolve_untyped_literal(_current_expression_type.get(), expected);
+        if (!is_compatible_for_assignment(expected,
+                                          _current_expression_type.get())) {
+          report_error("Tuple element type mismatch at position " +
+                           std::to_string(i),
+                       node.source_index());
+        }
+      }
     }
   }
 }
@@ -1519,7 +1729,7 @@ void type_checker_c::visit(const cast_c &node) {
 
 void type_checker_c::visit(const call_c &node) {
   std::string func_name;
-  if (auto *id_node = dynamic_cast<const identifier_c *>(node.callee())) {
+  if (auto *id_node = node.callee()->as_identifier()) {
     func_name = id_node->id().name;
   }
 
@@ -1794,7 +2004,7 @@ void type_checker_c::visit(const assignment_c &node) {
   bool is_map_assignment = false;
   const type_entry_s *map_value_type = nullptr;
 
-  if (auto *index = dynamic_cast<const index_c *>(node.target())) {
+  if (auto *index = node.target()->as_index()) {
     index->object()->accept(*this);
     auto object_type = std::move(_current_expression_type);
 
@@ -2122,6 +2332,8 @@ void symbol_collector_c::visit(const array_type_c &node) {}
 void symbol_collector_c::visit(const function_type_c &node) {}
 void symbol_collector_c::visit(const map_type_c &node) {}
 
+void symbol_collector_c::visit(const tuple_type_c &node) {}
+
 void symbol_collector_c::visit(const fn_c &node) {
   auto it = _decl_to_file.find(&node);
   if (it != _decl_to_file.end()) {
@@ -2252,6 +2464,40 @@ void symbol_collector_c::visit(const var_c &node) {
   _current_scope->symbols[node.name().name] = var_symbol_ptr;
 }
 
+void symbol_collector_c::visit(const let_c &node) {
+  if (node.initializer()) {
+    node.initializer()->accept(*this);
+  }
+
+  for (const auto &name : node.names()) {
+    if (name.name == "_") {
+      continue;
+    }
+
+    auto let_type =
+        std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "let");
+    auto let_symbol = std::make_unique<symbol_entry_s>(
+        name.name, std::move(let_type), true, node.source_index());
+
+    if (_current_scope->kind == scope_kind_e::GLOBAL) {
+      let_symbol->scope_kind = symbol_scope_e::GLOBAL;
+      _result.global_symbols[name.name] = let_symbol.get();
+    } else if (_current_scope->kind == scope_kind_e::LAMBDA ||
+               (_current_scope->parent &&
+                _current_scope->parent->kind == scope_kind_e::LAMBDA)) {
+      let_symbol->scope_kind = symbol_scope_e::LAMBDA_LOCAL;
+    } else {
+      let_symbol->scope_kind = symbol_scope_e::FUNCTION_LOCAL;
+    }
+
+    let_symbol->declaring_node = &node;
+
+    auto *let_symbol_ptr = let_symbol.get();
+    _memory.set(name.name, std::move(let_symbol));
+    _current_scope->symbols[name.name] = let_symbol_ptr;
+  }
+}
+
 void symbol_collector_c::visit(const const_c &node) {
   if (node.value()) {
     node.value()->accept(*this);
@@ -2309,8 +2555,10 @@ void symbol_collector_c::visit(const for_c &node) {
 }
 
 void symbol_collector_c::visit(const return_c &node) {
-  if (node.expression()) {
-    node.expression()->accept(*this);
+  for (const auto &expr : node.expressions()) {
+    if (expr) {
+      expr->accept(*this);
+    }
   }
 }
 
@@ -2451,6 +2699,8 @@ void lambda_capture_validator_c::visit(const array_type_c &node) {}
 void lambda_capture_validator_c::visit(const function_type_c &node) {}
 void lambda_capture_validator_c::visit(const map_type_c &node) {}
 
+void lambda_capture_validator_c::visit(const tuple_type_c &node) {}
+
 void lambda_capture_validator_c::visit(const fn_c &node) {
   auto it = _symbols.scope_map.find(&node);
   if (it != _symbols.scope_map.end()) {
@@ -2494,6 +2744,12 @@ void lambda_capture_validator_c::visit(const var_c &node) {
 void lambda_capture_validator_c::visit(const const_c &node) {
   if (node.value()) {
     node.value()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const let_c &node) {
+  if (node.initializer()) {
+    node.initializer()->accept(*this);
   }
 }
 
@@ -2542,8 +2798,10 @@ void lambda_capture_validator_c::visit(const for_c &node) {
 }
 
 void lambda_capture_validator_c::visit(const return_c &node) {
-  if (node.expression()) {
-    node.expression()->accept(*this);
+  for (const auto &expr : node.expressions()) {
+    if (expr) {
+      expr->accept(*this);
+    }
   }
 }
 
@@ -2716,5 +2974,105 @@ void lambda_capture_validator_c::visit(const type_param_c &node) {}
 void lambda_capture_validator_c::visit(const import_c &node) {}
 void lambda_capture_validator_c::visit(const cimport_c &node) {}
 void lambda_capture_validator_c::visit(const shard_c &node) {}
+
+language::nodes::type_ptr
+type_checker_c::create_type_node_from_entry(const type_entry_s *entry) {
+  if (!entry) {
+    return nullptr;
+  }
+
+  switch (entry->kind) {
+  case type_kind_e::PRIMITIVE: {
+    language::keywords_e keyword = language::keywords_e::UNKNOWN_KEYWORD;
+    if (entry->name == "i8")
+      keyword = language::keywords_e::I8;
+    else if (entry->name == "i16")
+      keyword = language::keywords_e::I16;
+    else if (entry->name == "i32")
+      keyword = language::keywords_e::I32;
+    else if (entry->name == "i64")
+      keyword = language::keywords_e::I64;
+    else if (entry->name == "u8")
+      keyword = language::keywords_e::U8;
+    else if (entry->name == "u16")
+      keyword = language::keywords_e::U16;
+    else if (entry->name == "u32")
+      keyword = language::keywords_e::U32;
+    else if (entry->name == "u64")
+      keyword = language::keywords_e::U64;
+    else if (entry->name == "f32")
+      keyword = language::keywords_e::F32;
+    else if (entry->name == "f64")
+      keyword = language::keywords_e::F64;
+    else if (entry->name == "bool")
+      keyword = language::keywords_e::BOOL;
+    else if (entry->name == "void")
+      keyword = language::keywords_e::VOID;
+    return std::make_unique<language::nodes::primitive_type_c>(keyword, 0);
+  }
+  case type_kind_e::STRUCT: {
+    language::nodes::identifier_s id(entry->name, 0);
+    return std::make_unique<language::nodes::named_type_c>(0, std::move(id));
+  }
+  case type_kind_e::POINTER: {
+    auto pointee = create_type_node_from_entry(entry->pointee_type.get());
+    if (!pointee)
+      return nullptr;
+    return std::make_unique<language::nodes::pointer_type_c>(
+        0, std::move(pointee));
+  }
+  case type_kind_e::ARRAY: {
+    auto element = create_type_node_from_entry(entry->element_type.get());
+    if (!element)
+      return nullptr;
+    return std::make_unique<language::nodes::array_type_c>(
+        0, std::move(element), entry->array_size);
+  }
+  case type_kind_e::FUNCTION: {
+    std::vector<language::nodes::type_ptr> param_types;
+    for (const auto &param : entry->function_param_types) {
+      auto param_type = create_type_node_from_entry(param.get());
+      if (!param_type)
+        return nullptr;
+      param_types.push_back(std::move(param_type));
+    }
+    auto return_type =
+        create_type_node_from_entry(entry->function_return_type.get());
+    if (!return_type)
+      return nullptr;
+    return std::make_unique<language::nodes::function_type_c>(
+        0, std::move(param_types), std::move(return_type), entry->is_variadic);
+  }
+  case type_kind_e::MAP: {
+    auto key_type = create_type_node_from_entry(entry->map_key_type.get());
+    auto value_type = create_type_node_from_entry(entry->map_value_type.get());
+    if (!key_type || !value_type)
+      return nullptr;
+    return std::make_unique<language::nodes::map_type_c>(0, std::move(key_type),
+                                                         std::move(value_type));
+  }
+  case type_kind_e::TUPLE: {
+    std::vector<language::nodes::type_ptr> element_types;
+    for (const auto &elem : entry->tuple_element_types) {
+      auto elem_type = create_type_node_from_entry(elem.get());
+      if (!elem_type)
+        return nullptr;
+      element_types.push_back(std::move(elem_type));
+    }
+    return std::make_unique<language::nodes::tuple_type_c>(
+        0, std::move(element_types));
+  }
+  case type_kind_e::VOID_TYPE: {
+    return std::make_unique<language::nodes::primitive_type_c>(
+        language::keywords_e::VOID, 0);
+  }
+  case type_kind_e::UNTYPED_INTEGER:
+  case type_kind_e::UNTYPED_FLOAT:
+    return std::make_unique<language::nodes::primitive_type_c>(
+        language::keywords_e::I32, 0);
+  }
+
+  return nullptr;
+}
 
 } // namespace truk::validation

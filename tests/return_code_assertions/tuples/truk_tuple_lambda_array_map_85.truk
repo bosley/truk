@@ -1,0 +1,20 @@
+fn get_all() : (fn(i32) : i32, [2]i32, map[i32, i32]) {
+  var add10: fn(i32) : i32 = fn(x: i32) : i32 {
+    return x + 10;
+  };
+  var arr: [2]i32 = [20, 30];
+  var m: map[i32, i32] = make(@map[i32, i32]);
+  m[1] = 25;
+  return add10, arr, m;
+}
+
+fn main() : i32 {
+  let func, array, mymap = get_all();
+  var ptr: *i32 = mymap[1];
+  var result: i32 = 0;
+  if ptr != nil {
+    result = func(array[0]) + array[1] + *ptr;
+  }
+  delete(mymap);
+  return result;
+}

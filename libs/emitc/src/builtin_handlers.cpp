@@ -11,12 +11,10 @@ class make_builtin_handler_c : public builtin_handler_if {
 public:
   void emit_call(const call_c &node, emitter_c &emitter) override {
     if (!node.arguments().empty()) {
-      if (auto type_param =
-              dynamic_cast<const type_param_c *>(node.arguments()[0].get())) {
+      if (auto type_param = node.arguments()[0].get()->as_type_param()) {
         if (node.arguments().size() == 1) {
           if (emitter.is_map_type(type_param->type())) {
-            auto *map_type =
-                dynamic_cast<const map_type_c *>(type_param->type());
+            auto *map_type = type_param->type()->as_map_type();
             emitter.ensure_map_typedef(map_type->key_type(),
                                        map_type->value_type());
 
@@ -48,8 +46,7 @@ public:
               emitter.get_slice_type_name(type_param->type());
 
           std::string cast_type;
-          if (auto arr =
-                  dynamic_cast<const array_type_c *>(type_param->type())) {
+          if (auto arr = type_param->type()->as_array_type()) {
             if (arr->size().has_value()) {
               cast_type = emitter.emit_array_pointer_type(type_param->type());
             } else {
@@ -72,21 +69,20 @@ class delete_builtin_handler_c : public builtin_handler_if {
 public:
   void emit_call(const call_c &node, emitter_c &emitter) override {
     if (!node.arguments().empty()) {
-      if (auto idx = dynamic_cast<const index_c *>(node.arguments()[0].get())) {
-        if (auto ident = dynamic_cast<const identifier_c *>(idx->object())) {
+      if (auto idx = node.arguments()[0].get()->as_index()) {
+        if (auto ident = idx->object()->as_identifier()) {
           if (emitter.is_variable_map(ident->id().name)) {
             std::string obj_expr = emitter.emit_expression(idx->object());
             std::string idx_expr = emitter.emit_expression(idx->index());
 
             bool key_is_slice = false;
-            auto *key_literal = dynamic_cast<const literal_c *>(idx->index());
+            auto *key_literal = idx->index()->as_literal();
             bool key_is_string_literal =
                 key_literal && key_literal->type() == literal_type_e::STRING;
             bool key_is_non_string_literal =
                 key_literal && !key_is_string_literal;
 
-            if (auto key_ident =
-                    dynamic_cast<const identifier_c *>(idx->index())) {
+            if (auto key_ident = idx->index()->as_identifier()) {
               key_is_slice = emitter.is_variable_slice(key_ident->id().name);
             }
 
@@ -142,8 +138,7 @@ class sizeof_builtin_handler_c : public builtin_handler_if {
 public:
   void emit_call(const call_c &node, emitter_c &emitter) override {
     if (!node.arguments().empty()) {
-      if (auto type_param =
-              dynamic_cast<const type_param_c *>(node.arguments()[0].get())) {
+      if (auto type_param = node.arguments()[0].get()->as_type_param()) {
         std::string type_str = emitter.emit_type_for_sizeof(type_param->type());
         emitter._current_expr << cdef::emit_builtin_sizeof(type_str);
         return;
@@ -171,8 +166,7 @@ public:
       bool is_slice = false;
       bool is_map = false;
 
-      if (auto ident =
-              dynamic_cast<const identifier_c *>(node.arguments()[0].get())) {
+      if (auto ident = node.arguments()[0].get()->as_identifier()) {
         is_slice = emitter.is_variable_slice(ident->id().name);
         is_map = emitter.is_variable_map(ident->id().name);
       }
@@ -182,8 +176,7 @@ public:
       std::string context_var =
           emitter.emit_expression(node.arguments()[1].get());
 
-      if (auto lambda =
-              dynamic_cast<const lambda_c *>(node.arguments()[2].get())) {
+      if (auto lambda = node.arguments()[2].get()->as_lambda()) {
         std::string callback_func =
             emitter.emit_expression(node.arguments()[2].get());
 
@@ -255,10 +248,8 @@ public:
           emitter._indent_level--;
           emitter._functions << cdef::indent(emitter._indent_level) << "}\n";
         } else {
-          if (auto func_call =
-                  dynamic_cast<const call_c *>(node.arguments()[2].get())) {
-            if (auto func_ident =
-                    dynamic_cast<const identifier_c *>(func_call->callee())) {
+          if (auto func_call = node.arguments()[2].get()->as_call()) {
+            if (auto func_ident = func_call->callee()->as_identifier()) {
               std::string key_type = "__truk_u8*";
               emitter._functions
                   << cdef::indent(emitter._indent_level)
@@ -302,7 +293,7 @@ public:
 class va_arg_builtin_handler_c : public builtin_handler_if {
 public:
   void emit_call(const call_c &node, emitter_c &emitter) override {
-    if (auto ident = dynamic_cast<const identifier_c *>(node.callee())) {
+    if (auto ident = node.callee()->as_identifier()) {
       const std::string &func_name = ident->id().name;
       auto builtin = language::builtins::lookup_builtin(func_name);
 

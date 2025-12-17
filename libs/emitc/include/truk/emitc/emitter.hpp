@@ -66,11 +66,15 @@ struct compilation_unit_metadata_s {
   std::unordered_set<std::string> defined_functions;
   std::unordered_set<std::string> defined_structs;
   std::unordered_set<std::string> extern_structs;
+  std::vector<std::string> test_functions;
+  bool has_test_setup{false};
+  bool has_test_teardown{false};
   bool has_main_function{false};
   int main_function_count{0};
 
   bool is_library() const { return !has_main_function; }
   bool has_multiple_mains() const { return main_function_count > 1; }
+  bool has_tests() const { return !test_functions.empty(); }
 };
 
 enum class assembly_type_e { APPLICATION, LIBRARY };
@@ -98,6 +102,7 @@ struct result_c {
   std::string assemble_code() const;
   assembly_result_s assemble(assembly_type_e type,
                              const std::string &header_name = "") const;
+  std::string assemble_test_runner() const;
 };
 
 class emitter_c : public truk::language::nodes::visitor_if {
@@ -140,11 +145,13 @@ public:
   void visit(const truk::language::nodes::array_type_c &node) override;
   void visit(const truk::language::nodes::function_type_c &node) override;
   void visit(const truk::language::nodes::map_type_c &node) override;
+  void visit(const truk::language::nodes::tuple_type_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
+  void visit(const truk::language::nodes::let_c &node) override;
   void visit(const truk::language::nodes::if_c &node) override;
   void visit(const truk::language::nodes::while_c &node) override;
   void visit(const truk::language::nodes::for_c &node) override;
@@ -193,6 +200,12 @@ private:
   void ensure_map_typedef(const truk::language::nodes::type_c *key_type,
                           const truk::language::nodes::type_c *value_type);
   bool is_map_type(const truk::language::nodes::type_c *type);
+  bool is_array_type(const truk::language::nodes::type_c *type);
+  std::string get_array_dimensions(const truk::language::nodes::type_c *type);
+  std::string get_tuple_type_name(
+      const std::vector<const truk::language::nodes::type_c *> &element_types);
+  void ensure_tuple_typedef(
+      const std::vector<const truk::language::nodes::type_c *> &element_types);
   std::string get_map_hash_fn(const truk::language::nodes::type_c *key_type);
   std::string get_map_cmp_fn(const truk::language::nodes::type_c *key_type);
   int get_key_size(const truk::language::nodes::type_c *key_type);
@@ -242,6 +255,10 @@ private:
   std::string _current_function_name;
   const truk::language::nodes::type_c *_current_function_return_type{nullptr};
   int _lambda_counter{0};
+  int _temp_counter{0};
+  std::unordered_set<std::string> _generated_tuple_typedefs;
+  std::vector<const truk::language::nodes::type_c *>
+      _current_tuple_return_types;
   std::vector<std::unique_ptr<defer_scope_s>> _defer_scope_stack;
   defer_scope_s *_current_defer_scope{nullptr};
   emission_phase_e _current_phase{emission_phase_e::COLLECTION};

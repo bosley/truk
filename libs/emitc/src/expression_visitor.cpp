@@ -75,6 +75,8 @@ void expression_visitor_c::visit(const function_type_c &node) {}
 
 void expression_visitor_c::visit(const map_type_c &node) {}
 
+void expression_visitor_c::visit(const tuple_type_c &node) {}
+
 void expression_visitor_c::visit(const fn_c &node) {}
 
 void expression_visitor_c::visit(const struct_c &node) {}
@@ -82,6 +84,8 @@ void expression_visitor_c::visit(const struct_c &node) {}
 void expression_visitor_c::visit(const var_c &node) {}
 
 void expression_visitor_c::visit(const const_c &node) {}
+
+void expression_visitor_c::visit(const let_c &node) {}
 
 void expression_visitor_c::visit(const if_c &node) {}
 

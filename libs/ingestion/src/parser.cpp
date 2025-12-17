@@ -38,8 +38,7 @@ parse_result_s parser_c::parse() {
     auto all_decls = parse_program();
 
     for (auto &decl : all_decls) {
-      if (auto *cimport_node =
-              dynamic_cast<const language::nodes::cimport_c *>(decl.get())) {
+      if (auto *cimport_node = decl.get()->as_cimport()) {
         result.c_imports.push_back(
             {.path = cimport_node->path(),
              .is_angle_bracket = cimport_node->is_angle_bracket()});
@@ -352,9 +351,12 @@ language::nodes::base_ptr parser_c::parse_lambda() {
     body = parse_block();
   } else {
     auto expr = parse_expression();
+    std::size_t expr_idx = expr->source_index();
     std::vector<language::nodes::base_ptr> statements;
+    std::vector<language::nodes::base_ptr> return_exprs;
+    return_exprs.push_back(std::move(expr));
     statements.push_back(std::make_unique<language::nodes::return_c>(
-        expr->source_index(), std::move(expr)));
+        expr_idx, std::move(return_exprs)));
     body = std::make_unique<language::nodes::block_c>(fn_token.source_index,
                                                       std::move(statements));
   }
@@ -439,6 +441,27 @@ language::nodes::base_ptr parser_c::parse_const_decl() {
       std::move(value));
 }
 
+language::nodes::base_ptr parser_c::parse_let_decl() {
+  const auto &let_token =
+      consume_keyword(language::keywords_e::LET, "Expected 'let' keyword");
+
+  std::vector<language::nodes::identifier_s> names;
+
+  do {
+    const auto &name_token = consume_identifier("Expected variable name");
+    names.emplace_back(name_token.lexeme, name_token.source_index);
+  } while (match(token_type_e::COMMA));
+
+  consume(token_type_e::EQUAL, "Expected '=' in let declaration");
+
+  auto initializer = parse_expression();
+
+  consume(token_type_e::SEMICOLON, "Expected ';' after let declaration");
+
+  return std::make_unique<language::nodes::let_c>(
+      let_token.source_index, std::move(names), std::move(initializer));
+}
+
 language::nodes::type_ptr parser_c::parse_type_annotation() {
   consume(token_type_e::COLON, "Expected ':' in type annotation");
   return parse_type_internal();
@@ -450,6 +473,9 @@ language::nodes::type_ptr parser_c::parse_type_internal() {
   }
   if (check(token_type_e::LEFT_BRACKET)) {
     return parse_array_type();
+  }
+  if (check(token_type_e::LEFT_PAREN)) {
+    return parse_tuple_type();
   }
   if (check(token_type_e::KEYWORD)) {
     const auto &token = peek();
@@ -519,7 +545,7 @@ language::nodes::type_ptr parser_c::parse_array_type() {
   if (!check(token_type_e::RIGHT_BRACKET)) {
     auto size_expr = parse_expression();
 
-    auto *literal = dynamic_cast<language::nodes::literal_c *>(size_expr.get());
+    auto *literal = size_expr.get()->as_literal();
     if (!literal) {
       throw parse_error("Array size must be an integer literal",
                         size_expr->source_index(), bracket_token.column);
@@ -597,12 +623,41 @@ language::nodes::type_ptr parser_c::parse_function_type() {
       fn_token.source_index, std::move(param_types), std::move(return_type));
 }
 
+language::nodes::type_ptr parser_c::parse_tuple_type() {
+  const auto &paren_token = consume(token_type_e::LEFT_PAREN, "Expected '('");
+
+  std::vector<language::nodes::type_ptr> element_types;
+
+  if (!check(token_type_e::RIGHT_PAREN)) {
+    do {
+      auto elem_type = parse_type_internal();
+      if (!elem_type) {
+        throw parse_error("Expected type in tuple", peek().line, peek().column);
+      }
+      element_types.push_back(std::move(elem_type));
+    } while (match(token_type_e::COMMA));
+  }
+
+  consume(token_type_e::RIGHT_PAREN, "Expected ')' after tuple types");
+
+  if (element_types.size() < 2) {
+    throw parse_error("Tuple must have at least 2 elements", paren_token.line,
+                      paren_token.column);
+  }
+
+  return std::make_unique<language::nodes::tuple_type_c>(
+      paren_token.source_index, std::move(element_types));
+}
+
 language::nodes::base_ptr parser_c::parse_statement() {
   if (check_keyword(language::keywords_e::VAR)) {
     return parse_var_decl();
   }
   if (check_keyword(language::keywords_e::CONST)) {
     return parse_const_decl();
+  }
+  if (check_keyword(language::keywords_e::LET)) {
+    return parse_let_decl();
   }
   if (check_keyword(language::keywords_e::IF)) {
     return parse_if_stmt();
@@ -728,15 +783,18 @@ language::nodes::base_ptr parser_c::parse_return_stmt() {
   const auto &return_token = consume_keyword(language::keywords_e::RETURN,
                                              "Expected 'return' keyword");
 
-  std::optional<language::nodes::base_ptr> expression = std::nullopt;
+  std::vector<language::nodes::base_ptr> expressions;
+
   if (!check(token_type_e::SEMICOLON)) {
-    expression = parse_expression();
+    do {
+      expressions.push_back(parse_expression());
+    } while (match(token_type_e::COMMA));
   }
 
   consume(token_type_e::SEMICOLON, "Expected ';' after return statement");
 
   return std::make_unique<language::nodes::return_c>(return_token.source_index,
-                                                     std::move(expression));
+                                                     std::move(expressions));
 }
 
 language::nodes::base_ptr parser_c::parse_break_stmt() {
@@ -782,18 +840,18 @@ language::nodes::base_ptr parser_c::parse_expression() {
 
 language::nodes::base_ptr
 clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
-  if (auto *id = dynamic_cast<const language::nodes::identifier_c *>(expr)) {
+  if (auto *id = expr->as_identifier()) {
     return std::make_unique<language::nodes::identifier_c>(
         id->source_index(),
         language::nodes::identifier_s(id->id().name, id->id().source_index));
   }
 
-  if (auto *lit = dynamic_cast<const language::nodes::literal_c *>(expr)) {
+  if (auto *lit = expr->as_literal()) {
     return std::make_unique<language::nodes::literal_c>(
         lit->source_index(), lit->type(), lit->value());
   }
 
-  if (auto *index = dynamic_cast<const language::nodes::index_c *>(expr)) {
+  if (auto *index = expr->as_index()) {
     auto cloned_object = clone_expr_for_compound_assignment(index->object());
     auto cloned_index = clone_expr_for_compound_assignment(index->index());
     if (!cloned_object || !cloned_index) {
@@ -804,8 +862,7 @@ clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
                                                       std::move(cloned_index));
   }
 
-  if (auto *member =
-          dynamic_cast<const language::nodes::member_access_c *>(expr)) {
+  if (auto *member = expr->as_member_access()) {
     auto cloned_object = clone_expr_for_compound_assignment(member->object());
     if (!cloned_object) {
       return nullptr;
@@ -816,7 +873,7 @@ clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
                                       member->field().source_index));
   }
 
-  if (auto *unary = dynamic_cast<const language::nodes::unary_op_c *>(expr)) {
+  if (auto *unary = expr->as_unary_op()) {
     if (unary->op() == language::nodes::unary_op_e::DEREF) {
       auto cloned_operand =
           clone_expr_for_compound_assignment(unary->operand());
@@ -829,7 +886,7 @@ clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
     }
   }
 
-  if (auto *binary = dynamic_cast<const language::nodes::binary_op_c *>(expr)) {
+  if (auto *binary = expr->as_binary_op()) {
     auto cloned_left = clone_expr_for_compound_assignment(binary->left());
     auto cloned_right = clone_expr_for_compound_assignment(binary->right());
     if (!cloned_left || !cloned_right) {

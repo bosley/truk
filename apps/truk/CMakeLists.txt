@@ -1,9 +1,9 @@
 add_executable(truk 
     main.cpp
     commands/compile.cpp
-    commands/run.cpp
     commands/toc.cpp
     commands/tcc.cpp
+    commands/test.cpp
     common/args.cpp
 )
 

@@ -1,0 +1,141 @@
+/*
+    The actual __truk_test_context_s is defined in our runtime/ library an is included into the user program.
+    These externs are essentially an artifact required solely for the sake of the type checker
+    When truk is more established and firm in its foundation we will add a stdlib file that masks the cinterop
+    for these calls and then the importer of "test.truk" via `import <test>;` (not yet existing variation of import)
+    we can then access via truk only interface
+*/
+extern struct __truk_test_context_s;
+extern fn __truk_test_fail(t: *__truk_test_context_s, msg: *u8) : void;
+extern fn __truk_test_log(t: *__truk_test_context_s, msg: *u8) : void;
+extern fn __truk_test_assert_i8(t: *__truk_test_context_s, expected: i8, actual: i8, msg: *u8) : void;
+extern fn __truk_test_assert_i16(t: *__truk_test_context_s, expected: i16, actual: i16, msg: *u8) : void;
+extern fn __truk_test_assert_i32(t: *__truk_test_context_s, expected: i32, actual: i32, msg: *u8) : void;
+extern fn __truk_test_assert_i64(t: *__truk_test_context_s, expected: i64, actual: i64, msg: *u8) : void;
+extern fn __truk_test_assert_u8(t: *__truk_test_context_s, expected: u8, actual: u8, msg: *u8) : void;
+extern fn __truk_test_assert_u16(t: *__truk_test_context_s, expected: u16, actual: u16, msg: *u8) : void;
+extern fn __truk_test_assert_u32(t: *__truk_test_context_s, expected: u32, actual: u32, msg: *u8) : void;
+extern fn __truk_test_assert_u64(t: *__truk_test_context_s, expected: u64, actual: u64, msg: *u8) : void;
+extern fn __truk_test_assert_f32(t: *__truk_test_context_s, expected: f32, actual: f32, msg: *u8) : void;
+extern fn __truk_test_assert_f64(t: *__truk_test_context_s, expected: f64, actual: f64, msg: *u8) : void;
+extern fn __truk_test_assert_bool(t: *__truk_test_context_s, expected: bool, actual: bool, msg: *u8) : void;
+extern fn __truk_test_assert_true(t: *__truk_test_context_s, condition: bool, msg: *u8) : void;
+extern fn __truk_test_assert_false(t: *__truk_test_context_s, condition: bool, msg: *u8) : void;
+extern fn __truk_test_assert_ptr_ne_nil(t: *__truk_test_context_s, ptr: *void, msg: *u8) : void;
+extern fn __truk_test_assert_ptr_eq_nil(t: *__truk_test_context_s, ptr: *void, msg: *u8) : void;
+extern fn __truk_test_assert_bytes_eq(t: *__truk_test_context_s, expected: *u8, actual: *u8, len: u64, msg: *u8) : void;
+extern fn __truk_test_get_argc(t: *__truk_test_context_s) : i32;
+extern fn __truk_test_get_argv(t: *__truk_test_context_s) : **i8;
+
+fn test_fail(t: *__truk_test_context_s) : void {
+    __truk_test_log(t, "Testing manual fail function");
+}
+
+fn test_log(t: *__truk_test_context_s) : void {
+    __truk_test_log(t, "Testing log function");
+}
+
+fn test_assert_i8(t: *__truk_test_context_s) : void {
+    var value: i8 = 127;
+    __truk_test_assert_i8(t, 127, value, "i8 assertion");
+}
+
+fn test_assert_i16(t: *__truk_test_context_s) : void {
+    var value: i16 = 1000;
+    __truk_test_assert_i16(t, 1000, value, "i16 assertion");
+}
+
+fn test_assert_i32(t: *__truk_test_context_s) : void {
+    var value: i32 = 42;
+    __truk_test_assert_i32(t, 42, value, "i32 assertion");
+}
+
+fn test_assert_i64(t: *__truk_test_context_s) : void {
+    var value: i64 = 9999;
+    __truk_test_assert_i64(t, 9999, value, "i64 assertion");
+}
+
+fn test_assert_u8(t: *__truk_test_context_s) : void {
+    var value: u8 = 255;
+    __truk_test_assert_u8(t, 255, value, "u8 assertion");
+}
+
+fn test_assert_u16(t: *__truk_test_context_s) : void {
+    var value: u16 = 65535;
+    __truk_test_assert_u16(t, 65535, value, "u16 assertion");
+}
+
+fn test_assert_u32(t: *__truk_test_context_s) : void {
+    var value: u32 = 1000000;
+    __truk_test_assert_u32(t, 1000000, value, "u32 assertion");
+}
+
+fn test_assert_u64(t: *__truk_test_context_s) : void {
+    var value: u64 = 5000;
+    __truk_test_assert_u64(t, 5000, value, "u64 assertion");
+}
+
+fn test_assert_f32(t: *__truk_test_context_s) : void {
+    var value: f32 = 3.14;
+    __truk_test_assert_f32(t, 3.14, value, "f32 assertion");
+}
+
+fn test_assert_f64(t: *__truk_test_context_s) : void {
+    var value: f64 = 2.71828;
+    __truk_test_assert_f64(t, 2.71828, value, "f64 assertion");
+}
+
+fn test_assert_bool(t: *__truk_test_context_s) : void {
+    var value: bool = true;
+    __truk_test_assert_bool(t, true, value, "bool assertion");
+}
+
+fn test_assert_true(t: *__truk_test_context_s) : void {
+    var condition: bool = 5 > 3;
+    __truk_test_assert_true(t, condition, "true assertion");
+}
+
+fn test_assert_false(t: *__truk_test_context_s) : void {
+    var condition: bool = 2 > 10;
+    __truk_test_assert_false(t, condition, "false assertion");
+}
+
+fn test_assert_ptr_ne_nil(t: *__truk_test_context_s) : void {
+    var ptr: *i32 = make(@i32);
+    __truk_test_assert_ptr_ne_nil(t, ptr, "pointer not nil");
+    delete(ptr);
+}
+
+fn test_assert_ptr_eq_nil(t: *__truk_test_context_s) : void {
+    var ptr: *i32 = nil;
+    __truk_test_assert_ptr_eq_nil(t, ptr, "pointer is nil");
+}
+
+fn test_assert_bytes_eq(t: *__truk_test_context_s) : void {
+    var expected: [5]u8;
+    expected[0] = 0x01;
+    expected[1] = 0x02;
+    expected[2] = 0x03;
+    expected[3] = 0x04;
+    expected[4] = 0x05;
+    
+    var actual: [5]u8;
+    actual[0] = 0x01;
+    actual[1] = 0x02;
+    actual[2] = 0x03;
+    actual[3] = 0x04;
+    actual[4] = 0x05;
+    
+    __truk_test_assert_bytes_eq(t, &expected[0], &actual[0], 5, "byte arrays equal");
+}
+
+fn test_argc_argv_access(t: *__truk_test_context_s) : void {
+    var argc: i32 = __truk_test_get_argc(t);
+    var argv: **i8 = __truk_test_get_argv(t);
+    
+    __truk_test_assert_true(t, argc >= 1, "argc should be at least 1");
+    __truk_test_assert_ptr_ne_nil(t, argv, "argv should not be nil");
+    __truk_test_assert_ptr_ne_nil(t, argv[0], "argv[0] should not be nil");
+    
+    __truk_test_log(t, "Successfully accessed argc/argv via test context");
+}

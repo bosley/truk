@@ -1,0 +1,14 @@
+fn get_operations() : (fn(i32) : i32, fn(i32) : i32) {
+  var add5: fn(i32) : i32 = fn(x: i32) : i32 {
+    return x + 5;
+  };
+  var mul2: fn(i32) : i32 = fn(x: i32) : i32 {
+    return x * 2;
+  };
+  return add5, mul2;
+}
+
+fn main() : i32 {
+  let adder, multiplier = get_operations();
+  return adder(10) + multiplier(10);
+}

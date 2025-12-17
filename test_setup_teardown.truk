@@ -1,0 +1,24 @@
+extern struct __truk_test_context_s;
+extern fn __truk_test_log(t: *__truk_test_context_s, msg: *u8) : void;
+extern fn __truk_test_assert_i32(t: *__truk_test_context_s, expected: i32, actual: i32, msg: *u8) : void;
+
+var global_counter: i32 = 0;
+
+fn test_setup(t: *__truk_test_context_s) : void {
+    global_counter = 0;
+    __truk_test_log(t, "Setup: reset counter");
+}
+
+fn test_teardown(t: *__truk_test_context_s) : void {
+    __truk_test_log(t, "Teardown: cleanup");
+}
+
+fn test_increment(t: *__truk_test_context_s) : void {
+    global_counter = global_counter + 1;
+    __truk_test_assert_i32(t, 1, global_counter, "counter should be 1");
+}
+
+fn test_double_increment(t: *__truk_test_context_s) : void {
+    global_counter = global_counter + 2;
+    __truk_test_assert_i32(t, 2, global_counter, "counter should be 2");
+}

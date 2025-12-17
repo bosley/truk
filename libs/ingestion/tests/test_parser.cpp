@@ -25,43 +25,42 @@ struct parse_result_wrapper_s {
 std::string get_type_name(const nodes::type_c *type) {
   if (!type)
     return "";
-  if (auto *prim = dynamic_cast<const nodes::primitive_type_c *>(type)) {
+  if (auto *prim = type->as_primitive_type()) {
     return truk::language::keywords_c::to_string(prim->keyword());
   }
-  if (auto *named = dynamic_cast<const nodes::named_type_c *>(type)) {
+  if (auto *named = type->as_named_type()) {
     return named->name().name;
   }
-  if (auto *ptr = dynamic_cast<const nodes::pointer_type_c *>(type)) {
+  if (auto *ptr = type->as_pointer_type()) {
     return get_type_name(ptr->pointee_type());
   }
-  if (auto *arr = dynamic_cast<const nodes::array_type_c *>(type)) {
+  if (auto *arr = type->as_array_type()) {
     return get_type_name(arr->element_type());
   }
   return "";
 }
 
 bool is_primitive_type(const nodes::type_c *type, const std::string &name) {
-  return get_type_name(type) == name &&
-         dynamic_cast<const nodes::primitive_type_c *>(type) != nullptr;
+  return get_type_name(type) == name && type->as_primitive_type() != nullptr;
 }
 
 bool is_pointer_type(const nodes::type_c *type) {
-  return dynamic_cast<const nodes::pointer_type_c *>(type) != nullptr;
+  return type->as_pointer_type() != nullptr;
 }
 
 bool is_array_type(const nodes::type_c *type) {
-  return dynamic_cast<const nodes::array_type_c *>(type) != nullptr;
+  return type->as_array_type() != nullptr;
 }
 
 std::size_t get_pointer_depth(const nodes::type_c *type) {
-  if (auto *ptr = dynamic_cast<const nodes::pointer_type_c *>(type)) {
+  if (auto *ptr = type->as_pointer_type()) {
     return 1 + get_pointer_depth(ptr->pointee_type());
   }
   return 0;
 }
 
 std::optional<std::size_t> get_array_size(const nodes::type_c *type) {
-  if (auto *arr = dynamic_cast<const nodes::array_type_c *>(type)) {
+  if (auto *arr = type->as_array_type()) {
     return arr->size();
   }
   return std::nullopt;
@@ -106,14 +105,14 @@ TEST(ParserFunctionDeclarations, EmptyFunction) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("main", fn->name().name.c_str());
   CHECK_EQUAL(0, fn->params().size());
   CHECK_TRUE(is_primitive_type(fn->return_type(), "void"));
 
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *body = fn->body()->as_block();
   CHECK_TRUE(body != nullptr);
   CHECK_EQUAL(0, body->statements().size());
 }
@@ -125,7 +124,7 @@ TEST(ParserFunctionDeclarations, FunctionWithSingleParameter) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("increment", fn->name().name.c_str());
@@ -145,7 +144,7 @@ TEST(ParserFunctionDeclarations, FunctionWithMultipleParameters) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("add", fn->name().name.c_str());
@@ -167,7 +166,7 @@ TEST(ParserFunctionDeclarations, FunctionWithPrimitiveReturnType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("get_value", fn->name().name.c_str());
@@ -181,7 +180,7 @@ TEST(ParserFunctionDeclarations, FunctionWithPointerReturnType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("get_ptr", fn->name().name.c_str());
@@ -195,7 +194,7 @@ TEST(ParserFunctionDeclarations, FunctionWithArrayReturnType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("get_array", fn->name().name.c_str());
@@ -210,7 +209,7 @@ TEST(ParserFunctionDeclarations, FunctionWithCustomTypeReturn) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("create_point", fn->name().name.c_str());
@@ -223,7 +222,7 @@ TEST(ParserFunctionDeclarations, FunctionWithPointerParameter) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   CHECK_EQUAL(1, fn->params().size());
@@ -238,7 +237,7 @@ TEST(ParserFunctionDeclarations, FunctionWithArrayParameter) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   CHECK_EQUAL(1, fn->params().size());
@@ -254,22 +253,21 @@ TEST(ParserFunctionDeclarations, FunctionWithBodyStatements) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *body = fn->body()->as_block();
   CHECK_TRUE(body != nullptr);
   CHECK_EQUAL(2, body->statements().size());
 
-  auto *var_decl =
-      dynamic_cast<const nodes::var_c *>(body->statements()[0].get());
+  auto *var_decl = body->statements()[0].get()->as_var();
   CHECK_TRUE(var_decl != nullptr);
   STRCMP_EQUAL("x", var_decl->name().name.c_str());
 
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[1].get());
+  auto *return_stmt = body->statements()[1].get()->as_return();
   CHECK_TRUE(return_stmt != nullptr);
-  CHECK_TRUE(return_stmt->expression() != nullptr);
+  CHECK_TRUE(!return_stmt->expressions().empty() &&
+             return_stmt->expressions()[0].get() != nullptr);
 }
 
 TEST(ParserFunctionDeclarations, FunctionWithComplexBody) {
@@ -285,25 +283,23 @@ TEST(ParserFunctionDeclarations, FunctionWithComplexBody) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("factorial", fn->name().name.c_str());
   STRCMP_EQUAL("i32", get_type_name(fn->return_type()).c_str());
   CHECK_EQUAL(1, fn->params().size());
 
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *body = fn->body()->as_block();
   CHECK_TRUE(body != nullptr);
   CHECK_EQUAL(2, body->statements().size());
 
-  auto *if_stmt =
-      dynamic_cast<const nodes::if_c *>(body->statements()[0].get());
+  auto *if_stmt = body->statements()[0].get()->as_if();
   CHECK_TRUE(if_stmt != nullptr);
   CHECK_TRUE(if_stmt->condition() != nullptr);
   CHECK_TRUE(if_stmt->then_block() != nullptr);
 
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[1].get());
+  auto *return_stmt = body->statements()[1].get()->as_return();
   CHECK_TRUE(return_stmt != nullptr);
 }
 
@@ -353,16 +349,16 @@ TEST(ParserFunctionDeclarations, MultipleFunctions) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(3, wrapper.result.declarations.size());
 
-  auto *fn1 = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn1 = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn1 != nullptr);
   STRCMP_EQUAL("first", fn1->name().name.c_str());
 
-  auto *fn2 = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[1].get());
+  auto *fn2 = wrapper.result.declarations[1].get()->as_fn();
   CHECK_TRUE(fn2 != nullptr);
   STRCMP_EQUAL("second", fn2->name().name.c_str());
   CHECK_EQUAL(1, fn2->params().size());
 
-  auto *fn3 = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[2].get());
+  auto *fn3 = wrapper.result.declarations[2].get()->as_fn();
   CHECK_TRUE(fn3 != nullptr);
   STRCMP_EQUAL("third", fn3->name().name.c_str());
   STRCMP_EQUAL("bool", get_type_name(fn3->return_type()).c_str());
@@ -378,8 +374,7 @@ TEST(ParserStructDeclarations, EmptyStruct) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *struct_decl =
-      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  auto *struct_decl = wrapper.result.declarations[0].get()->as_struct();
   CHECK_TRUE(struct_decl != nullptr);
   STRCMP_EQUAL("Point", struct_decl->name().name.c_str());
   CHECK_EQUAL(0, struct_decl->fields().size());
@@ -392,8 +387,7 @@ TEST(ParserStructDeclarations, StructWithSingleField) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *struct_decl =
-      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  auto *struct_decl = wrapper.result.declarations[0].get()->as_struct();
   CHECK_TRUE(struct_decl != nullptr);
   STRCMP_EQUAL("Point", struct_decl->name().name.c_str());
   CHECK_EQUAL(1, struct_decl->fields().size());
@@ -412,8 +406,7 @@ TEST(ParserStructDeclarations, StructWithMultipleFields) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *struct_decl =
-      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  auto *struct_decl = wrapper.result.declarations[0].get()->as_struct();
   CHECK_TRUE(struct_decl != nullptr);
   STRCMP_EQUAL("Point", struct_decl->name().name.c_str());
   CHECK_EQUAL(3, struct_decl->fields().size());
@@ -438,8 +431,7 @@ TEST(ParserStructDeclarations, StructWithPointerField) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *struct_decl =
-      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  auto *struct_decl = wrapper.result.declarations[0].get()->as_struct();
   CHECK_TRUE(struct_decl != nullptr);
   STRCMP_EQUAL("Node", struct_decl->name().name.c_str());
   CHECK_EQUAL(1, struct_decl->fields().size());
@@ -457,8 +449,7 @@ TEST(ParserStructDeclarations, StructWithArrayField) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *struct_decl =
-      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  auto *struct_decl = wrapper.result.declarations[0].get()->as_struct();
   CHECK_TRUE(struct_decl != nullptr);
   STRCMP_EQUAL("Buffer", struct_decl->name().name.c_str());
   CHECK_EQUAL(1, struct_decl->fields().size());
@@ -478,8 +469,7 @@ TEST(ParserStructDeclarations, StructWithCustomTypeField) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *struct_decl =
-      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  auto *struct_decl = wrapper.result.declarations[0].get()->as_struct();
   CHECK_TRUE(struct_decl != nullptr);
   STRCMP_EQUAL("Rectangle", struct_decl->name().name.c_str());
   CHECK_EQUAL(2, struct_decl->fields().size());
@@ -501,8 +491,7 @@ TEST(ParserStructDeclarations, StructWithMixedFieldTypes) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *struct_decl =
-      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  auto *struct_decl = wrapper.result.declarations[0].get()->as_struct();
   CHECK_TRUE(struct_decl != nullptr);
   STRCMP_EQUAL("Mixed", struct_decl->name().name.c_str());
   CHECK_EQUAL(4, struct_decl->fields().size());
@@ -563,15 +552,14 @@ TEST(ParserVariableDeclarations, VarWithTypeAndInitializer) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *body = fn->body()->as_block();
   CHECK_TRUE(body != nullptr);
   CHECK_EQUAL(1, body->statements().size());
 
-  auto *var_decl =
-      dynamic_cast<const nodes::var_c *>(body->statements()[0].get());
+  auto *var_decl = body->statements()[0].get()->as_var();
   CHECK_TRUE(var_decl != nullptr);
   STRCMP_EQUAL("x", var_decl->name().name.c_str());
   STRCMP_EQUAL("i32", get_type_name(var_decl->type()).c_str());
@@ -591,10 +579,9 @@ TEST(ParserVariableDeclarations, VarWithPointerType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *var_decl =
-      dynamic_cast<const nodes::var_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *var_decl = body->statements()[0].get()->as_var();
 
   CHECK_TRUE(var_decl != nullptr);
   STRCMP_EQUAL("ptr", var_decl->name().name.c_str());
@@ -608,10 +595,9 @@ TEST(ParserVariableDeclarations, VarWithArrayType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *var_decl =
-      dynamic_cast<const nodes::var_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *var_decl = body->statements()[0].get()->as_var();
 
   CHECK_TRUE(var_decl != nullptr);
   STRCMP_EQUAL("arr", var_decl->name().name.c_str());
@@ -626,17 +612,15 @@ TEST(ParserVariableDeclarations, VarWithComplexInitializer) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *var_decl =
-      dynamic_cast<const nodes::var_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *var_decl = body->statements()[0].get()->as_var();
 
   CHECK_TRUE(var_decl != nullptr);
   STRCMP_EQUAL("result", var_decl->name().name.c_str());
   CHECK_TRUE(var_decl->initializer() != nullptr);
 
-  auto *init_expr =
-      dynamic_cast<const nodes::binary_op_c *>(var_decl->initializer());
+  auto *init_expr = var_decl->initializer()->as_binary_op();
   CHECK_TRUE(init_expr != nullptr);
   CHECK_TRUE(init_expr->op() == nodes::binary_op_e::ADD);
 }
@@ -652,16 +636,14 @@ TEST(ParserVariableDeclarations, UninitializedVariable) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_TRUE(wrapper.result.declarations.size() == 1);
 
-  auto *fn_node =
-      dynamic_cast<const nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn_node = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn_node != nullptr);
 
-  auto *block = dynamic_cast<const nodes::block_c *>(fn_node->body());
+  auto *block = fn_node->body()->as_block();
   CHECK_TRUE(block != nullptr);
   CHECK_TRUE(block->statements().size() == 1);
 
-  auto *var_node =
-      dynamic_cast<const nodes::var_c *>(block->statements()[0].get());
+  auto *var_node = block->statements()[0].get()->as_var();
   CHECK_TRUE(var_node != nullptr);
   CHECK_TRUE(var_node->name().name == "x");
   CHECK_TRUE(var_node->initializer() == nullptr);
@@ -686,15 +668,14 @@ TEST(ParserConstantDeclarations, ConstWithTypeAndValue) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *body = fn->body()->as_block();
   CHECK_TRUE(body != nullptr);
   CHECK_EQUAL(1, body->statements().size());
 
-  auto *const_decl =
-      dynamic_cast<const nodes::const_c *>(body->statements()[0].get());
+  auto *const_decl = body->statements()[0].get()->as_const();
   CHECK_TRUE(const_decl != nullptr);
   STRCMP_EQUAL("PI", const_decl->name().name.c_str());
   STRCMP_EQUAL("f64", get_type_name(const_decl->type()).c_str());
@@ -714,10 +695,9 @@ TEST(ParserConstantDeclarations, ConstWithPointerType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *const_decl =
-      dynamic_cast<const nodes::const_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *const_decl = body->statements()[0].get()->as_const();
 
   CHECK_TRUE(const_decl != nullptr);
   STRCMP_EQUAL("ptr", const_decl->name().name.c_str());
@@ -731,10 +711,9 @@ TEST(ParserConstantDeclarations, ConstWithArrayType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *const_decl =
-      dynamic_cast<const nodes::const_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *const_decl = body->statements()[0].get()->as_const();
 
   CHECK_TRUE(const_decl != nullptr);
   STRCMP_EQUAL("arr", const_decl->name().name.c_str());
@@ -749,17 +728,15 @@ TEST(ParserConstantDeclarations, ConstWithComplexValue) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *const_decl =
-      dynamic_cast<const nodes::const_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *const_decl = body->statements()[0].get()->as_const();
 
   CHECK_TRUE(const_decl != nullptr);
   STRCMP_EQUAL("result", const_decl->name().name.c_str());
   CHECK_TRUE(const_decl->value() != nullptr);
 
-  auto *value_expr =
-      dynamic_cast<const nodes::binary_op_c *>(const_decl->value());
+  auto *value_expr = const_decl->value()->as_binary_op();
   CHECK_TRUE(value_expr != nullptr);
   CHECK_TRUE(value_expr->op() == nodes::binary_op_e::ADD);
 }
@@ -811,8 +788,7 @@ TEST(ParserTypeSystem, PrimitiveTypes) {
                                   "u32", "u64", "f32", "f64", "bool", "void"};
 
   for (size_t i = 0; i < 12; i++) {
-    auto *fn =
-        dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[i].get());
+    auto *fn = wrapper.result.declarations[i].get()->as_fn();
     CHECK_TRUE(fn != nullptr);
     STRCMP_EQUAL(expected_types[i], get_type_name(fn->return_type()).c_str());
     if (i < 11) {
@@ -829,7 +805,7 @@ TEST(ParserTypeSystem, SinglePointerType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("i32", get_type_name(fn->params()[0].type.get()).c_str());
@@ -845,7 +821,7 @@ TEST(ParserTypeSystem, MultiLevelPointerType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("i32", get_type_name(fn->params()[0].type.get()).c_str());
@@ -861,7 +837,7 @@ TEST(ParserTypeSystem, SizedArrayType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("i32", get_type_name(fn->params()[0].type.get()).c_str());
@@ -879,7 +855,7 @@ TEST(ParserTypeSystem, UnsizedArrayType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("i32", get_type_name(fn->params()[0].type.get()).c_str());
@@ -895,13 +871,12 @@ TEST(ParserTypeSystem, ArrayOfPointers) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   CHECK_TRUE(is_array_type(fn->params()[0].type.get()));
   CHECK_EQUAL(10, get_array_size(fn->params()[0].type.get()).value());
-  auto *arr_type =
-      dynamic_cast<const nodes::array_type_c *>(fn->params()[0].type.get());
+  auto *arr_type = fn->params()[0].type.get()->as_array_type();
   CHECK_TRUE(is_pointer_type(arr_type->element_type()));
   STRCMP_EQUAL("i32", get_type_name(arr_type->element_type()).c_str());
 }
@@ -912,19 +887,17 @@ TEST(ParserTypeSystem, PointerToArray) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   CHECK_TRUE(is_pointer_type(fn->params()[0].type.get()));
   CHECK_EQUAL(1, get_pointer_depth(fn->params()[0].type.get()));
 
-  auto *ptr_type =
-      dynamic_cast<const nodes::pointer_type_c *>(fn->params()[0].type.get());
+  auto *ptr_type = fn->params()[0].type.get()->as_pointer_type();
   CHECK_TRUE(ptr_type != nullptr);
   CHECK_TRUE(is_array_type(ptr_type->pointee_type()));
 
-  auto *arr_type =
-      dynamic_cast<const nodes::array_type_c *>(ptr_type->pointee_type());
+  auto *arr_type = ptr_type->pointee_type()->as_array_type();
   CHECK_TRUE(arr_type != nullptr);
   CHECK_EQUAL(10, arr_type->size().value());
   STRCMP_EQUAL("i32", get_type_name(arr_type->element_type()).c_str());
@@ -936,28 +909,26 @@ TEST(ParserTypeSystem, PointerToArrayVsArrayOfPointers) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
   CHECK_EQUAL(2, fn->params().size());
 
   auto *ptr_to_arr_type = fn->params()[0].type.get();
   CHECK_TRUE(is_pointer_type(ptr_to_arr_type));
   CHECK_FALSE(is_array_type(ptr_to_arr_type));
-  auto *ptr_node = dynamic_cast<const nodes::pointer_type_c *>(ptr_to_arr_type);
+  auto *ptr_node = ptr_to_arr_type->as_pointer_type();
   CHECK_TRUE(is_array_type(ptr_node->pointee_type()));
-  auto *inner_arr =
-      dynamic_cast<const nodes::array_type_c *>(ptr_node->pointee_type());
+  auto *inner_arr = ptr_node->pointee_type()->as_array_type();
   CHECK_EQUAL(5, inner_arr->size().value());
   STRCMP_EQUAL("i32", get_type_name(inner_arr->element_type()).c_str());
 
   auto *arr_of_ptr_type = fn->params()[1].type.get();
   CHECK_TRUE(is_array_type(arr_of_ptr_type));
   CHECK_FALSE(is_pointer_type(arr_of_ptr_type));
-  auto *arr_node = dynamic_cast<const nodes::array_type_c *>(arr_of_ptr_type);
+  auto *arr_node = arr_of_ptr_type->as_array_type();
   CHECK_EQUAL(5, arr_node->size().value());
   CHECK_TRUE(is_pointer_type(arr_node->element_type()));
-  auto *inner_ptr =
-      dynamic_cast<const nodes::pointer_type_c *>(arr_node->element_type());
+  auto *inner_ptr = arr_node->element_type()->as_pointer_type();
   STRCMP_EQUAL("i32", get_type_name(inner_ptr->pointee_type()).c_str());
 }
 
@@ -967,7 +938,7 @@ TEST(ParserTypeSystem, NamedCustomType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("Point", get_type_name(fn->params()[0].type.get()).c_str());
@@ -983,7 +954,7 @@ TEST(ParserTypeSystem, PointerToCustomType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("Point", get_type_name(fn->params()[0].type.get()).c_str());
@@ -999,7 +970,7 @@ TEST(ParserTypeSystem, ArrayOfCustomType) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   STRCMP_EQUAL("Point", get_type_name(fn->params()[0].type.get()).c_str());
@@ -1017,7 +988,7 @@ TEST(ParserTypeSystem, ArraySizeWithHexLiteral) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   CHECK_TRUE(is_array_type(fn->params()[0].type.get()));
@@ -1030,7 +1001,7 @@ TEST(ParserTypeSystem, ArraySizeWithBinaryLiteral) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   CHECK_TRUE(is_array_type(fn->params()[0].type.get()));
@@ -1043,7 +1014,7 @@ TEST(ParserTypeSystem, ArraySizeWithOctalLiteral) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
   CHECK_TRUE(is_array_type(fn->params()[0].type.get()));
@@ -1099,10 +1070,9 @@ TEST(ParserControlFlow, SimpleIfStatement) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *if_stmt =
-      dynamic_cast<const nodes::if_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *if_stmt = body->statements()[0].get()->as_if();
 
   CHECK_TRUE(if_stmt != nullptr);
   CHECK_TRUE(if_stmt->condition() != nullptr);
@@ -1117,10 +1087,9 @@ TEST(ParserControlFlow, IfElseStatement) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *if_stmt =
-      dynamic_cast<const nodes::if_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *if_stmt = body->statements()[0].get()->as_if();
 
   CHECK_TRUE(if_stmt != nullptr);
   CHECK_TRUE(if_stmt->condition() != nullptr);
@@ -1144,17 +1113,16 @@ TEST(ParserControlFlow, IfElseIfElseChain) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *if_stmt =
-      dynamic_cast<const nodes::if_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *if_stmt = body->statements()[0].get()->as_if();
 
   CHECK_TRUE(if_stmt != nullptr);
   CHECK_TRUE(if_stmt->condition() != nullptr);
   CHECK_TRUE(if_stmt->then_block() != nullptr);
   CHECK_TRUE(if_stmt->else_block() != nullptr);
 
-  auto *else_if = dynamic_cast<const nodes::if_c *>(if_stmt->else_block());
+  auto *else_if = if_stmt->else_block()->as_if();
   CHECK_TRUE(else_if != nullptr);
   CHECK_TRUE(else_if->condition() != nullptr);
   CHECK_TRUE(else_if->else_block() != nullptr);
@@ -1174,19 +1142,16 @@ TEST(ParserControlFlow, NestedIfStatements) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *outer_if =
-      dynamic_cast<const nodes::if_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *outer_if = body->statements()[0].get()->as_if();
 
   CHECK_TRUE(outer_if != nullptr);
 
-  auto *then_block =
-      dynamic_cast<const nodes::block_c *>(outer_if->then_block());
+  auto *then_block = outer_if->then_block()->as_block();
   CHECK_TRUE(then_block != nullptr);
 
-  auto *inner_if =
-      dynamic_cast<const nodes::if_c *>(then_block->statements()[0].get());
+  auto *inner_if = then_block->statements()[0].get()->as_if();
   CHECK_TRUE(inner_if != nullptr);
 }
 
@@ -1196,10 +1161,9 @@ TEST(ParserControlFlow, WhileLoop) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *while_stmt =
-      dynamic_cast<const nodes::while_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *while_stmt = body->statements()[0].get()->as_while();
 
   CHECK_TRUE(while_stmt != nullptr);
   CHECK_TRUE(while_stmt->condition() != nullptr);
@@ -1212,18 +1176,16 @@ TEST(ParserControlFlow, WhileLoopWithBreak) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *while_stmt =
-      dynamic_cast<const nodes::while_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *while_stmt = body->statements()[0].get()->as_while();
 
   CHECK_TRUE(while_stmt != nullptr);
 
-  auto *loop_body = dynamic_cast<const nodes::block_c *>(while_stmt->body());
+  auto *loop_body = while_stmt->body()->as_block();
   CHECK_TRUE(loop_body != nullptr);
 
-  auto *break_stmt =
-      dynamic_cast<const nodes::break_c *>(loop_body->statements()[0].get());
+  auto *break_stmt = loop_body->statements()[0].get()->as_break();
   CHECK_TRUE(break_stmt != nullptr);
 }
 
@@ -1233,18 +1195,16 @@ TEST(ParserControlFlow, WhileLoopWithContinue) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *while_stmt =
-      dynamic_cast<const nodes::while_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *while_stmt = body->statements()[0].get()->as_while();
 
   CHECK_TRUE(while_stmt != nullptr);
 
-  auto *loop_body = dynamic_cast<const nodes::block_c *>(while_stmt->body());
+  auto *loop_body = while_stmt->body()->as_block();
   CHECK_TRUE(loop_body != nullptr);
 
-  auto *continue_stmt =
-      dynamic_cast<const nodes::continue_c *>(loop_body->statements()[0].get());
+  auto *continue_stmt = loop_body->statements()[0].get()->as_continue();
   CHECK_TRUE(continue_stmt != nullptr);
 }
 
@@ -1255,10 +1215,9 @@ TEST(ParserControlFlow, ForLoopCStyle) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *for_stmt =
-      dynamic_cast<const nodes::for_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *for_stmt = body->statements()[0].get()->as_for();
 
   CHECK_TRUE(for_stmt != nullptr);
   CHECK_TRUE(for_stmt->init() != nullptr);
@@ -1280,10 +1239,9 @@ TEST(ParserControlFlow, ForLoopWithBreakContinue) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *for_stmt =
-      dynamic_cast<const nodes::for_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *for_stmt = body->statements()[0].get()->as_for();
 
   CHECK_TRUE(for_stmt != nullptr);
   CHECK_TRUE(for_stmt->body() != nullptr);
@@ -1303,18 +1261,16 @@ TEST(ParserControlFlow, NestedLoops) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *while_stmt =
-      dynamic_cast<const nodes::while_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *while_stmt = body->statements()[0].get()->as_while();
 
   CHECK_TRUE(while_stmt != nullptr);
 
-  auto *while_body = dynamic_cast<const nodes::block_c *>(while_stmt->body());
+  auto *while_body = while_stmt->body()->as_block();
   CHECK_TRUE(while_body != nullptr);
 
-  auto *for_stmt =
-      dynamic_cast<const nodes::for_c *>(while_body->statements()[0].get());
+  auto *for_stmt = while_body->statements()[0].get()->as_for();
   CHECK_TRUE(for_stmt != nullptr);
 }
 
@@ -1324,13 +1280,13 @@ TEST(ParserControlFlow, ReturnStatement) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
 
   CHECK_TRUE(return_stmt != nullptr);
-  CHECK_FALSE(return_stmt->expression() != nullptr);
+  CHECK_FALSE(!return_stmt->expressions().empty() &&
+              return_stmt->expressions()[0].get() != nullptr);
 }
 
 TEST(ParserControlFlow, ReturnWithExpression) {
@@ -1339,13 +1295,13 @@ TEST(ParserControlFlow, ReturnWithExpression) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
 
   CHECK_TRUE(return_stmt != nullptr);
-  CHECK_TRUE(return_stmt->expression() != nullptr);
+  CHECK_TRUE(!return_stmt->expressions().empty() &&
+             return_stmt->expressions()[0].get() != nullptr);
 }
 
 TEST(ParserControlFlow, ErrorMissingIfCondition) {
@@ -1382,12 +1338,12 @@ TEST(ParserExpressions, BinaryAddition) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::ADD);
@@ -1401,12 +1357,12 @@ TEST(ParserExpressions, BinarySubtraction) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::SUB);
@@ -1418,12 +1374,12 @@ TEST(ParserExpressions, BinaryMultiplication) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::MUL);
@@ -1435,12 +1391,12 @@ TEST(ParserExpressions, BinaryDivision) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::DIV);
@@ -1452,12 +1408,12 @@ TEST(ParserExpressions, BinaryModulo) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::MOD);
@@ -1469,12 +1425,12 @@ TEST(ParserExpressions, LogicalAnd) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::AND);
@@ -1486,12 +1442,12 @@ TEST(ParserExpressions, LogicalOr) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::OR);
@@ -1503,12 +1459,12 @@ TEST(ParserExpressions, BitwiseAnd) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::BITWISE_AND);
@@ -1520,12 +1476,12 @@ TEST(ParserExpressions, BitwiseOr) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::BITWISE_OR);
@@ -1537,12 +1493,12 @@ TEST(ParserExpressions, BitwiseXor) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::BITWISE_XOR);
@@ -1554,12 +1510,12 @@ TEST(ParserExpressions, LeftShift) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::LEFT_SHIFT);
@@ -1571,12 +1527,12 @@ TEST(ParserExpressions, RightShift) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::RIGHT_SHIFT);
@@ -1588,12 +1544,12 @@ TEST(ParserExpressions, EqualityComparison) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::EQ);
@@ -1605,12 +1561,12 @@ TEST(ParserExpressions, InequalityComparison) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::NE);
@@ -1622,12 +1578,12 @@ TEST(ParserExpressions, LessThanComparison) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::LT);
@@ -1639,12 +1595,12 @@ TEST(ParserExpressions, LessEqualComparison) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::LE);
@@ -1656,12 +1612,12 @@ TEST(ParserExpressions, GreaterThanComparison) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::GT);
@@ -1673,12 +1629,12 @@ TEST(ParserExpressions, GreaterEqualComparison) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *bin_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *bin_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(bin_op != nullptr);
   CHECK_TRUE(bin_op->op() == nodes::binary_op_e::GE);
@@ -1690,12 +1646,12 @@ TEST(ParserExpressions, UnaryNegation) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *unary_op =
-      dynamic_cast<const nodes::unary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *unary_op = !return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_unary_op()
+                       : nullptr;
 
   CHECK_TRUE(unary_op != nullptr);
   CHECK_TRUE(unary_op->op() == nodes::unary_op_e::NEG);
@@ -1708,12 +1664,12 @@ TEST(ParserExpressions, UnaryLogicalNot) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *unary_op =
-      dynamic_cast<const nodes::unary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *unary_op = !return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_unary_op()
+                       : nullptr;
 
   CHECK_TRUE(unary_op != nullptr);
   CHECK_TRUE(unary_op->op() == nodes::unary_op_e::NOT);
@@ -1725,12 +1681,12 @@ TEST(ParserExpressions, UnaryBitwiseNot) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *unary_op =
-      dynamic_cast<const nodes::unary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *unary_op = !return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_unary_op()
+                       : nullptr;
 
   CHECK_TRUE(unary_op != nullptr);
   CHECK_TRUE(unary_op->op() == nodes::unary_op_e::BITWISE_NOT);
@@ -1742,12 +1698,12 @@ TEST(ParserExpressions, UnaryAddressOf) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *unary_op =
-      dynamic_cast<const nodes::unary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *unary_op = !return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_unary_op()
+                       : nullptr;
 
   CHECK_TRUE(unary_op != nullptr);
   CHECK_TRUE(unary_op->op() == nodes::unary_op_e::ADDRESS_OF);
@@ -1759,12 +1715,12 @@ TEST(ParserExpressions, UnaryDereference) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *unary_op =
-      dynamic_cast<const nodes::unary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *unary_op = !return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_unary_op()
+                       : nullptr;
 
   CHECK_TRUE(unary_op != nullptr);
   CHECK_TRUE(unary_op->op() == nodes::unary_op_e::DEREF);
@@ -1776,10 +1732,9 @@ TEST(ParserExpressions, SimpleAssignment) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *assign =
-      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *assign = body->statements()[0].get()->as_assignment();
 
   CHECK_TRUE(assign != nullptr);
   CHECK_TRUE(assign->target() != nullptr);
@@ -1795,10 +1750,9 @@ TEST(ParserExpressions, CompoundAssignmentAdd) {
   }
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *assign =
-      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *assign = body->statements()[0].get()->as_assignment();
 
   CHECK_TRUE(assign != nullptr);
   CHECK_TRUE(assign->target() != nullptr);
@@ -1811,10 +1765,9 @@ TEST(ParserExpressions, CompoundAssignmentSubtract) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *assign =
-      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *assign = body->statements()[0].get()->as_assignment();
 
   CHECK_TRUE(assign != nullptr);
   CHECK_TRUE(assign->target() != nullptr);
@@ -1827,10 +1780,9 @@ TEST(ParserExpressions, CompoundAssignmentMultiply) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *assign =
-      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *assign = body->statements()[0].get()->as_assignment();
 
   CHECK_TRUE(assign != nullptr);
   CHECK_TRUE(assign->target() != nullptr);
@@ -1843,10 +1795,9 @@ TEST(ParserExpressions, CompoundAssignmentDivide) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *assign =
-      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *assign = body->statements()[0].get()->as_assignment();
 
   CHECK_TRUE(assign != nullptr);
   CHECK_TRUE(assign->target() != nullptr);
@@ -1859,10 +1810,9 @@ TEST(ParserExpressions, CompoundAssignmentModulo) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *assign =
-      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *assign = body->statements()[0].get()->as_assignment();
 
   CHECK_TRUE(assign != nullptr);
   CHECK_TRUE(assign->target() != nullptr);
@@ -1875,17 +1825,15 @@ TEST(ParserExpressions, CompoundAssignmentDereference) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *assign =
-      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *assign = body->statements()[0].get()->as_assignment();
 
   CHECK_TRUE(assign != nullptr);
   CHECK_TRUE(assign->target() != nullptr);
   CHECK_TRUE(assign->value() != nullptr);
 
-  auto *target_deref =
-      dynamic_cast<const nodes::unary_op_c *>(assign->target());
+  auto *target_deref = assign->target()->as_unary_op();
   CHECK_TRUE(target_deref != nullptr);
   CHECK_TRUE(target_deref->op() == nodes::unary_op_e::DEREF);
 }
@@ -1896,10 +1844,9 @@ TEST(ParserExpressions, CompoundAssignmentComplexLvalue) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *assign =
-      dynamic_cast<const nodes::assignment_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *assign = body->statements()[0].get()->as_assignment();
 
   CHECK_TRUE(assign != nullptr);
   CHECK_TRUE(assign->target() != nullptr);
@@ -1912,17 +1859,17 @@ TEST(ParserExpressions, OperatorPrecedenceArithmetic) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *add_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *add_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(add_op != nullptr);
   CHECK_TRUE(add_op->op() == nodes::binary_op_e::ADD);
 
-  auto *mul_op = dynamic_cast<const nodes::binary_op_c *>(add_op->right());
+  auto *mul_op = add_op->right()->as_binary_op();
   CHECK_TRUE(mul_op != nullptr);
   CHECK_TRUE(mul_op->op() == nodes::binary_op_e::MUL);
 }
@@ -1933,17 +1880,17 @@ TEST(ParserExpressions, OperatorPrecedenceLogical) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *or_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *or_op = !return_stmt->expressions().empty()
+                    ? return_stmt->expressions()[0].get()->as_binary_op()
+                    : nullptr;
 
   CHECK_TRUE(or_op != nullptr);
   CHECK_TRUE(or_op->op() == nodes::binary_op_e::OR);
 
-  auto *and_op = dynamic_cast<const nodes::binary_op_c *>(or_op->right());
+  auto *and_op = or_op->right()->as_binary_op();
   CHECK_TRUE(and_op != nullptr);
   CHECK_TRUE(and_op->op() == nodes::binary_op_e::AND);
 }
@@ -1954,21 +1901,21 @@ TEST(ParserExpressions, OperatorPrecedenceMixed) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *lt_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *lt_op = !return_stmt->expressions().empty()
+                    ? return_stmt->expressions()[0].get()->as_binary_op()
+                    : nullptr;
 
   CHECK_TRUE(lt_op != nullptr);
   CHECK_TRUE(lt_op->op() == nodes::binary_op_e::LT);
 
-  auto *add_op = dynamic_cast<const nodes::binary_op_c *>(lt_op->left());
+  auto *add_op = lt_op->left()->as_binary_op();
   CHECK_TRUE(add_op != nullptr);
   CHECK_TRUE(add_op->op() == nodes::binary_op_e::ADD);
 
-  auto *mul_op = dynamic_cast<const nodes::binary_op_c *>(lt_op->right());
+  auto *mul_op = lt_op->right()->as_binary_op();
   CHECK_TRUE(mul_op != nullptr);
   CHECK_TRUE(mul_op->op() == nodes::binary_op_e::MUL);
 }
@@ -1979,17 +1926,17 @@ TEST(ParserExpressions, ParenthesizedExpression) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *mul_op =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *mul_op = !return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_binary_op()
+                     : nullptr;
 
   CHECK_TRUE(mul_op != nullptr);
   CHECK_TRUE(mul_op->op() == nodes::binary_op_e::MUL);
 
-  auto *add_op = dynamic_cast<const nodes::binary_op_c *>(mul_op->left());
+  auto *add_op = mul_op->left()->as_binary_op();
   CHECK_TRUE(add_op != nullptr);
   CHECK_TRUE(add_op->op() == nodes::binary_op_e::ADD);
 }
@@ -2000,16 +1947,17 @@ TEST(ParserExpressions, ComplexNestedExpression) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
 
   CHECK_TRUE(return_stmt != nullptr);
-  CHECK_TRUE(return_stmt->expression() != nullptr);
+  CHECK_TRUE(!return_stmt->expressions().empty() &&
+             return_stmt->expressions()[0].get() != nullptr);
 
-  auto *outer_add =
-      dynamic_cast<const nodes::binary_op_c *>(return_stmt->expression());
+  auto *outer_add = (!return_stmt->expressions().empty()
+                         ? return_stmt->expressions()[0].get()->as_binary_op()
+                         : nullptr);
   CHECK_TRUE(outer_add != nullptr);
   CHECK_TRUE(outer_add->op() == nodes::binary_op_e::ADD);
 }
@@ -2038,11 +1986,12 @@ TEST(ParserPostfixOperations, FunctionCallNoArgs) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *call = dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *call = (!return_stmt->expressions().empty()
+                    ? return_stmt->expressions()[0].get()->as_call()
+                    : nullptr);
 
   CHECK_TRUE(call != nullptr);
   CHECK_TRUE(call->callee() != nullptr);
@@ -2055,11 +2004,12 @@ TEST(ParserPostfixOperations, FunctionCallSingleArg) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *call = dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *call = (!return_stmt->expressions().empty()
+                    ? return_stmt->expressions()[0].get()->as_call()
+                    : nullptr);
 
   CHECK_TRUE(call != nullptr);
   CHECK_EQUAL(1, call->arguments().size());
@@ -2071,11 +2021,12 @@ TEST(ParserPostfixOperations, FunctionCallMultipleArgs) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *call = dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *call = (!return_stmt->expressions().empty()
+                    ? return_stmt->expressions()[0].get()->as_call()
+                    : nullptr);
 
   CHECK_TRUE(call != nullptr);
   CHECK_EQUAL(3, call->arguments().size());
@@ -2087,18 +2038,17 @@ TEST(ParserPostfixOperations, NestedFunctionCalls) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *outer_call =
-      dynamic_cast<const nodes::call_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *outer_call = (!return_stmt->expressions().empty()
+                          ? return_stmt->expressions()[0].get()->as_call()
+                          : nullptr);
 
   CHECK_TRUE(outer_call != nullptr);
   CHECK_EQUAL(1, outer_call->arguments().size());
 
-  auto *inner_call =
-      dynamic_cast<const nodes::call_c *>(outer_call->arguments()[0].get());
+  auto *inner_call = outer_call->arguments()[0].get()->as_call();
   CHECK_TRUE(inner_call != nullptr);
 }
 
@@ -2108,11 +2058,12 @@ TEST(ParserPostfixOperations, ArrayIndexing) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *index = dynamic_cast<const nodes::index_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *index = (!return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_index()
+                     : nullptr);
 
   CHECK_TRUE(index != nullptr);
   CHECK_TRUE(index->object() != nullptr);
@@ -2125,17 +2076,16 @@ TEST(ParserPostfixOperations, MultiDimensionalArrayIndexing) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *outer_index =
-      dynamic_cast<const nodes::index_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *outer_index = (!return_stmt->expressions().empty()
+                           ? return_stmt->expressions()[0].get()->as_index()
+                           : nullptr);
 
   CHECK_TRUE(outer_index != nullptr);
 
-  auto *inner_index =
-      dynamic_cast<const nodes::index_c *>(outer_index->object());
+  auto *inner_index = outer_index->object()->as_index();
   CHECK_TRUE(inner_index != nullptr);
 }
 
@@ -2145,12 +2095,12 @@ TEST(ParserPostfixOperations, MemberAccess) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *member =
-      dynamic_cast<const nodes::member_access_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *member = (!return_stmt->expressions().empty()
+                      ? return_stmt->expressions()[0].get()->as_member_access()
+                      : nullptr);
 
   CHECK_TRUE(member != nullptr);
   CHECK_TRUE(member->object() != nullptr);
@@ -2163,18 +2113,18 @@ TEST(ParserPostfixOperations, ChainedMemberAccess) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
   auto *outer_member =
-      dynamic_cast<const nodes::member_access_c *>(return_stmt->expression());
+      (!return_stmt->expressions().empty()
+           ? return_stmt->expressions()[0].get()->as_member_access()
+           : nullptr);
 
   CHECK_TRUE(outer_member != nullptr);
   STRCMP_EQUAL("field2", outer_member->field().name.c_str());
 
-  auto *inner_member =
-      dynamic_cast<const nodes::member_access_c *>(outer_member->object());
+  auto *inner_member = outer_member->object()->as_member_access();
   CHECK_TRUE(inner_member != nullptr);
   STRCMP_EQUAL("field1", inner_member->field().name.c_str());
 }
@@ -2185,17 +2135,17 @@ TEST(ParserPostfixOperations, MemberAccessOnFunctionCall) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *member =
-      dynamic_cast<const nodes::member_access_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *member = (!return_stmt->expressions().empty()
+                      ? return_stmt->expressions()[0].get()->as_member_access()
+                      : nullptr);
 
   CHECK_TRUE(member != nullptr);
   STRCMP_EQUAL("bar", member->field().name.c_str());
 
-  auto *call = dynamic_cast<const nodes::call_c *>(member->object());
+  auto *call = member->object()->as_call();
   CHECK_TRUE(call != nullptr);
 }
 
@@ -2205,15 +2155,16 @@ TEST(ParserPostfixOperations, ArrayIndexOnMemberAccess) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *index = dynamic_cast<const nodes::index_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *index = (!return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_index()
+                     : nullptr);
 
   CHECK_TRUE(index != nullptr);
 
-  auto *member = dynamic_cast<const nodes::member_access_c *>(index->object());
+  auto *member = index->object()->as_member_access();
   CHECK_TRUE(member != nullptr);
   STRCMP_EQUAL("arr", member->field().name.c_str());
 }
@@ -2224,15 +2175,17 @@ TEST(ParserPostfixOperations, ComplexChainedOperations) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
 
   CHECK_TRUE(return_stmt != nullptr);
-  CHECK_TRUE(return_stmt->expression() != nullptr);
+  CHECK_TRUE(!return_stmt->expressions().empty() &&
+             return_stmt->expressions()[0].get() != nullptr);
 
-  auto *index = dynamic_cast<const nodes::index_c *>(return_stmt->expression());
+  auto *index = (!return_stmt->expressions().empty()
+                     ? return_stmt->expressions()[0].get()->as_index()
+                     : nullptr);
   CHECK_TRUE(index != nullptr);
 }
 
@@ -2264,12 +2217,12 @@ TEST(ParserLiterals, IntegerLiteralDecimal) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *literal =
-      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *literal = (!return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_literal()
+                       : nullptr);
 
   CHECK_TRUE(literal != nullptr);
   CHECK_TRUE(literal->type() == nodes::literal_type_e::INTEGER);
@@ -2282,12 +2235,12 @@ TEST(ParserLiterals, IntegerLiteralHexadecimal) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *literal =
-      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *literal = (!return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_literal()
+                       : nullptr);
 
   CHECK_TRUE(literal != nullptr);
   CHECK_TRUE(literal->type() == nodes::literal_type_e::INTEGER);
@@ -2300,12 +2253,12 @@ TEST(ParserLiterals, IntegerLiteralBinary) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *literal =
-      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *literal = (!return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_literal()
+                       : nullptr);
 
   CHECK_TRUE(literal != nullptr);
   CHECK_TRUE(literal->type() == nodes::literal_type_e::INTEGER);
@@ -2318,12 +2271,12 @@ TEST(ParserLiterals, IntegerLiteralOctal) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *literal =
-      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *literal = (!return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_literal()
+                       : nullptr);
 
   CHECK_TRUE(literal != nullptr);
   CHECK_TRUE(literal->type() == nodes::literal_type_e::INTEGER);
@@ -2336,12 +2289,12 @@ TEST(ParserLiterals, FloatLiteralSimple) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *literal =
-      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *literal = (!return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_literal()
+                       : nullptr);
 
   CHECK_TRUE(literal != nullptr);
   CHECK_TRUE(literal->type() == nodes::literal_type_e::FLOAT);
@@ -2354,12 +2307,12 @@ TEST(ParserLiterals, FloatLiteralScientific) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *literal =
-      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *literal = (!return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_literal()
+                       : nullptr);
 
   CHECK_TRUE(literal != nullptr);
   CHECK_TRUE(literal->type() == nodes::literal_type_e::FLOAT);
@@ -2372,12 +2325,12 @@ TEST(ParserLiterals, StringLiteralSimple) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *literal =
-      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *literal = (!return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_literal()
+                       : nullptr);
 
   CHECK_TRUE(literal != nullptr);
   CHECK_TRUE(literal->type() == nodes::literal_type_e::STRING);
@@ -2390,12 +2343,12 @@ TEST(ParserLiterals, StringLiteralWithEscapes) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *literal =
-      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *literal = (!return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_literal()
+                       : nullptr);
 
   CHECK_TRUE(literal != nullptr);
   CHECK_TRUE(literal->type() == nodes::literal_type_e::STRING);
@@ -2407,12 +2360,12 @@ TEST(ParserLiterals, BoolLiteralTrue) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *literal =
-      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *literal = (!return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_literal()
+                       : nullptr);
 
   CHECK_TRUE(literal != nullptr);
   CHECK_TRUE(literal->type() == nodes::literal_type_e::BOOL);
@@ -2425,12 +2378,12 @@ TEST(ParserLiterals, BoolLiteralFalse) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *literal =
-      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *literal = (!return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_literal()
+                       : nullptr);
 
   CHECK_TRUE(literal != nullptr);
   CHECK_TRUE(literal->type() == nodes::literal_type_e::BOOL);
@@ -2443,12 +2396,12 @@ TEST(ParserLiterals, NilLiteral) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *literal =
-      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *literal = (!return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_literal()
+                       : nullptr);
 
   CHECK_TRUE(literal != nullptr);
   CHECK_TRUE(literal->type() == nodes::literal_type_e::NIL);
@@ -2461,12 +2414,12 @@ TEST(ParserLiterals, IdentifierSimple) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *identifier =
-      dynamic_cast<const nodes::identifier_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *identifier = (!return_stmt->expressions().empty()
+                          ? return_stmt->expressions()[0].get()->as_identifier()
+                          : nullptr);
 
   CHECK_TRUE(identifier != nullptr);
   STRCMP_EQUAL("myVar", identifier->id().name.c_str());
@@ -2478,12 +2431,12 @@ TEST(ParserLiterals, IdentifierWithUnderscores) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *identifier =
-      dynamic_cast<const nodes::identifier_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *identifier = (!return_stmt->expressions().empty()
+                          ? return_stmt->expressions()[0].get()->as_identifier()
+                          : nullptr);
 
   CHECK_TRUE(identifier != nullptr);
   STRCMP_EQUAL("my_var_name", identifier->id().name.c_str());
@@ -2495,12 +2448,12 @@ TEST(ParserLiterals, ParenthesizedExpression) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
-  auto *literal =
-      dynamic_cast<const nodes::literal_c *>(return_stmt->expression());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
+  auto *literal = (!return_stmt->expressions().empty()
+                       ? return_stmt->expressions()[0].get()->as_literal()
+                       : nullptr);
 
   CHECK_TRUE(literal != nullptr);
   CHECK_TRUE(literal->type() == nodes::literal_type_e::INTEGER);
@@ -2512,12 +2465,13 @@ TEST(ParserLiterals, ArrayLiteralEmpty) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
   auto *array_lit =
-      dynamic_cast<const nodes::array_literal_c *>(return_stmt->expression());
+      (!return_stmt->expressions().empty()
+           ? return_stmt->expressions()[0].get()->as_array_literal()
+           : nullptr);
 
   CHECK_TRUE(array_lit != nullptr);
   CHECK_EQUAL(0, array_lit->elements().size());
@@ -2529,12 +2483,13 @@ TEST(ParserLiterals, ArrayLiteralWithElements) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
   auto *array_lit =
-      dynamic_cast<const nodes::array_literal_c *>(return_stmt->expression());
+      (!return_stmt->expressions().empty()
+           ? return_stmt->expressions()[0].get()->as_array_literal()
+           : nullptr);
 
   CHECK_TRUE(array_lit != nullptr);
   CHECK_EQUAL(3, array_lit->elements().size());
@@ -2546,12 +2501,13 @@ TEST(ParserLiterals, ArrayLiteralNested) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
   auto *outer_array =
-      dynamic_cast<const nodes::array_literal_c *>(return_stmt->expression());
+      (!return_stmt->expressions().empty()
+           ? return_stmt->expressions()[0].get()->as_array_literal()
+           : nullptr);
 
   CHECK_TRUE(outer_array != nullptr);
   CHECK_EQUAL(2, outer_array->elements().size());
@@ -2563,12 +2519,13 @@ TEST(ParserLiterals, StructLiteralEmpty) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
   auto *struct_lit =
-      dynamic_cast<const nodes::struct_literal_c *>(return_stmt->expression());
+      (!return_stmt->expressions().empty()
+           ? return_stmt->expressions()[0].get()->as_struct_literal()
+           : nullptr);
 
   CHECK_TRUE(struct_lit != nullptr);
   STRCMP_EQUAL("Point", struct_lit->struct_name().name.c_str());
@@ -2581,12 +2538,13 @@ TEST(ParserLiterals, StructLiteralWithFields) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
   auto *struct_lit =
-      dynamic_cast<const nodes::struct_literal_c *>(return_stmt->expression());
+      (!return_stmt->expressions().empty()
+           ? return_stmt->expressions()[0].get()->as_struct_literal()
+           : nullptr);
 
   CHECK_TRUE(struct_lit != nullptr);
   STRCMP_EQUAL("Point", struct_lit->struct_name().name.c_str());
@@ -2603,12 +2561,13 @@ TEST(ParserLiterals, StructLiteralNested) {
 
   CHECK_TRUE(wrapper.result.success);
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
-  auto *return_stmt =
-      dynamic_cast<const nodes::return_c *>(body->statements()[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
+  auto *body = fn->body()->as_block();
+  auto *return_stmt = body->statements()[0].get()->as_return();
   auto *outer_struct =
-      dynamic_cast<const nodes::struct_literal_c *>(return_stmt->expression());
+      (!return_stmt->expressions().empty()
+           ? return_stmt->expressions()[0].get()->as_struct_literal()
+           : nullptr);
 
   CHECK_TRUE(outer_struct != nullptr);
   STRCMP_EQUAL("Rect", outer_struct->struct_name().name.c_str());
@@ -2645,18 +2604,16 @@ TEST(ParserComplexPrograms, MultipleDeclarationsMixed) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(4, wrapper.result.declarations.size());
 
-  auto *struct_decl =
-      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  auto *struct_decl = wrapper.result.declarations[0].get()->as_struct();
   CHECK_TRUE(struct_decl != nullptr);
 
-  auto *fn1 = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[1].get());
+  auto *fn1 = wrapper.result.declarations[1].get()->as_fn();
   CHECK_TRUE(fn1 != nullptr);
 
-  auto *const_decl =
-      dynamic_cast<nodes::const_c *>(wrapper.result.declarations[2].get());
+  auto *const_decl = wrapper.result.declarations[2].get()->as_const();
   CHECK_TRUE(const_decl != nullptr);
 
-  auto *fn2 = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[3].get());
+  auto *fn2 = wrapper.result.declarations[3].get()->as_fn();
   CHECK_TRUE(fn2 != nullptr);
 }
 
@@ -2672,12 +2629,11 @@ TEST(ParserComplexPrograms, FunctionWithStructParameter) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(2, wrapper.result.declarations.size());
 
-  auto *struct_decl =
-      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  auto *struct_decl = wrapper.result.declarations[0].get()->as_struct();
   CHECK_TRUE(struct_decl != nullptr);
   STRCMP_EQUAL("Vec2", struct_decl->name().name.c_str());
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[1].get());
+  auto *fn = wrapper.result.declarations[1].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
   STRCMP_EQUAL("magnitude", fn->name().name.c_str());
   CHECK_EQUAL(1, fn->params().size());
@@ -2696,8 +2652,7 @@ TEST(ParserComplexPrograms, StructWithFunctionPointer) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *struct_decl =
-      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  auto *struct_decl = wrapper.result.declarations[0].get()->as_struct();
   CHECK_TRUE(struct_decl != nullptr);
   STRCMP_EQUAL("Handler", struct_decl->name().name.c_str());
   CHECK_EQUAL(2, struct_decl->fields().size());
@@ -2717,11 +2672,11 @@ TEST(ParserComplexPrograms, RecursiveFunctionDefinition) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
   STRCMP_EQUAL("factorial", fn->name().name.c_str());
 
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *body = fn->body()->as_block();
   CHECK_TRUE(body != nullptr);
   CHECK_EQUAL(2, body->statements().size());
 }
@@ -2748,10 +2703,10 @@ TEST(ParserComplexPrograms, ComplexControlFlowNesting) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *body = fn->body()->as_block();
   CHECK_TRUE(body != nullptr);
   CHECK_EQUAL(3, body->statements().size());
 }
@@ -2774,10 +2729,10 @@ TEST(ParserComplexPrograms, MixedDeclarationsAndStatements) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(1, wrapper.result.declarations.size());
 
-  auto *fn = dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[0].get());
+  auto *fn = wrapper.result.declarations[0].get()->as_fn();
   CHECK_TRUE(fn != nullptr);
 
-  auto *body = dynamic_cast<const nodes::block_c *>(fn->body());
+  auto *body = fn->body()->as_block();
   CHECK_TRUE(body != nullptr);
   CHECK_EQUAL(5, body->statements().size());
 }
@@ -2806,16 +2761,13 @@ TEST(ParserComplexPrograms, RealWorldExample1) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(3, wrapper.result.declarations.size());
 
-  auto *struct_decl =
-      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  auto *struct_decl = wrapper.result.declarations[0].get()->as_struct();
   CHECK_TRUE(struct_decl != nullptr);
 
-  auto *distance_fn =
-      dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[1].get());
+  auto *distance_fn = wrapper.result.declarations[1].get()->as_fn();
   CHECK_TRUE(distance_fn != nullptr);
 
-  auto *main_fn =
-      dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[2].get());
+  auto *main_fn = wrapper.result.declarations[2].get()->as_fn();
   CHECK_TRUE(main_fn != nullptr);
 }
 
@@ -2846,17 +2798,14 @@ TEST(ParserComplexPrograms, RealWorldExample2) {
   CHECK_TRUE(wrapper.result.success);
   CHECK_EQUAL(3, wrapper.result.declarations.size());
 
-  auto *struct_decl =
-      dynamic_cast<nodes::struct_c *>(wrapper.result.declarations[0].get());
+  auto *struct_decl = wrapper.result.declarations[0].get()->as_struct();
   CHECK_TRUE(struct_decl != nullptr);
   STRCMP_EQUAL("Node", struct_decl->name().name.c_str());
 
-  auto *create_fn =
-      dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[1].get());
+  auto *create_fn = wrapper.result.declarations[1].get()->as_fn();
   CHECK_TRUE(create_fn != nullptr);
 
-  auto *sum_fn =
-      dynamic_cast<nodes::fn_c *>(wrapper.result.declarations[2].get());
+  auto *sum_fn = wrapper.result.declarations[2].get()->as_fn();
   CHECK_TRUE(sum_fn != nullptr);
 }
 

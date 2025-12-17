@@ -1,0 +1,11 @@
+fn get_mixed() : (i32, fn(i32, i32) : i32, i32) {
+  var add: fn(i32, i32) : i32 = fn(a: i32, b: i32) : i32 {
+    return a + b;
+  };
+  return 25, add, 75;
+}
+
+fn main() : i32 {
+  let x, operation, y = get_mixed();
+  return operation(x, y);
+}

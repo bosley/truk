@@ -134,6 +134,15 @@ void emitter_c::internal_finalize() {
         embedded::runtime_files.at("src/ds/map.c").content);
   }
 
+  if (embedded::runtime_files.count("include/sxs/test.h")) {
+    final_header << cdef::strip_pragma_and_includes(
+        embedded::runtime_files.at("include/sxs/test.h").content);
+  }
+  if (embedded::runtime_files.count("src/test.c")) {
+    final_header << cdef::strip_pragma_and_includes(
+        embedded::runtime_files.at("src/test.c").content);
+  }
+
   final_header << "typedef struct {\n  __truk_void* data;\n  __truk_u64 "
                   "len;\n} truk_slice_void;\n\n";
 
@@ -152,7 +161,7 @@ void emitter_c::internal_finalize() {
     if (func_name == "main") {
       _result.metadata.main_function_count++;
       for (const auto &[decl, file] : _decl_to_file) {
-        if (auto *fn = dynamic_cast<const fn_c *>(decl)) {
+        if (auto *fn = decl->as_fn()) {
           if (fn->name().name == "main") {
             main_file = file;
             break;
@@ -210,15 +219,125 @@ void emitter_c::ensure_map_typedef(const type_c *key_type,
   _type_registry.ensure_map_typedef(key_type, value_type, _structs);
 }
 
+std::string emitter_c::get_tuple_type_name(
+    const std::vector<const type_c *> &element_types) {
+  std::string name = "__truk_tuple";
+  for (const auto *elem : element_types) {
+    std::string elem_type = emit_type(elem);
+    for (char c : elem_type) {
+      if (c == '*') {
+        name += "_ptr";
+      } else if (c == '[' || c == ']' || c == '(' || c == ')' || c == ',') {
+      } else if (c == ' ') {
+        name += "_";
+      } else if (std::isalnum(c) || c == '_') {
+        name += c;
+      }
+    }
+  }
+  return name;
+}
+
+void emitter_c::ensure_tuple_typedef(
+    const std::vector<const type_c *> &element_types) {
+  std::string tuple_name = get_tuple_type_name(element_types);
+
+  if (_generated_tuple_typedefs.find(tuple_name) !=
+      _generated_tuple_typedefs.end()) {
+    return;
+  }
+
+  for (const auto *elem_type : element_types) {
+    if (auto map = elem_type->as_map_type()) {
+      ensure_map_typedef(map->key_type(), map->value_type());
+    }
+  }
+
+  _structs << "typedef struct {\n";
+  for (size_t i = 0; i < element_types.size(); ++i) {
+    const type_c *elem_type = element_types[i];
+
+    std::vector<size_t> array_dims;
+    const type_c *base_type = elem_type;
+    while (auto arr = base_type->as_array_type()) {
+      if (arr->size().has_value()) {
+        array_dims.push_back(arr->size().value());
+        base_type = arr->element_type();
+      } else {
+        break;
+      }
+    }
+
+    if (auto func = base_type->as_function_type()) {
+      std::string ret_type = emit_type(func->return_type());
+      _structs << "  " << ret_type << " (*_" << i;
+      for (size_t dim : array_dims) {
+        _structs << "[" << dim << "]";
+      }
+      _structs << ")(";
+      const auto &param_types = func->param_types();
+      for (size_t j = 0; j < param_types.size(); ++j) {
+        if (j > 0)
+          _structs << ", ";
+        _structs << emit_type(param_types[j].get());
+      }
+      if (param_types.empty())
+        _structs << "void";
+      if (func->has_variadic()) {
+        if (!param_types.empty())
+          _structs << ", ";
+        _structs << "...";
+      }
+      _structs << ");\n";
+    } else {
+      _structs << "  " << emit_type(elem_type) << " _" << i;
+      const type_c *current_type = elem_type;
+      while (auto arr = current_type->as_array_type()) {
+        if (arr->size().has_value()) {
+          _structs << "[" << arr->size().value() << "]";
+          current_type = arr->element_type();
+        } else {
+          break;
+        }
+      }
+      _structs << ";\n";
+    }
+  }
+  _structs << "} " << tuple_name << ";\n\n";
+
+  _generated_tuple_typedefs.insert(tuple_name);
+}
+
 bool emitter_c::is_map_type(const type_c *type) {
   return _type_registry.is_map_type(type);
 }
 
+bool emitter_c::is_array_type(const type_c *type) {
+  if (auto arr = type->as_array_type()) {
+    return arr->size().has_value();
+  }
+  return false;
+}
+
+std::string emitter_c::get_array_dimensions(const type_c *type) {
+  std::string dims;
+  const type_c *current = type;
+  while (auto arr = current->as_array_type()) {
+    if (arr->size().has_value()) {
+      dims += "[" + std::to_string(arr->size().value()) + "]";
+      current = arr->element_type();
+    } else {
+      break;
+    }
+  }
+  return dims;
+}
+
 std::string emitter_c::get_map_hash_fn(const type_c *key_type) {
-  if (auto *ptr = dynamic_cast<const pointer_type_c *>(key_type)) {
+  if (auto *ptr = key_type->as_pointer_type()) {
     return "__truk_map_hash_str";
   }
-  if (auto *prim = dynamic_cast<const primitive_type_c *>(key_type)) {
+  if (auto *prim = key_type->as_primitive_type()) {
     switch (prim->keyword()) {
     case keywords_e::I8:
       return "__truk_map_hash_i8";
@@ -250,17 +369,17 @@ std::string emitter_c::get_map_hash_fn(const type_c *key_type) {
 }
 
 std::string emitter_c::get_map_cmp_fn(const type_c *key_type) {
-  if (auto *ptr = dynamic_cast<const pointer_type_c *>(key_type)) {
+  if (auto *ptr = key_type->as_pointer_type()) {
     return "__truk_map_cmp_str";
   }
   return "__truk_map_cmp_mem";
 }
 
 int emitter_c::get_key_size(const type_c *key_type) {
-  if (auto *ptr = dynamic_cast<const pointer_type_c *>(key_type)) {
+  if (auto *ptr = key_type->as_pointer_type()) {
     return sizeof(void *);
   }
-  if (auto *prim = dynamic_cast<const primitive_type_c *>(key_type)) {
+  if (auto *prim = key_type->as_primitive_type()) {
     switch (prim->keyword()) {
     case keywords_e::I8:
     case keywords_e::U8:
@@ -319,9 +438,41 @@ void emitter_c::visit(const map_type_c &node) {
   _current_expr << get_map_type_name(node.key_type(), node.value_type());
 }
 
+void emitter_c::visit(const tuple_type_c &node) {
+  std::vector<const type_c *> element_types;
+  for (const auto &elem : node.element_types()) {
+    element_types.push_back(elem.get());
+  }
+  _current_expr << get_tuple_type_name(element_types);
+}
+
 void emitter_c::visit(const fn_c &node) {
   if (_collecting_declarations) {
     _function_names.insert(node.name().name);
+
+    if (node.name().name.rfind("test_", 0) == 0) {
+      if (node.params().size() == 1) {
+        const auto &param = node.params()[0];
+        if (auto ptr_type = param.type.get()->as_pointer_type()) {
+          if (auto named_type = ptr_type->pointee_type()->as_named_type()) {
+            if (named_type->name().name == "__truk_test_context_s") {
+              if (auto prim_ret = node.return_type()->as_primitive_type()) {
+                if (prim_ret->keyword() == keywords_e::VOID) {
+                  if (node.name().name == "test_setup") {
+                    _result.metadata.has_test_setup = true;
+                  } else if (node.name().name == "test_teardown") {
+                    _result.metadata.has_test_teardown = true;
+                  } else {
+                    _result.metadata.test_functions.push_back(node.name().name);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     return;
   }
 
@@ -338,8 +489,7 @@ void emitter_c::visit(const fn_c &node) {
   bool is_private = is_private_identifier(node.name().name);
   bool is_library = _result.metadata.is_library();
 
-  if (auto func_return =
-          dynamic_cast<const function_type_c *>(node.return_type())) {
+  if (auto func_return = node.return_type()->as_function_type()) {
     // Function returning a function pointer - needs special syntax
     std::string ret_type = emit_type(func_return->return_type());
 
@@ -377,7 +527,7 @@ void emitter_c::visit(const fn_c &node) {
         _functions << ", ";
       register_variable_type(param.name.name, param.type.get());
 
-      if (auto func = dynamic_cast<const function_type_c *>(param.type.get())) {
+      if (auto func = param.type.get()->as_function_type()) {
         std::string ret_type = emit_type(func->return_type());
         _functions << ret_type << " (*" << param.name.name << ")(";
 
@@ -407,7 +557,7 @@ void emitter_c::visit(const fn_c &node) {
       }
 
       const type_c *current_type = param.type.get();
-      while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+      while (auto arr = current_type->as_array_type()) {
         if (arr->size().has_value()) {
           _functions << "[" << arr->size().value() << "]";
           current_type = arr->element_type();
@@ -423,8 +573,7 @@ void emitter_c::visit(const fn_c &node) {
   _functions << ")";
 
   // If returning a function pointer, add the return type parameters
-  if (auto func_return =
-          dynamic_cast<const function_type_c *>(node.return_type())) {
+  if (auto func_return = node.return_type()->as_function_type()) {
     _functions << ")(";
 
     const auto &ret_param_types = func_return->param_types();
@@ -452,6 +601,17 @@ void emitter_c::visit(const fn_c &node) {
   _current_function_name = node.name().name;
   _current_function_return_type = node.return_type();
 
+  if (auto tuple = node.return_type()->as_tuple_type()) {
+    std::vector<const type_c *> elem_types;
+    for (const auto &elem : tuple->element_types()) {
+      elem_types.push_back(elem.get());
+    }
+    ensure_tuple_typedef(elem_types);
+    _current_tuple_return_types = elem_types;
+  } else {
+    _current_tuple_return_types.clear();
+  }
+
   if (node.body()) {
     _functions << " ";
     if (has_variadic) {
@@ -465,7 +625,7 @@ void emitter_c::visit(const fn_c &node) {
       _functions << node.params()[non_variadic_count - 1].name.name;
       _functions << ");\n";
 
-      auto *body_block = dynamic_cast<const block_c *>(node.body());
+      auto *body_block = node.body()->as_block();
       if (body_block) {
         for (const auto &stmt : body_block->statements()) {
           stmt->accept(*this);
@@ -481,7 +641,7 @@ void emitter_c::visit(const fn_c &node) {
     } else {
       push_defer_scope(defer_scope_s::scope_type_e::FUNCTION, &node);
 
-      if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+      if (auto *body_block = node.body()->as_block()) {
         _functions << "{\n";
         _indent_level++;
         for (const auto &stmt : body_block->statements()) {
@@ -521,6 +681,8 @@ void emitter_c::visit(const lambda_c &node) {
   std::string saved_context = _current_node_context;
   std::string saved_function_name = _current_function_name;
   const type_c *saved_return_type = _current_function_return_type;
+  std::vector<const type_c *> saved_tuple_return_types =
+      _current_tuple_return_types;
   std::stringstream saved_functions;
 
   std::string lambda_name =
@@ -546,7 +708,7 @@ void emitter_c::visit(const lambda_c &node) {
 
     register_variable_type(param.name.name, param.type.get());
 
-    if (auto func = dynamic_cast<const function_type_c *>(param.type.get())) {
+    if (auto func = param.type.get()->as_function_type()) {
       std::string ret_type = emit_type(func->return_type());
       std::string func_param = ret_type + " (*" + param.name.name + ")(";
 
@@ -580,7 +742,7 @@ void emitter_c::visit(const lambda_c &node) {
     }
 
     const type_c *current_type = param.type.get();
-    while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+    while (auto arr = current_type->as_array_type()) {
       if (arr->size().has_value()) {
         _header << "[" << arr->size().value() << "]";
         _functions << "[" << arr->size().value() << "]";
@@ -604,11 +766,22 @@ void emitter_c::visit(const lambda_c &node) {
   _current_function_name = lambda_name;
   _current_function_return_type = node.return_type();
 
+  if (auto tuple = node.return_type()->as_tuple_type()) {
+    std::vector<const type_c *> elem_types;
+    for (const auto &elem : tuple->element_types()) {
+      elem_types.push_back(elem.get());
+    }
+    ensure_tuple_typedef(elem_types);
+    _current_tuple_return_types = elem_types;
+  } else {
+    _current_tuple_return_types.clear();
+  }
+
   if (node.body()) {
     _functions << " ";
     push_defer_scope(defer_scope_s::scope_type_e::LAMBDA, &node);
 
-    if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+    if (auto *body_block = node.body()->as_block()) {
       _functions << "{\n";
       _indent_level++;
       for (const auto &stmt : body_block->statements()) {
@@ -635,6 +808,7 @@ void emitter_c::visit(const lambda_c &node) {
 
   _current_function_name = saved_function_name;
   _current_function_return_type = saved_return_type;
+  _current_tuple_return_types = saved_tuple_return_types;
   _current_phase = saved_phase;
   _current_node_context = saved_context;
 }
@@ -667,7 +841,7 @@ void emitter_c::visit(const struct_c &node) {
     _structs << "  " << field_type << " " << field.name.name;
 
     const type_c *current_type = field.type.get();
-    while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+    while (auto arr = current_type->as_array_type()) {
       if (arr->size().has_value()) {
         _structs << "[" << arr->size().value() << "]";
         current_type = arr->element_type();
@@ -697,16 +871,34 @@ void emitter_c::visit(const var_c &node) {
 
   register_variable_type(node.name().name, node.type());
 
-  if (auto map = dynamic_cast<const map_type_c *>(node.type())) {
+  if (auto map = node.type()->as_map_type()) {
     ensure_map_typedef(map->key_type(), map->value_type());
   }
 
   bool is_private = is_private_identifier(node.name().name);
   bool is_library = _result.metadata.is_library();
 
-  if (auto func = dynamic_cast<const function_type_c *>(node.type())) {
+  std::vector<size_t> array_dims;
+  const type_c *base_type = node.type();
+  while (auto arr = base_type->as_array_type()) {
+    if (arr->size().has_value()) {
+      array_dims.push_back(arr->size().value());
+      base_type = arr->element_type();
+    } else {
+      ensure_slice_typedef(arr->element_type());
+      break;
+    }
+  }
+
+  if (auto func = base_type->as_function_type()) {
     std::string ret_type = emit_type(func->return_type());
-    std::string func_decl = ret_type + " (*" + node.name().name + ")(";
+    std::string func_decl = ret_type + " (*" + node.name().name;
+
+    for (size_t dim : array_dims) {
+      func_decl += "[" + std::to_string(dim) + "]";
+    }
+
+    func_decl += ")(";
 
     const auto &param_types = func->param_types();
     for (size_t i = 0; i < param_types.size(); ++i) {
@@ -749,16 +941,15 @@ void emitter_c::visit(const var_c &node) {
       _functions << cdef::indent(_indent_level) << type_str << " "
                  << node.name().name;
     }
-  }
 
-  const type_c *current_type = node.type();
-  while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
-    if (arr->size().has_value()) {
-      _functions << "[" << arr->size().value() << "]";
-      current_type = arr->element_type();
-    } else {
-      ensure_slice_typedef(arr->element_type());
-      break;
+    const type_c *current_type = node.type();
+    while (auto arr = current_type->as_array_type()) {
+      if (arr->size().has_value()) {
+        _functions << "[" << arr->size().value() << "]";
+        current_type = arr->element_type();
+      } else {
+        break;
+      }
     }
   }
 
@@ -768,6 +959,183 @@ void emitter_c::visit(const var_c &node) {
   }
 
   _functions << ";\n";
+}
+
+void emitter_c::visit(const let_c &node) {
+  if (_collecting_declarations && _indent_level == 0) {
+    return;
+  }
+
+  if (node.is_single()) {
+    const std::string &var_name = node.names()[0].name;
+
+    if (var_name == "_") {
+      if (node.initializer()) {
+        std::string init = emit_expression(node.initializer());
+        _functions << cdef::indent(_indent_level) << "(void)(" << init
+                   << ");\n";
+      }
+      return;
+    }
+
+    auto var_type = node.inferred_types()[0].get();
+    if (!var_type) {
+      add_error("Cannot determine type for let variable: " + var_name, &node);
+      return;
+    }
+
+    register_variable_type(var_name, var_type);
+
+    if (auto map = var_type->as_map_type()) {
+      ensure_map_typedef(map->key_type(), map->value_type());
+    }
+
+    bool is_private = is_private_identifier(var_name);
+    bool is_library = _result.metadata.is_library();
+
+    if (auto func = var_type->as_function_type()) {
+      std::string ret_type = emit_type(func->return_type());
+      std::string func_decl = ret_type + " (*" + var_name + ")(";
+
+      const auto &param_types = func->param_types();
+      for (size_t i = 0; i < param_types.size(); ++i) {
+        if (i > 0) {
+          func_decl += ", ";
+        }
+        func_decl += emit_type(param_types[i].get());
+      }
+
+      if (param_types.empty()) {
+        func_decl += "void";
+      }
+
+      if (func->has_variadic()) {
+        if (!param_types.empty()) {
+          func_decl += ", ";
+        }
+        func_decl += "...";
+      }
+
+      func_decl += ")";
+
+      if (_indent_level == 0) {
+        if (is_private && is_library) {
+          _functions << "static ";
+        }
+        _functions << func_decl;
+      } else {
+        _functions << cdef::indent(_indent_level) << func_decl;
+      }
+    } else {
+      std::string type_str = emit_type(var_type);
+
+      if (_indent_level == 0) {
+        if (is_private && is_library) {
+          _functions << "static ";
+        }
+        _functions << type_str << " " << var_name;
+      } else {
+        _functions << cdef::indent(_indent_level) << type_str << " "
+                   << var_name;
+      }
+    }
+
+    const type_c *current_type = var_type;
+    while (auto arr = current_type->as_array_type()) {
+      if (arr->size().has_value()) {
+        _functions << "[" << arr->size().value() << "]";
+        current_type = arr->element_type();
+      } else {
+        ensure_slice_typedef(arr->element_type());
+        break;
+      }
+    }
+
+    if (node.initializer()) {
+      std::string init = emit_expression(node.initializer());
+      _functions << " = " << init;
+    }
+
+    _functions << ";\n";
+  } else {
+    std::string tmp_var = "__tmp_" + std::to_string(_temp_counter++);
+    std::string init = emit_expression(node.initializer());
+
+    std::vector<const type_c *> tuple_types;
+    for (const auto &type : node.inferred_types()) {
+      tuple_types.push_back(type.get());
+    }
+    std::string tuple_type = get_tuple_type_name(tuple_types);
+
+    _functions << cdef::indent(_indent_level);
+    _functions << tuple_type << " " << tmp_var << " = " << init << ";\n";
+
+    for (size_t i = 0; i < node.names().size(); ++i) {
+      const std::string &var_name = node.names()[i].name;
+
+      if (var_name == "_") {
+        continue;
+      }
+
+      auto var_type = node.inferred_types()[i].get();
+      register_variable_type(var_name, var_type);
+
+      _functions << cdef::indent(_indent_level);
+
+      std::vector<size_t> array_dims;
+      const type_c *base_type = var_type;
+      while (auto arr = base_type->as_array_type()) {
+        if (arr->size().has_value()) {
+          array_dims.push_back(arr->size().value());
+          base_type = arr->element_type();
+        } else {
+          break;
+        }
+      }
+
+      if (auto func = base_type->as_function_type()) {
+        std::string ret_type = emit_type(func->return_type());
+        _functions << ret_type << " (*" << var_name;
+        for (size_t dim : array_dims) {
+          _functions << "[" << dim << "]";
+        }
+        _functions << ")(";
+        const auto &param_types = func->param_types();
+        for (size_t j = 0; j < param_types.size(); ++j) {
+          if (j > 0)
+            _functions << ", ";
+          _functions << emit_type(param_types[j].get());
+        }
+        if (param_types.empty())
+          _functions << "void";
+        if (func->has_variadic()) {
+          if (!param_types.empty())
+            _functions << ", ";
+          _functions << "...";
+        }
+        _functions << ")";
+        if (!array_dims.empty()) {
+          _functions << ";\n";
+          _functions << cdef::indent(_indent_level);
+          _functions << "memcpy(" << var_name << ", " << tmp_var << "._" << i
+                     << ", sizeof(" << var_name << "));\n";
+        } else {
+          _functions << " = " << tmp_var << "._" << i << ";\n";
+        }
+      } else if (is_array_type(var_type)) {
+        std::string type_str = emit_type(var_type);
+        std::string dims = get_array_dimensions(var_type);
+        _functions << type_str << " " << var_name << dims << ";\n";
+        _functions << cdef::indent(_indent_level);
+        _functions << "memcpy(" << var_name << ", " << tmp_var << "._" << i
+                   << ", sizeof(" << var_name << "));\n";
+      } else {
+        std::string type_str = emit_type(var_type);
+        _functions << type_str << " " << var_name << " = ";
+        _functions << tmp_var << "._" << i << ";\n";
+      }
+    }
+  }
 }
 
 void emitter_c::visit(const const_c &node) {
@@ -787,7 +1155,7 @@ void emitter_c::visit(const const_c &node) {
   }
 
   const type_c *current_type = node.type();
-  while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+  while (auto arr = current_type->as_array_type()) {
     if (arr->size().has_value()) {
       _functions << "[" << arr->size().value() << "]";
       current_type = arr->element_type();
@@ -820,7 +1188,7 @@ void emitter_c::visit(const while_c &node) {
 
   push_defer_scope(defer_scope_s::scope_type_e::LOOP, &node);
 
-  if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+  if (auto *body_block = node.body()->as_block()) {
     _functions << "{\n";
     _indent_level++;
     for (const auto &stmt : body_block->statements()) {
@@ -843,7 +1211,7 @@ void emitter_c::visit(const for_c &node) {
   _functions << cdef::indent(_indent_level) << "for (";
 
   if (node.init()) {
-    if (dynamic_cast<const var_c *>(node.init())) {
+    if (node.init()->as_var()) {
       std::stringstream temp_functions;
       std::swap(temp_functions, _functions);
 
@@ -882,7 +1250,7 @@ void emitter_c::visit(const for_c &node) {
 
   push_defer_scope(defer_scope_s::scope_type_e::LOOP, &node);
 
-  if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+  if (auto *body_block = node.body()->as_block()) {
     _functions << "{\n";
     _indent_level++;
     for (const auto &stmt : body_block->statements()) {
@@ -904,14 +1272,38 @@ void emitter_c::visit(const for_c &node) {
 void emitter_c::visit(const return_c &node) {
   emit_all_remaining_defers();
 
-  _functions << cdef::indent(_indent_level) << "return";
-
-  if (node.expression()) {
-    std::string expr = emit_expression(node.expression());
-    _functions << " " << expr;
+  if (node.is_void()) {
+    _functions << cdef::indent(_indent_level) << "return;\n";
+    return;
   }
 
-  _functions << ";\n";
+  if (node.is_single()) {
+    std::string expr = emit_expression(node.expressions()[0].get());
+    _functions << cdef::indent(_indent_level) << "return " << expr << ";\n";
+    return;
+  }
+
+  if (node.is_multiple()) {
+    std::string tmp_var = "__result";
+    _functions << cdef::indent(_indent_level);
+    _functions << get_tuple_type_name(_current_tuple_return_types);
+    _functions << " " << tmp_var << ";\n";
+
+    for (size_t i = 0; i < node.expressions().size(); ++i) {
+      std::string expr = emit_expression(node.expressions()[i].get());
+      _functions << cdef::indent(_indent_level);
+
+      if (i < _current_tuple_return_types.size() &&
+          is_array_type(_current_tuple_return_types[i])) {
+        _functions << "memcpy(" << tmp_var << "._" << i << ", " << expr
+                   << ", sizeof(" << tmp_var << "._" << i << "));\n";
+      } else {
+        _functions << tmp_var << "._" << i << " = " << expr << ";\n";
+      }
+    }
+
+    _functions << cdef::indent(_indent_level) << "return " << tmp_var << ";\n";
+  }
 }
 
 void emitter_c::visit(const break_c &node) {
@@ -984,13 +1376,13 @@ void emitter_c::visit(const identifier_c &node) {
 void emitter_c::visit(const assignment_c &node) {
   bool was_in_expr = _in_expression;
 
-  if (auto idx = dynamic_cast<const index_c *>(node.target())) {
+  if (auto idx = node.target()->as_index()) {
     bool is_slice = false;
     bool is_map = false;
-    if (auto ident = dynamic_cast<const identifier_c *>(idx->object())) {
+    if (auto ident = idx->object()->as_identifier()) {
       is_slice = is_variable_slice(ident->id().name);
       is_map = is_variable_map(ident->id().name);
-    } else if (auto inner_idx = dynamic_cast<const index_c *>(idx->object())) {
+    } else if (auto inner_idx = idx->object()->as_index()) {
       is_slice = false;
       is_map = false;
     } else {
@@ -1004,11 +1396,11 @@ void emitter_c::visit(const assignment_c &node) {
       std::string value = emit_expression(node.value());
 
       bool key_is_slice = false;
-      if (auto key_ident = dynamic_cast<const identifier_c *>(idx->index())) {
+      if (auto key_ident = idx->index()->as_identifier()) {
         key_is_slice = is_variable_slice(key_ident->id().name);
       }
 
-      auto *key_literal = dynamic_cast<const literal_c *>(idx->index());
+      auto *key_literal = idx->index()->as_literal();
       bool key_is_string_literal =
           key_literal && key_literal->type() == literal_type_e::STRING;
       bool key_is_non_string_literal = key_literal && !key_is_string_literal;
@@ -1244,12 +1636,11 @@ std::string emitter_c::emit_expr_index(const index_c &node) {
 
   bool is_slice = false;
   bool is_map = false;
-  if (auto ident = dynamic_cast<const identifier_c *>(node.object())) {
+  if (auto ident = node.object()->as_identifier()) {
     is_slice = is_variable_slice(ident->id().name);
     is_map = is_variable_map(ident->id().name);
-  } else if (auto inner_idx = dynamic_cast<const index_c *>(node.object())) {
-    if (auto inner_ident =
-            dynamic_cast<const identifier_c *>(inner_idx->object())) {
+  } else if (auto inner_idx = node.object()->as_index()) {
+    if (auto inner_ident = inner_idx->object()->as_identifier()) {
       if (is_variable_slice(inner_ident->id().name)) {
         is_slice = false;
       } else {
@@ -1264,12 +1655,12 @@ std::string emitter_c::emit_expr_index(const index_c &node) {
 
   if (is_map) {
     bool key_is_slice = false;
-    auto *key_literal = dynamic_cast<const literal_c *>(node.index());
+    auto *key_literal = node.index()->as_literal();
     bool key_is_string_literal =
         key_literal && key_literal->type() == literal_type_e::STRING;
     bool key_is_non_string_literal = key_literal && !key_is_string_literal;
 
-    if (auto key_ident = dynamic_cast<const identifier_c *>(node.index())) {
+    if (auto key_ident = node.index()->as_identifier()) {
       key_is_slice = is_variable_slice(key_ident->id().name);
     }
 
@@ -1296,7 +1687,7 @@ std::string emitter_c::emit_expr_index(const index_c &node) {
 }
 
 std::string emitter_c::emit_expr_call(const call_c &node) {
-  if (auto ident = dynamic_cast<const identifier_c *>(node.callee())) {
+  if (auto ident = node.callee()->as_identifier()) {
     if (auto *handler = _builtin_registry.get_handler(ident->id().name)) {
       std::stringstream temp_expr;
       std::swap(temp_expr, _current_expr);
@@ -1353,8 +1744,7 @@ void emitter_c::emit_scope_defers(defer_scope_s *scope) {
   for (auto it = scope->defers.rbegin(); it != scope->defers.rend(); ++it) {
     const auto *defer_node = *it;
     if (defer_node->deferred_code()) {
-      if (auto block =
-              dynamic_cast<const block_c *>(defer_node->deferred_code())) {
+      if (auto block = defer_node->deferred_code()->as_block()) {
         _functions << cdef::indent(_indent_level) << "{\n";
         _indent_level++;
         for (const auto &stmt : block->statements()) {
@@ -1568,6 +1958,63 @@ assembly_result_s result_c::assemble(assembly_type_e type,
 
   return assembly_result_s(assembly_type_e::LIBRARY, source_content,
                            header_content, header_name);
+}
+
+std::string result_c::assemble_test_runner() const {
+  std::string output;
+
+  if (metadata.test_functions.empty()) {
+    for (const auto &chunk : chunks) {
+      output += chunk;
+    }
+    return output;
+  }
+
+  for (const auto &chunk : chunks) {
+    output += chunk;
+  }
+
+  output += "\nint main(int argc, char** argv) {\n";
+  output += "    int total_tests = 0;\n";
+  output += "    int total_failed = 0;\n\n";
+
+  for (const auto &test_name : metadata.test_functions) {
+    output += "    {\n";
+    output += "        __truk_test_context_s ctx = {0};\n";
+    output += "        ctx.current_test_name = \"" + test_name + "\";\n";
+    output += "        ctx.argc = argc;\n";
+    output += "        ctx.argv = argv;\n";
+    output +=
+        "        printf(\"Running %s...\\n\", ctx.current_test_name);\n\n";
+
+    if (metadata.has_test_setup) {
+      output += "        test_setup(&ctx);\n";
+    }
+
+    output += "        " + test_name + "(&ctx);\n\n";
+
+    if (metadata.has_test_teardown) {
+      output += "        test_teardown(&ctx);\n";
+    }
+
+    output += "        total_tests++;\n";
+    output += "        if (ctx.has_failed) {\n";
+    output += "            printf(\"  FAILED (%d/%d assertions)\\n\", "
+              "ctx.failed, ctx.failed + ctx.passed);\n";
+    output += "            total_failed++;\n";
+    output += "        } else {\n";
+    output +=
+        "            printf(\"  PASSED (%d assertions)\\n\", ctx.passed);\n";
+    output += "        }\n";
+    output += "    }\n\n";
+  }
+
+  output += "    printf(\"\\n%d/%d tests passed\\n\", total_tests - "
+            "total_failed, total_tests);\n";
+  output += "    return total_failed;\n";
+  output += "}\n";
+
+  return output;
 }
 
 bool emitter_c::is_private_identifier(const std::string &name) const {

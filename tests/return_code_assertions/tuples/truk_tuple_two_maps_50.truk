@@ -1,0 +1,23 @@
+fn get_maps() : (map[i32, i32], map[i32, i32]) {
+  var m1: map[i32, i32] = make(@map[i32, i32]);
+  var m2: map[i32, i32] = make(@map[i32, i32]);
+  m1[1] = 25;
+  m2[2] = 25;
+  return m1, m2;
+}
+
+fn main() : i32 {
+  let map1, map2 = get_maps();
+  var ptr1: *i32 = map1[1];
+  var ptr2: *i32 = map2[2];
+  var result: i32 = 0;
+  if ptr1 != nil {
+    result = result + *ptr1;
+  }
+  if ptr2 != nil {
+    result = result + *ptr2;
+  }
+  delete(map1);
+  delete(map2);
+  return result;
+}

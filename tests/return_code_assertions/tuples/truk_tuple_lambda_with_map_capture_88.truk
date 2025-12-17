@@ -1,0 +1,25 @@
+fn get_data() : (fn(i32) : i32, map[i32, i32]) {
+  var m: map[i32, i32] = make(@map[i32, i32]);
+  m[1] = 10;
+  m[2] = 20;
+  var getter: fn(i32) : i32 = fn(key: i32) : i32 {
+    return key * 2;
+  };
+  return getter, m;
+}
+
+fn main() : i32 {
+  let func, mymap = get_data();
+  var ptr1: *i32 = mymap[1];
+  var ptr2: *i32 = mymap[2];
+  var result: i32 = 0;
+  if ptr1 != nil {
+    result = result + *ptr1;
+  }
+  if ptr2 != nil {
+    result = result + *ptr2;
+  }
+  result = result + func(29);
+  delete(mymap);
+  return result;
+}

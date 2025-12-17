@@ -433,6 +433,57 @@ Maps support the following key types:
 
 Struct keys, array keys, and other complex types are not supported.
 
+### Unsupported Value Types
+
+Due to limitations in the underlying C map implementation, the following value types are **not supported**:
+
+#### Fixed-Size Arrays
+
+```truk
+var m: map[i32, [2]i32] = make(@map[i32, [2]i32]);
+```
+
+**Error:** Maps with fixed-size array values are not supported.
+
+#### Pointers to Fixed-Size Arrays
+
+```truk
+var m: map[i32, *[2]i32] = make(@map[i32, *[2]i32]);
+```
+
+**Error:** Maps with pointer-to-array values are not supported.
+
+#### Workaround: Wrap Arrays in Structs
+
+To store array-like data in maps, wrap the array in a struct:
+
+```truk
+struct ArrayWrapper {
+  values: [2]i32
+}
+
+fn main() : i32 {
+  var m: map[i32, ArrayWrapper] = make(@map[i32, ArrayWrapper]);
+  
+  var wrapper: ArrayWrapper;
+  wrapper.values[0] = 30;
+  wrapper.values[1] = 50;
+  m[1] = wrapper;
+  
+  var ptr: *ArrayWrapper = m[1];
+  if ptr != nil {
+    var sum: i32 = ptr->values[0] + ptr->values[1];
+    delete(m);
+    return sum;
+  }
+  
+  delete(m);
+  return 0;
+}
+```
+
+This workaround allows you to store and retrieve array data through maps while working within the C implementation constraints.
+
 ### Iteration with each
 
 Maps can be iterated using the `each` builtin. See [each builtin documentation](builtins.md#each) for full details.

@@ -50,6 +50,7 @@ truk provides a rich type system:
 - **Arrays**: Sized `[10]i32` and unsized `[]i32` (slices)
 - **Pointers**: `*i32`, `**i32` with nil checking
 - **Maps**: `map[K, V]` hash tables with typed keys and values
+- **Tuples**: `(T1, T2, ...)` for multiple return values
 - **Structs**: User-defined types with named fields
 
 See [grammar.md](language/grammar.md) for complete syntax.
@@ -111,6 +112,24 @@ var result: i32 = process(10, fn(x: i32) : i32 {
 ```
 
 See [lambdas.md](language/lambdas.md) for lambda details.
+
+### Multiple Return Values
+
+Functions can return tuples which can be destructured with `let`:
+
+```truk
+fn get_coords() : (i32, i32) {
+    return 10, 20;
+}
+
+fn main() : i32 {
+    let x, y = get_coords();
+    let _, height = get_coords();
+    return x + y + height;
+}
+```
+
+Use `_` to ignore values you don't need.
 
 ### Maps and Iteration
 

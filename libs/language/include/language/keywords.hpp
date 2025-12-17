@@ -11,6 +11,7 @@ enum class keywords_e {
   STRUCT,
   VAR,
   CONST,
+  LET,
   IF,
   ELSE,
   WHILE,

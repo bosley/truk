@@ -1,0 +1,3 @@
+Type error: Map key type mismatch: expected i32 but got *u8
+
+Compilation failed with 1 error(s)

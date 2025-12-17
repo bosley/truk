@@ -4,8 +4,10 @@ function(get_sxs_runtime_files out_var)
         "include/sxs/runtime.h"
         "include/sxs/sxs.h"
         "include/sxs/ds/map.h"
+        "include/sxs/test.h"
         "src/runtime.c"
         "src/ds/map.c"
+        "src/test.c"
     )
     set(${out_var} ${SXS_FILES} PARENT_SCOPE)
 endfunction()

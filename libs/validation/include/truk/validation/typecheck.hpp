@@ -23,6 +23,7 @@ enum class type_kind_e {
   ARRAY,
   VOID_TYPE,
   MAP,
+  TUPLE,
   UNTYPED_INTEGER,
   UNTYPED_FLOAT
 };
@@ -57,6 +58,8 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
   std::unique_ptr<type_entry_s> element_type;
   std::unique_ptr<type_entry_s> map_key_type;
   std::unique_ptr<type_entry_s> map_value_type;
+
+  std::vector<std::unique_ptr<type_entry_s>> tuple_element_types;
 
   bool is_builtin{false};
   std::optional<truk::language::builtins::builtin_kind_e> builtin_kind;
@@ -98,6 +101,11 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
 
     if (other.map_value_type) {
       map_value_type = std::make_unique<type_entry_s>(*other.map_value_type);
+    }
+
+    for (const auto &tuple_elem : other.tuple_element_types) {
+      tuple_element_types.push_back(
+          std::make_unique<type_entry_s>(*tuple_elem));
     }
   }
 
@@ -213,11 +221,13 @@ public:
   void visit(const truk::language::nodes::array_type_c &node) override;
   void visit(const truk::language::nodes::function_type_c &node) override;
   void visit(const truk::language::nodes::map_type_c &node) override;
+  void visit(const truk::language::nodes::tuple_type_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
+  void visit(const truk::language::nodes::let_c &node) override;
   void visit(const truk::language::nodes::if_c &node) override;
   void visit(const truk::language::nodes::while_c &node) override;
   void visit(const truk::language::nodes::for_c &node) override;
@@ -316,6 +326,9 @@ private:
   resolve_untyped_literal(const type_entry_s *literal_type,
                           const type_entry_s *target_type);
 
+  truk::language::nodes::type_ptr
+  create_type_node_from_entry(const type_entry_s *entry);
+
   bool is_private_identifier(const std::string &name) const;
   std::string
   get_defining_file_for_struct(const std::string &struct_name) const;
@@ -342,11 +355,13 @@ public:
   void visit(const truk::language::nodes::array_type_c &node) override;
   void visit(const truk::language::nodes::function_type_c &node) override;
   void visit(const truk::language::nodes::map_type_c &node) override;
+  void visit(const truk::language::nodes::tuple_type_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
+  void visit(const truk::language::nodes::let_c &node) override;
   void visit(const truk::language::nodes::if_c &node) override;
   void visit(const truk::language::nodes::while_c &node) override;
   void visit(const truk::language::nodes::for_c &node) override;
@@ -395,11 +410,13 @@ public:
   void visit(const truk::language::nodes::array_type_c &node) override;
   void visit(const truk::language::nodes::function_type_c &node) override;
   void visit(const truk::language::nodes::map_type_c &node) override;
+  void visit(const truk::language::nodes::tuple_type_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
+  void visit(const truk::language::nodes::let_c &node) override;
   void visit(const truk::language::nodes::if_c &node) override;
   void visit(const truk::language::nodes::while_c &node) override;
   void visit(const truk::language::nodes::for_c &node) override;

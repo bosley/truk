@@ -1,0 +1,23 @@
+struct ArrayWrapper {
+  values: [2]i32
+}
+
+fn get_data() : (map[i32, ArrayWrapper], i32) {
+  var m: map[i32, ArrayWrapper] = make(@map[i32, ArrayWrapper]);
+  var wrapper: ArrayWrapper;
+  wrapper.values[0] = 30;
+  wrapper.values[1] = 50;
+  m[1] = wrapper;
+  return m, 1;
+}
+
+fn main() : i32 {
+  let mymap, key = get_data();
+  var ptr: *ArrayWrapper = mymap[key];
+  var result: i32 = 0;
+  if ptr != nil {
+    result = ptr->values[0] + ptr->values[1];
+  }
+  delete(mymap);
+  return result;
+}

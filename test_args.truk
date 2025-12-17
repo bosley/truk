@@ -1,0 +1,23 @@
+extern struct __truk_test_context_s;
+extern fn __truk_test_log(t: *__truk_test_context_s, msg: *u8) : void;
+extern fn __truk_test_assert_i32(t: *__truk_test_context_s, expected: i32, actual: i32, msg: *u8) : void;
+extern fn __truk_test_get_argc(t: *__truk_test_context_s) : i32;
+extern fn __truk_test_get_argv(t: *__truk_test_context_s) : **i8;
+
+cimport <stdio.h>;
+extern fn printf(fmt: *i8, ...args): i32;
+
+fn test_args_access(t: *__truk_test_context_s) : void {
+    var argc: i32 = __truk_test_get_argc(t);
+    var argv: **i8 = __truk_test_get_argv(t);
+    
+    printf("Test received %d arguments\n", argc);
+    
+    var i: i32 = 0;
+    while i < argc {
+        printf("  test arg[%d]: %s\n", i, argv[i]);
+        i = i + 1;
+    }
+    
+    __truk_test_log(t, "Successfully accessed argc/argv in test");
+}

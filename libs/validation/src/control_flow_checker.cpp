@@ -22,6 +22,8 @@ void control_flow_checker_c::visit(const function_type_c &) {}
 
 void control_flow_checker_c::visit(const map_type_c &) {}
 
+void control_flow_checker_c::visit(const tuple_type_c &) {}
+
 void control_flow_checker_c::visit(const fn_c &) {}
 
 void control_flow_checker_c::visit(const lambda_c &) {}
@@ -34,6 +36,12 @@ void control_flow_checker_c::visit(const var_c &node) {
 
 void control_flow_checker_c::visit(const const_c &node) {
   check_node(node.value());
+}
+
+void control_flow_checker_c::visit(const let_c &node) {
+  if (node.initializer()) {
+    check_node(node.initializer());
+  }
 }
 
 void control_flow_checker_c::visit(const if_c &node) {
