@@ -38,8 +38,7 @@ parse_result_s parser_c::parse() {
     auto all_decls = parse_program();
 
     for (auto &decl : all_decls) {
-      if (auto *cimport_node =
-              dynamic_cast<const language::nodes::cimport_c *>(decl.get())) {
+      if (auto *cimport_node = decl.get()->as_cimport()) {
         result.c_imports.push_back(
             {.path = cimport_node->path(),
              .is_angle_bracket = cimport_node->is_angle_bracket()});
@@ -546,7 +545,7 @@ language::nodes::type_ptr parser_c::parse_array_type() {
   if (!check(token_type_e::RIGHT_BRACKET)) {
     auto size_expr = parse_expression();
 
-    auto *literal = dynamic_cast<language::nodes::literal_c *>(size_expr.get());
+    auto *literal = size_expr.get()->as_literal();
     if (!literal) {
       throw parse_error("Array size must be an integer literal",
                         size_expr->source_index(), bracket_token.column);
@@ -841,18 +840,18 @@ language::nodes::base_ptr parser_c::parse_expression() {
 
 language::nodes::base_ptr
 clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
-  if (auto *id = dynamic_cast<const language::nodes::identifier_c *>(expr)) {
+  if (auto *id = expr->as_identifier()) {
     return std::make_unique<language::nodes::identifier_c>(
         id->source_index(),
         language::nodes::identifier_s(id->id().name, id->id().source_index));
   }
 
-  if (auto *lit = dynamic_cast<const language::nodes::literal_c *>(expr)) {
+  if (auto *lit = expr->as_literal()) {
     return std::make_unique<language::nodes::literal_c>(
         lit->source_index(), lit->type(), lit->value());
   }
 
-  if (auto *index = dynamic_cast<const language::nodes::index_c *>(expr)) {
+  if (auto *index = expr->as_index()) {
     auto cloned_object = clone_expr_for_compound_assignment(index->object());
     auto cloned_index = clone_expr_for_compound_assignment(index->index());
     if (!cloned_object || !cloned_index) {
@@ -863,8 +862,7 @@ clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
                                                       std::move(cloned_index));
   }
 
-  if (auto *member =
-          dynamic_cast<const language::nodes::member_access_c *>(expr)) {
+  if (auto *member = expr->as_member_access()) {
     auto cloned_object = clone_expr_for_compound_assignment(member->object());
     if (!cloned_object) {
       return nullptr;
@@ -875,7 +873,7 @@ clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
                                       member->field().source_index));
   }
 
-  if (auto *unary = dynamic_cast<const language::nodes::unary_op_c *>(expr)) {
+  if (auto *unary = expr->as_unary_op()) {
     if (unary->op() == language::nodes::unary_op_e::DEREF) {
       auto cloned_operand =
           clone_expr_for_compound_assignment(unary->operand());
@@ -888,7 +886,7 @@ clone_expr_for_compound_assignment(const language::nodes::base_c *expr) {
     }
   }
 
-  if (auto *binary = dynamic_cast<const language::nodes::binary_op_c *>(expr)) {
+  if (auto *binary = expr->as_binary_op()) {
     auto cloned_left = clone_expr_for_compound_assignment(binary->left());
     auto cloned_right = clone_expr_for_compound_assignment(binary->right());
     if (!cloned_left || !cloned_right) {

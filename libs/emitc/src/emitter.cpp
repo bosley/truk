@@ -161,7 +161,7 @@ void emitter_c::internal_finalize() {
     if (func_name == "main") {
       _result.metadata.main_function_count++;
       for (const auto &[decl, file] : _decl_to_file) {
-        if (auto *fn = dynamic_cast<const fn_c *>(decl)) {
+        if (auto *fn = decl->as_fn()) {
           if (fn->name().name == "main") {
             main_file = file;
             break;
@@ -248,7 +248,7 @@ void emitter_c::ensure_tuple_typedef(
   }
 
   for (const auto *elem_type : element_types) {
-    if (auto map = dynamic_cast<const map_type_c *>(elem_type)) {
+    if (auto map = elem_type->as_map_type()) {
       ensure_map_typedef(map->key_type(), map->value_type());
     }
   }
@@ -259,7 +259,7 @@ void emitter_c::ensure_tuple_typedef(
 
     std::vector<size_t> array_dims;
     const type_c *base_type = elem_type;
-    while (auto arr = dynamic_cast<const array_type_c *>(base_type)) {
+    while (auto arr = base_type->as_array_type()) {
       if (arr->size().has_value()) {
         array_dims.push_back(arr->size().value());
         base_type = arr->element_type();
@@ -268,7 +268,7 @@ void emitter_c::ensure_tuple_typedef(
       }
     }
 
-    if (auto func = dynamic_cast<const function_type_c *>(base_type)) {
+    if (auto func = base_type->as_function_type()) {
       std::string ret_type = emit_type(func->return_type());
       _structs << "  " << ret_type << " (*_" << i;
       for (size_t dim : array_dims) {
@@ -292,7 +292,7 @@ void emitter_c::ensure_tuple_typedef(
     } else {
       _structs << "  " << emit_type(elem_type) << " _" << i;
       const type_c *current_type = elem_type;
-      while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+      while (auto arr = current_type->as_array_type()) {
         if (arr->size().has_value()) {
           _structs << "[" << arr->size().value() << "]";
           current_type = arr->element_type();
@@ -313,7 +313,7 @@ bool emitter_c::is_map_type(const type_c *type) {
 }
 
 bool emitter_c::is_array_type(const type_c *type) {
-  if (auto arr = dynamic_cast<const array_type_c *>(type)) {
+  if (auto arr = type->as_array_type()) {
     return arr->size().has_value();
   }
   return false;
@@ -322,7 +322,7 @@ bool emitter_c::is_array_type(const type_c *type) {
 std::string emitter_c::get_array_dimensions(const type_c *type) {
   std::string dims;
   const type_c *current = type;
-  while (auto arr = dynamic_cast<const array_type_c *>(current)) {
+  while (auto arr = current->as_array_type()) {
     if (arr->size().has_value()) {
       dims += "[" + std::to_string(arr->size().value()) + "]";
       current = arr->element_type();
@@ -334,10 +334,10 @@ std::string emitter_c::get_array_dimensions(const type_c *type) {
 }
 
 std::string emitter_c::get_map_hash_fn(const type_c *key_type) {
-  if (auto *ptr = dynamic_cast<const pointer_type_c *>(key_type)) {
+  if (auto *ptr = key_type->as_pointer_type()) {
     return "__truk_map_hash_str";
   }
-  if (auto *prim = dynamic_cast<const primitive_type_c *>(key_type)) {
+  if (auto *prim = key_type->as_primitive_type()) {
     switch (prim->keyword()) {
     case keywords_e::I8:
       return "__truk_map_hash_i8";
@@ -369,17 +369,17 @@ std::string emitter_c::get_map_hash_fn(const type_c *key_type) {
 }
 
 std::string emitter_c::get_map_cmp_fn(const type_c *key_type) {
-  if (auto *ptr = dynamic_cast<const pointer_type_c *>(key_type)) {
+  if (auto *ptr = key_type->as_pointer_type()) {
     return "__truk_map_cmp_str";
   }
   return "__truk_map_cmp_mem";
 }
 
 int emitter_c::get_key_size(const type_c *key_type) {
-  if (auto *ptr = dynamic_cast<const pointer_type_c *>(key_type)) {
+  if (auto *ptr = key_type->as_pointer_type()) {
     return sizeof(void *);
   }
-  if (auto *prim = dynamic_cast<const primitive_type_c *>(key_type)) {
+  if (auto *prim = key_type->as_primitive_type()) {
     switch (prim->keyword()) {
     case keywords_e::I8:
     case keywords_e::U8:
@@ -453,13 +453,10 @@ void emitter_c::visit(const fn_c &node) {
     if (node.name().name.rfind("test_", 0) == 0) {
       if (node.params().size() == 1) {
         const auto &param = node.params()[0];
-        if (auto ptr_type =
-                dynamic_cast<const pointer_type_c *>(param.type.get())) {
-          if (auto named_type = dynamic_cast<const named_type_c *>(
-                  ptr_type->pointee_type())) {
+        if (auto ptr_type = param.type.get()->as_pointer_type()) {
+          if (auto named_type = ptr_type->pointee_type()->as_named_type()) {
             if (named_type->name().name == "__truk_test_context_s") {
-              if (auto prim_ret = dynamic_cast<const primitive_type_c *>(
-                      node.return_type())) {
+              if (auto prim_ret = node.return_type()->as_primitive_type()) {
                 if (prim_ret->keyword() == keywords_e::VOID) {
                   if (node.name().name == "test_setup") {
                     _result.metadata.has_test_setup = true;
@@ -492,8 +489,7 @@ void emitter_c::visit(const fn_c &node) {
   bool is_private = is_private_identifier(node.name().name);
   bool is_library = _result.metadata.is_library();
 
-  if (auto func_return =
-          dynamic_cast<const function_type_c *>(node.return_type())) {
+  if (auto func_return = node.return_type()->as_function_type()) {
     // Function returning a function pointer - needs special syntax
     std::string ret_type = emit_type(func_return->return_type());
 
@@ -531,7 +527,7 @@ void emitter_c::visit(const fn_c &node) {
         _functions << ", ";
       register_variable_type(param.name.name, param.type.get());
 
-      if (auto func = dynamic_cast<const function_type_c *>(param.type.get())) {
+      if (auto func = param.type.get()->as_function_type()) {
         std::string ret_type = emit_type(func->return_type());
         _functions << ret_type << " (*" << param.name.name << ")(";
 
@@ -561,7 +557,7 @@ void emitter_c::visit(const fn_c &node) {
       }
 
       const type_c *current_type = param.type.get();
-      while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+      while (auto arr = current_type->as_array_type()) {
         if (arr->size().has_value()) {
           _functions << "[" << arr->size().value() << "]";
           current_type = arr->element_type();
@@ -577,8 +573,7 @@ void emitter_c::visit(const fn_c &node) {
   _functions << ")";
 
   // If returning a function pointer, add the return type parameters
-  if (auto func_return =
-          dynamic_cast<const function_type_c *>(node.return_type())) {
+  if (auto func_return = node.return_type()->as_function_type()) {
     _functions << ")(";
 
     const auto &ret_param_types = func_return->param_types();
@@ -606,7 +601,7 @@ void emitter_c::visit(const fn_c &node) {
   _current_function_name = node.name().name;
   _current_function_return_type = node.return_type();
 
-  if (auto tuple = dynamic_cast<const tuple_type_c *>(node.return_type())) {
+  if (auto tuple = node.return_type()->as_tuple_type()) {
     std::vector<const type_c *> elem_types;
     for (const auto &elem : tuple->element_types()) {
       elem_types.push_back(elem.get());
@@ -630,7 +625,7 @@ void emitter_c::visit(const fn_c &node) {
       _functions << node.params()[non_variadic_count - 1].name.name;
       _functions << ");\n";
 
-      auto *body_block = dynamic_cast<const block_c *>(node.body());
+      auto *body_block = node.body()->as_block();
       if (body_block) {
         for (const auto &stmt : body_block->statements()) {
           stmt->accept(*this);
@@ -646,7 +641,7 @@ void emitter_c::visit(const fn_c &node) {
     } else {
       push_defer_scope(defer_scope_s::scope_type_e::FUNCTION, &node);
 
-      if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+      if (auto *body_block = node.body()->as_block()) {
         _functions << "{\n";
         _indent_level++;
         for (const auto &stmt : body_block->statements()) {
@@ -713,7 +708,7 @@ void emitter_c::visit(const lambda_c &node) {
 
     register_variable_type(param.name.name, param.type.get());
 
-    if (auto func = dynamic_cast<const function_type_c *>(param.type.get())) {
+    if (auto func = param.type.get()->as_function_type()) {
       std::string ret_type = emit_type(func->return_type());
       std::string func_param = ret_type + " (*" + param.name.name + ")(";
 
@@ -747,7 +742,7 @@ void emitter_c::visit(const lambda_c &node) {
     }
 
     const type_c *current_type = param.type.get();
-    while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+    while (auto arr = current_type->as_array_type()) {
       if (arr->size().has_value()) {
         _header << "[" << arr->size().value() << "]";
         _functions << "[" << arr->size().value() << "]";
@@ -771,7 +766,7 @@ void emitter_c::visit(const lambda_c &node) {
   _current_function_name = lambda_name;
   _current_function_return_type = node.return_type();
 
-  if (auto tuple = dynamic_cast<const tuple_type_c *>(node.return_type())) {
+  if (auto tuple = node.return_type()->as_tuple_type()) {
     std::vector<const type_c *> elem_types;
     for (const auto &elem : tuple->element_types()) {
       elem_types.push_back(elem.get());
@@ -786,7 +781,7 @@ void emitter_c::visit(const lambda_c &node) {
     _functions << " ";
     push_defer_scope(defer_scope_s::scope_type_e::LAMBDA, &node);
 
-    if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+    if (auto *body_block = node.body()->as_block()) {
       _functions << "{\n";
       _indent_level++;
       for (const auto &stmt : body_block->statements()) {
@@ -846,7 +841,7 @@ void emitter_c::visit(const struct_c &node) {
     _structs << "  " << field_type << " " << field.name.name;
 
     const type_c *current_type = field.type.get();
-    while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+    while (auto arr = current_type->as_array_type()) {
       if (arr->size().has_value()) {
         _structs << "[" << arr->size().value() << "]";
         current_type = arr->element_type();
@@ -876,7 +871,7 @@ void emitter_c::visit(const var_c &node) {
 
   register_variable_type(node.name().name, node.type());
 
-  if (auto map = dynamic_cast<const map_type_c *>(node.type())) {
+  if (auto map = node.type()->as_map_type()) {
     ensure_map_typedef(map->key_type(), map->value_type());
   }
 
@@ -885,7 +880,7 @@ void emitter_c::visit(const var_c &node) {
 
   std::vector<size_t> array_dims;
   const type_c *base_type = node.type();
-  while (auto arr = dynamic_cast<const array_type_c *>(base_type)) {
+  while (auto arr = base_type->as_array_type()) {
     if (arr->size().has_value()) {
       array_dims.push_back(arr->size().value());
       base_type = arr->element_type();
@@ -895,7 +890,7 @@ void emitter_c::visit(const var_c &node) {
     }
   }
 
-  if (auto func = dynamic_cast<const function_type_c *>(base_type)) {
+  if (auto func = base_type->as_function_type()) {
     std::string ret_type = emit_type(func->return_type());
     std::string func_decl = ret_type + " (*" + node.name().name;
 
@@ -948,7 +943,7 @@ void emitter_c::visit(const var_c &node) {
     }
 
     const type_c *current_type = node.type();
-    while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+    while (auto arr = current_type->as_array_type()) {
       if (arr->size().has_value()) {
         _functions << "[" << arr->size().value() << "]";
         current_type = arr->element_type();
@@ -991,14 +986,14 @@ void emitter_c::visit(const let_c &node) {
 
     register_variable_type(var_name, var_type);
 
-    if (auto map = dynamic_cast<const map_type_c *>(var_type)) {
+    if (auto map = var_type->as_map_type()) {
       ensure_map_typedef(map->key_type(), map->value_type());
     }
 
     bool is_private = is_private_identifier(var_name);
     bool is_library = _result.metadata.is_library();
 
-    if (auto func = dynamic_cast<const function_type_c *>(var_type)) {
+    if (auto func = var_type->as_function_type()) {
       std::string ret_type = emit_type(func->return_type());
       std::string func_decl = ret_type + " (*" + var_name + ")(";
 
@@ -1046,7 +1041,7 @@ void emitter_c::visit(const let_c &node) {
     }
 
     const type_c *current_type = var_type;
-    while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+    while (auto arr = current_type->as_array_type()) {
       if (arr->size().has_value()) {
         _functions << "[" << arr->size().value() << "]";
         current_type = arr->element_type();
@@ -1089,7 +1084,7 @@ void emitter_c::visit(const let_c &node) {
 
       std::vector<size_t> array_dims;
       const type_c *base_type = var_type;
-      while (auto arr = dynamic_cast<const array_type_c *>(base_type)) {
+      while (auto arr = base_type->as_array_type()) {
         if (arr->size().has_value()) {
           array_dims.push_back(arr->size().value());
           base_type = arr->element_type();
@@ -1098,7 +1093,7 @@ void emitter_c::visit(const let_c &node) {
         }
       }
 
-      if (auto func = dynamic_cast<const function_type_c *>(base_type)) {
+      if (auto func = base_type->as_function_type()) {
         std::string ret_type = emit_type(func->return_type());
         _functions << ret_type << " (*" << var_name;
         for (size_t dim : array_dims) {
@@ -1160,7 +1155,7 @@ void emitter_c::visit(const const_c &node) {
   }
 
   const type_c *current_type = node.type();
-  while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+  while (auto arr = current_type->as_array_type()) {
     if (arr->size().has_value()) {
       _functions << "[" << arr->size().value() << "]";
       current_type = arr->element_type();
@@ -1193,7 +1188,7 @@ void emitter_c::visit(const while_c &node) {
 
   push_defer_scope(defer_scope_s::scope_type_e::LOOP, &node);
 
-  if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+  if (auto *body_block = node.body()->as_block()) {
     _functions << "{\n";
     _indent_level++;
     for (const auto &stmt : body_block->statements()) {
@@ -1216,7 +1211,7 @@ void emitter_c::visit(const for_c &node) {
   _functions << cdef::indent(_indent_level) << "for (";
 
   if (node.init()) {
-    if (dynamic_cast<const var_c *>(node.init())) {
+    if (node.init()->as_var()) {
       std::stringstream temp_functions;
       std::swap(temp_functions, _functions);
 
@@ -1255,7 +1250,7 @@ void emitter_c::visit(const for_c &node) {
 
   push_defer_scope(defer_scope_s::scope_type_e::LOOP, &node);
 
-  if (auto *body_block = dynamic_cast<const block_c *>(node.body())) {
+  if (auto *body_block = node.body()->as_block()) {
     _functions << "{\n";
     _indent_level++;
     for (const auto &stmt : body_block->statements()) {
@@ -1381,13 +1376,13 @@ void emitter_c::visit(const identifier_c &node) {
 void emitter_c::visit(const assignment_c &node) {
   bool was_in_expr = _in_expression;
 
-  if (auto idx = dynamic_cast<const index_c *>(node.target())) {
+  if (auto idx = node.target()->as_index()) {
     bool is_slice = false;
     bool is_map = false;
-    if (auto ident = dynamic_cast<const identifier_c *>(idx->object())) {
+    if (auto ident = idx->object()->as_identifier()) {
       is_slice = is_variable_slice(ident->id().name);
       is_map = is_variable_map(ident->id().name);
-    } else if (auto inner_idx = dynamic_cast<const index_c *>(idx->object())) {
+    } else if (auto inner_idx = idx->object()->as_index()) {
       is_slice = false;
       is_map = false;
     } else {
@@ -1401,11 +1396,11 @@ void emitter_c::visit(const assignment_c &node) {
       std::string value = emit_expression(node.value());
 
       bool key_is_slice = false;
-      if (auto key_ident = dynamic_cast<const identifier_c *>(idx->index())) {
+      if (auto key_ident = idx->index()->as_identifier()) {
         key_is_slice = is_variable_slice(key_ident->id().name);
       }
 
-      auto *key_literal = dynamic_cast<const literal_c *>(idx->index());
+      auto *key_literal = idx->index()->as_literal();
       bool key_is_string_literal =
           key_literal && key_literal->type() == literal_type_e::STRING;
       bool key_is_non_string_literal = key_literal && !key_is_string_literal;
@@ -1641,12 +1636,11 @@ std::string emitter_c::emit_expr_index(const index_c &node) {
 
   bool is_slice = false;
   bool is_map = false;
-  if (auto ident = dynamic_cast<const identifier_c *>(node.object())) {
+  if (auto ident = node.object()->as_identifier()) {
     is_slice = is_variable_slice(ident->id().name);
     is_map = is_variable_map(ident->id().name);
-  } else if (auto inner_idx = dynamic_cast<const index_c *>(node.object())) {
-    if (auto inner_ident =
-            dynamic_cast<const identifier_c *>(inner_idx->object())) {
+  } else if (auto inner_idx = node.object()->as_index()) {
+    if (auto inner_ident = inner_idx->object()->as_identifier()) {
       if (is_variable_slice(inner_ident->id().name)) {
         is_slice = false;
       } else {
@@ -1661,12 +1655,12 @@ std::string emitter_c::emit_expr_index(const index_c &node) {
 
   if (is_map) {
     bool key_is_slice = false;
-    auto *key_literal = dynamic_cast<const literal_c *>(node.index());
+    auto *key_literal = node.index()->as_literal();
     bool key_is_string_literal =
         key_literal && key_literal->type() == literal_type_e::STRING;
     bool key_is_non_string_literal = key_literal && !key_is_string_literal;
 
-    if (auto key_ident = dynamic_cast<const identifier_c *>(node.index())) {
+    if (auto key_ident = node.index()->as_identifier()) {
       key_is_slice = is_variable_slice(key_ident->id().name);
     }
 
@@ -1693,7 +1687,7 @@ std::string emitter_c::emit_expr_index(const index_c &node) {
 }
 
 std::string emitter_c::emit_expr_call(const call_c &node) {
-  if (auto ident = dynamic_cast<const identifier_c *>(node.callee())) {
+  if (auto ident = node.callee()->as_identifier()) {
     if (auto *handler = _builtin_registry.get_handler(ident->id().name)) {
       std::stringstream temp_expr;
       std::swap(temp_expr, _current_expr);
@@ -1750,8 +1744,7 @@ void emitter_c::emit_scope_defers(defer_scope_s *scope) {
   for (auto it = scope->defers.rbegin(); it != scope->defers.rend(); ++it) {
     const auto *defer_node = *it;
     if (defer_node->deferred_code()) {
-      if (auto block =
-              dynamic_cast<const block_c *>(defer_node->deferred_code())) {
+      if (auto block = defer_node->deferred_code()->as_block()) {
         _functions << cdef::indent(_indent_level) << "{\n";
         _indent_level++;
         for (const auto &stmt : block->statements()) {

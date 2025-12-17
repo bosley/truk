@@ -10,28 +10,28 @@ nodes::type_ptr clone_type(const nodes::type_c *type) {
     return nullptr;
   }
 
-  if (auto *primitive = dynamic_cast<const primitive_type_c *>(type)) {
+  if (auto *primitive = type->as_primitive_type()) {
     return std::make_unique<primitive_type_c>(primitive->keyword(),
                                               primitive->source_index());
   }
 
-  if (auto *named = dynamic_cast<const named_type_c *>(type)) {
+  if (auto *named = type->as_named_type()) {
     return std::make_unique<named_type_c>(named->source_index(), named->name());
   }
 
-  if (auto *pointer = dynamic_cast<const pointer_type_c *>(type)) {
+  if (auto *pointer = type->as_pointer_type()) {
     auto pointee = clone_type(pointer->pointee_type());
     return std::make_unique<pointer_type_c>(pointer->source_index(),
                                             std::move(pointee));
   }
 
-  if (auto *array = dynamic_cast<const array_type_c *>(type)) {
+  if (auto *array = type->as_array_type()) {
     auto element = clone_type(array->element_type());
     return std::make_unique<array_type_c>(array->source_index(),
                                           std::move(element), array->size());
   }
 
-  if (auto *function = dynamic_cast<const function_type_c *>(type)) {
+  if (auto *function = type->as_function_type()) {
     std::vector<type_ptr> param_types;
     for (const auto &param : function->param_types()) {
       param_types.push_back(clone_type(param.get()));

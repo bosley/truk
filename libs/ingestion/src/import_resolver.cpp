@@ -394,16 +394,15 @@ void import_resolver_c::extract_imports_and_declarations(
     std::vector<base_ptr> &parsed_decls, const std::string &file_path) {
 
   for (auto &decl : parsed_decls) {
-    if (auto *import_node = dynamic_cast<const import_c *>(decl.get())) {
+    if (auto *import_node = decl.get()->as_import()) {
       std::string resolved_path =
           resolve_import_path(import_node->path(), file_path);
       process_file(resolved_path);
-    } else if (auto *cimport_node =
-                   dynamic_cast<const cimport_c *>(decl.get())) {
+    } else if (auto *cimport_node = decl.get()->as_cimport()) {
       _c_imports.push_back(
           {.path = cimport_node->path(),
            .is_angle_bracket = cimport_node->is_angle_bracket()});
-    } else if (auto *shard_node = dynamic_cast<const shard_c *>(decl.get())) {
+    } else if (auto *shard_node = decl.get()->as_shard()) {
       _file_to_shards[file_path].push_back(shard_node->name());
     } else {
       _decl_to_file[decl.get()] = file_path;

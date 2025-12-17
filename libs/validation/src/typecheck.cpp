@@ -112,7 +112,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return nullptr;
   }
 
-  if (auto *primitive = dynamic_cast<const primitive_type_c *>(type_node)) {
+  if (auto *primitive = type_node->as_primitive_type()) {
     std::string type_name =
         language::keywords_c::to_string(primitive->keyword());
     auto *base_type = lookup_type(type_name);
@@ -122,7 +122,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return std::make_unique<type_entry_s>(*base_type);
   }
 
-  if (auto *named = dynamic_cast<const named_type_c *>(type_node)) {
+  if (auto *named = type_node->as_named_type()) {
     auto *base_type = lookup_type(named->name().name);
     if (!base_type) {
       return nullptr;
@@ -130,7 +130,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return std::make_unique<type_entry_s>(*base_type);
   }
 
-  if (auto *pointer = dynamic_cast<const pointer_type_c *>(type_node)) {
+  if (auto *pointer = type_node->as_pointer_type()) {
     auto pointee = resolve_type(pointer->pointee_type());
     if (!pointee) {
       return nullptr;
@@ -143,7 +143,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return resolved;
   }
 
-  if (auto *array = dynamic_cast<const array_type_c *>(type_node)) {
+  if (auto *array = type_node->as_array_type()) {
     auto element = resolve_type(array->element_type());
     if (!element) {
       return nullptr;
@@ -156,7 +156,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return resolved;
   }
 
-  if (auto *function = dynamic_cast<const function_type_c *>(type_node)) {
+  if (auto *function = type_node->as_function_type()) {
     auto func_type =
         std::make_unique<type_entry_s>(type_kind_e::FUNCTION, "function");
 
@@ -177,7 +177,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return func_type;
   }
 
-  if (auto *map = dynamic_cast<const map_type_c *>(type_node)) {
+  if (auto *map = type_node->as_map_type()) {
     auto key_type = resolve_type(map->key_type());
     auto value_type = resolve_type(map->value_type());
 
@@ -200,7 +200,7 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return resolved;
   }
 
-  if (auto *tuple = dynamic_cast<const tuple_type_c *>(type_node)) {
+  if (auto *tuple = type_node->as_tuple_type()) {
     auto result = std::make_unique<type_entry_s>(type_kind_e::TUPLE, "tuple");
 
     for (const auto &elem_type : tuple->element_types()) {
@@ -222,35 +222,35 @@ std::string type_checker_c::get_type_name_for_error(const type_c *type_node) {
     return "<unknown>";
   }
 
-  if (auto *primitive = dynamic_cast<const primitive_type_c *>(type_node)) {
+  if (auto *primitive = type_node->as_primitive_type()) {
     return language::keywords_c::to_string(primitive->keyword());
   }
 
-  if (auto *named = dynamic_cast<const named_type_c *>(type_node)) {
+  if (auto *named = type_node->as_named_type()) {
     return named->name().name;
   }
 
-  if (auto *pointer = dynamic_cast<const pointer_type_c *>(type_node)) {
+  if (auto *pointer = type_node->as_pointer_type()) {
     return "*" + get_type_name_for_error(pointer->pointee_type());
   }
 
-  if (auto *array = dynamic_cast<const array_type_c *>(type_node)) {
+  if (auto *array = type_node->as_array_type()) {
     std::string size_str =
         array->size().has_value() ? std::to_string(array->size().value()) : "";
     return "[" + size_str + "]" +
            get_type_name_for_error(array->element_type());
   }
 
-  if (auto *function = dynamic_cast<const function_type_c *>(type_node)) {
+  if (auto *function = type_node->as_function_type()) {
     return "fn";
   }
 
-  if (auto *map = dynamic_cast<const map_type_c *>(type_node)) {
+  if (auto *map = type_node->as_map_type()) {
     return "map[" + get_type_name_for_error(map->key_type()) + ", " +
            get_type_name_for_error(map->value_type()) + "]";
   }
 
-  if (auto *tuple = dynamic_cast<const tuple_type_c *>(type_node)) {
+  if (auto *tuple = type_node->as_tuple_type()) {
     std::string result = "(";
     for (size_t i = 0; i < tuple->element_types().size(); ++i) {
       if (i > 0)
@@ -558,7 +558,7 @@ void type_checker_c::validate_builtin_call(const call_c &node,
     }
 
     const auto *first_arg_type_param =
-        dynamic_cast<const type_param_c *>(node.arguments()[0].get());
+        node.arguments()[0].get()->as_type_param();
     if (!first_arg_type_param) {
       report_error(
           "Builtin 'make' requires a type parameter (use @type syntax)",
@@ -819,7 +819,7 @@ void type_checker_c::validate_builtin_call(const call_c &node,
     }
 
     const auto *first_arg_type_param =
-        dynamic_cast<const type_param_c *>(node.arguments()[0].get());
+        node.arguments()[0].get()->as_type_param();
     if (!first_arg_type_param) {
       report_error("Builtin '" + builtin->name +
                        "' requires a type parameter (use @type syntax)",
@@ -840,7 +840,7 @@ void type_checker_c::validate_builtin_call(const call_c &node,
     return;
   }
 
-  auto *func_sig = dynamic_cast<const function_type_c *>(signature.get());
+  auto *func_sig = signature.get()->as_function_type();
   if (!func_sig) {
     report_error("Internal error: builtin signature is not a function type",
                  node.source_index());
@@ -1729,7 +1729,7 @@ void type_checker_c::visit(const cast_c &node) {
 
 void type_checker_c::visit(const call_c &node) {
   std::string func_name;
-  if (auto *id_node = dynamic_cast<const identifier_c *>(node.callee())) {
+  if (auto *id_node = node.callee()->as_identifier()) {
     func_name = id_node->id().name;
   }
 
@@ -2004,7 +2004,7 @@ void type_checker_c::visit(const assignment_c &node) {
   bool is_map_assignment = false;
   const type_entry_s *map_value_type = nullptr;
 
-  if (auto *index = dynamic_cast<const index_c *>(node.target())) {
+  if (auto *index = node.target()->as_index()) {
     index->object()->accept(*this);
     auto object_type = std::move(_current_expression_type);
 

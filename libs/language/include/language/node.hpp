@@ -10,6 +10,92 @@ namespace truk::language::nodes {
 
 class visitor_if;
 
+enum class node_kind_e {
+  PRIMITIVE_TYPE,
+  NAMED_TYPE,
+  POINTER_TYPE,
+  ARRAY_TYPE,
+  FUNCTION_TYPE,
+  MAP_TYPE,
+  TUPLE_TYPE,
+  FN,
+  LAMBDA,
+  STRUCT,
+  VAR,
+  CONST,
+  LET,
+  IF,
+  WHILE,
+  FOR,
+  RETURN,
+  BREAK,
+  CONTINUE,
+  DEFER,
+  BINARY_OP,
+  UNARY_OP,
+  CAST,
+  CALL,
+  INDEX,
+  MEMBER_ACCESS,
+  LITERAL,
+  IDENTIFIER,
+  ASSIGNMENT,
+  BLOCK,
+  ARRAY_LITERAL,
+  STRUCT_LITERAL,
+  TYPE_PARAM,
+  IMPORT,
+  CIMPORT,
+  SHARD
+};
+
+enum class type_kind_e {
+  PRIMITIVE,
+  NAMED,
+  POINTER,
+  ARRAY,
+  FUNCTION,
+  MAP,
+  TUPLE
+};
+
+class primitive_type_c;
+class named_type_c;
+class pointer_type_c;
+class array_type_c;
+class function_type_c;
+class map_type_c;
+class tuple_type_c;
+class fn_c;
+class lambda_c;
+class struct_c;
+class var_c;
+class const_c;
+class let_c;
+class if_c;
+class while_c;
+class for_c;
+class return_c;
+class break_c;
+class continue_c;
+class defer_c;
+class binary_op_c;
+class unary_op_c;
+class cast_c;
+class call_c;
+class index_c;
+class member_access_c;
+class literal_c;
+class identifier_c;
+class assignment_c;
+class block_c;
+class array_literal_c;
+class struct_literal_c;
+class type_param_c;
+class import_c;
+class cimport_c;
+class shard_c;
+
 class base_c {
 public:
   base_c() = delete;
@@ -23,6 +109,45 @@ public:
   virtual std::optional<std::string> symbol_name() const {
     return std::nullopt;
   }
+
+  virtual node_kind_e kind() const = 0;
+
+  virtual const primitive_type_c *as_primitive_type() const { return nullptr; }
+  virtual const named_type_c *as_named_type() const { return nullptr; }
+  virtual const pointer_type_c *as_pointer_type() const { return nullptr; }
+  virtual const array_type_c *as_array_type() const { return nullptr; }
+  virtual const function_type_c *as_function_type() const { return nullptr; }
+  virtual const map_type_c *as_map_type() const { return nullptr; }
+  virtual const tuple_type_c *as_tuple_type() const { return nullptr; }
+  virtual const fn_c *as_fn() const { return nullptr; }
+  virtual const lambda_c *as_lambda() const { return nullptr; }
+  virtual const struct_c *as_struct() const { return nullptr; }
+  virtual const var_c *as_var() const { return nullptr; }
+  virtual const const_c *as_const() const { return nullptr; }
+  virtual const let_c *as_let() const { return nullptr; }
+  virtual const if_c *as_if() const { return nullptr; }
+  virtual const while_c *as_while() const { return nullptr; }
+  virtual const for_c *as_for() const { return nullptr; }
+  virtual const return_c *as_return() const { return nullptr; }
+  virtual const break_c *as_break() const { return nullptr; }
+  virtual const continue_c *as_continue() const { return nullptr; }
+  virtual const defer_c *as_defer() const { return nullptr; }
+  virtual const binary_op_c *as_binary_op() const { return nullptr; }
+  virtual const unary_op_c *as_unary_op() const { return nullptr; }
+  virtual const cast_c *as_cast() const { return nullptr; }
+  virtual const call_c *as_call() const { return nullptr; }
+  virtual const index_c *as_index() const { return nullptr; }
+  virtual const member_access_c *as_member_access() const { return nullptr; }
+  virtual const literal_c *as_literal() const { return nullptr; }
+  virtual const identifier_c *as_identifier() const { return nullptr; }
+  virtual const assignment_c *as_assignment() const { return nullptr; }
+  virtual const block_c *as_block() const { return nullptr; }
+  virtual const array_literal_c *as_array_literal() const { return nullptr; }
+  virtual const struct_literal_c *as_struct_literal() const { return nullptr; }
+  virtual const type_param_c *as_type_param() const { return nullptr; }
+  virtual const import_c *as_import() const { return nullptr; }
+  virtual const cimport_c *as_cimport() const { return nullptr; }
+  virtual const shard_c *as_shard() const { return nullptr; }
 
   virtual ~base_c() = default;
 
@@ -48,6 +173,16 @@ public:
   type_c(keywords_e keyword, std::size_t source_index)
       : base_c(keyword, source_index) {}
   virtual ~type_c() = default;
+
+  virtual type_kind_e type_kind() const = 0;
+
+  const primitive_type_c *as_primitive_type() const override { return nullptr; }
+  const named_type_c *as_named_type() const override { return nullptr; }
+  const pointer_type_c *as_pointer_type() const override { return nullptr; }
+  const array_type_c *as_array_type() const override { return nullptr; }
+  const function_type_c *as_function_type() const override { return nullptr; }
+  const map_type_c *as_map_type() const override { return nullptr; }
+  const tuple_type_c *as_tuple_type() const override { return nullptr; }
 };
 
 using type_ptr = std::unique_ptr<type_c>;
@@ -78,6 +213,9 @@ public:
       : type_c(primitive_keyword, source_index) {}
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::PRIMITIVE_TYPE; }
+  type_kind_e type_kind() const override { return type_kind_e::PRIMITIVE; }
+  const primitive_type_c *as_primitive_type() const override { return this; }
 };
 
 class named_type_c : public type_c {
@@ -90,6 +228,9 @@ public:
   const identifier_s &name() const { return _name; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::NAMED_TYPE; }
+  type_kind_e type_kind() const override { return type_kind_e::NAMED; }
+  const named_type_c *as_named_type() const override { return this; }
 
 private:
   identifier_s _name;
@@ -105,6 +246,9 @@ public:
   const type_c *pointee_type() const { return _pointee_type.get(); }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::POINTER_TYPE; }
+  type_kind_e type_kind() const override { return type_kind_e::POINTER; }
+  const pointer_type_c *as_pointer_type() const override { return this; }
 
 private:
   type_ptr _pointee_type;
@@ -122,6 +266,9 @@ public:
   std::optional<std::size_t> size() const { return _size; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::ARRAY_TYPE; }
+  type_kind_e type_kind() const override { return type_kind_e::ARRAY; }
+  const array_type_c *as_array_type() const override { return this; }
 
 private:
   type_ptr _element_type;
@@ -142,6 +289,9 @@ public:
   bool has_variadic() const { return _has_variadic; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::FUNCTION_TYPE; }
+  type_kind_e type_kind() const override { return type_kind_e::FUNCTION; }
+  const function_type_c *as_function_type() const override { return this; }
 
 private:
   std::vector<type_ptr> _param_types;
@@ -160,6 +310,9 @@ public:
   const type_c *value_type() const { return _value_type.get(); }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::MAP_TYPE; }
+  type_kind_e type_kind() const override { return type_kind_e::MAP; }
+  const map_type_c *as_map_type() const override { return this; }
 
 private:
   type_ptr _key_type;
@@ -177,6 +330,9 @@ public:
   std::size_t arity() const { return _element_types.size(); }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::TUPLE_TYPE; }
+  type_kind_e type_kind() const override { return type_kind_e::TUPLE; }
+  const tuple_type_c *as_tuple_type() const override { return this; }
 
 private:
   std::vector<type_ptr> _element_types;
@@ -200,6 +356,8 @@ public:
 
   void accept(visitor_if &visitor) const override;
   std::optional<std::string> symbol_name() const override { return _name.name; }
+  node_kind_e kind() const override { return node_kind_e::FN; }
+  const fn_c *as_fn() const override { return this; }
 
 private:
   identifier_s _name;
@@ -224,6 +382,8 @@ public:
   bool is_capturing() const { return _is_capturing; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::LAMBDA; }
+  const lambda_c *as_lambda() const override { return this; }
 
 private:
   std::vector<parameter_s> _params;
@@ -246,6 +406,8 @@ public:
 
   void accept(visitor_if &visitor) const override;
   std::optional<std::string> symbol_name() const override { return _name.name; }
+  node_kind_e kind() const override { return node_kind_e::STRUCT; }
+  const struct_c *as_struct() const override { return this; }
 
 private:
   identifier_s _name;
@@ -272,6 +434,8 @@ public:
 
   void accept(visitor_if &visitor) const override;
   std::optional<std::string> symbol_name() const override { return _name.name; }
+  node_kind_e kind() const override { return node_kind_e::VAR; }
+  const var_c *as_var() const override { return this; }
 
 private:
   identifier_s _name;
@@ -294,6 +458,8 @@ public:
 
   void accept(visitor_if &visitor) const override;
   std::optional<std::string> symbol_name() const override { return _name.name; }
+  node_kind_e kind() const override { return node_kind_e::CONST; }
+  const const_c *as_const() const override { return this; }
 
 private:
   identifier_s _name;
@@ -327,6 +493,8 @@ public:
     return is_single() ? std::optional<std::string>(_names[0].name)
                        : std::nullopt;
   }
+  node_kind_e kind() const override { return node_kind_e::LET; }
+  const let_c *as_let() const override { return this; }
 
 private:
   std::vector<identifier_s> _names;
@@ -350,6 +518,8 @@ public:
   }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::IF; }
+  const if_c *as_if() const override { return this; }
 
 private:
   base_ptr _condition;
@@ -368,6 +538,8 @@ public:
   const base_c *body() const { return _body.get(); }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::WHILE; }
+  const while_c *as_while() const override { return this; }
 
 private:
   base_ptr _condition;
@@ -392,6 +564,8 @@ public:
   const base_c *body() const { return _body.get(); }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::FOR; }
+  const for_c *as_for() const override { return this; }
 
 private:
   std::optional<base_ptr> _init;
@@ -413,6 +587,8 @@ public:
   bool is_multiple() const { return _expressions.size() > 1; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::RETURN; }
+  const return_c *as_return() const override { return this; }
 
 private:
   std::vector<base_ptr> _expressions;
@@ -424,6 +600,8 @@ public:
   break_c(std::size_t source_index) : base_c(keywords_e::BREAK, source_index) {}
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::BREAK; }
+  const break_c *as_break() const override { return this; }
 };
 
 class continue_c : public base_c {
@@ -433,6 +611,8 @@ public:
       : base_c(keywords_e::CONTINUE, source_index) {}
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::CONTINUE; }
+  const continue_c *as_continue() const override { return this; }
 };
 
 class defer_c : public base_c {
@@ -445,6 +625,8 @@ public:
   const base_c *deferred_code() const { return _deferred_code.get(); }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::DEFER; }
+  const defer_c *as_defer() const override { return this; }
 
 private:
   base_ptr _deferred_code;
@@ -484,6 +666,8 @@ public:
   const base_c *right() const { return _right.get(); }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::BINARY_OP; }
+  const binary_op_c *as_binary_op() const override { return this; }
 
 private:
   binary_op_e _op;
@@ -504,6 +688,8 @@ public:
   const base_c *operand() const { return _operand.get(); }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::UNARY_OP; }
+  const unary_op_c *as_unary_op() const override { return this; }
 
 private:
   unary_op_e _op;
@@ -522,6 +708,8 @@ public:
   const type_c *target_type() const { return _target_type.get(); }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::CAST; }
+  const cast_c *as_cast() const override { return this; }
 
 private:
   base_ptr _expression;
@@ -540,6 +728,8 @@ public:
   const std::vector<base_ptr> &arguments() const { return _arguments; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::CALL; }
+  const call_c *as_call() const override { return this; }
 
 private:
   base_ptr _callee;
@@ -557,6 +747,8 @@ public:
   const base_c *index() const { return _index.get(); }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::INDEX; }
+  const index_c *as_index() const override { return this; }
 
 private:
   base_ptr _object;
@@ -574,6 +766,8 @@ public:
   const identifier_s &field() const { return _field; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::MEMBER_ACCESS; }
+  const member_access_c *as_member_access() const override { return this; }
 
 private:
   base_ptr _object;
@@ -590,6 +784,8 @@ public:
   const type_c *type() const { return _type.get(); }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::TYPE_PARAM; }
+  const type_param_c *as_type_param() const override { return this; }
 
 private:
   type_ptr _type;
@@ -608,6 +804,8 @@ public:
   const std::string &value() const { return _value; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::LITERAL; }
+  const literal_c *as_literal() const override { return this; }
 
 private:
   literal_type_e _type;
@@ -623,6 +821,8 @@ public:
   const identifier_s &id() const { return _id; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::IDENTIFIER; }
+  const identifier_c *as_identifier() const override { return this; }
 
 private:
   identifier_s _id;
@@ -639,6 +839,8 @@ public:
   const base_c *value() const { return _value.get(); }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::ASSIGNMENT; }
+  const assignment_c *as_assignment() const override { return this; }
 
 private:
   base_ptr _target;
@@ -655,6 +857,8 @@ public:
   const std::vector<base_ptr> &statements() const { return _statements; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::BLOCK; }
+  const block_c *as_block() const override { return this; }
 
 private:
   std::vector<base_ptr> _statements;
@@ -670,6 +874,8 @@ public:
   const std::vector<base_ptr> &elements() const { return _elements; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::ARRAY_LITERAL; }
+  const array_literal_c *as_array_literal() const override { return this; }
 
 private:
   std::vector<base_ptr> _elements;
@@ -699,6 +905,8 @@ public:
   }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::STRUCT_LITERAL; }
+  const struct_literal_c *as_struct_literal() const override { return this; }
 
 private:
   identifier_s _struct_name;
@@ -714,6 +922,8 @@ public:
   const std::string &path() const { return _path; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::IMPORT; }
+  const import_c *as_import() const override { return this; }
 
 private:
   std::string _path;
@@ -735,6 +945,8 @@ public:
   bool is_angle_bracket() const { return _is_angle_bracket; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::CIMPORT; }
+  const cimport_c *as_cimport() const override { return this; }
 
 private:
   std::string _path;
@@ -750,6 +962,8 @@ public:
   const std::string &name() const { return _name; }
 
   void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::SHARD; }
+  const shard_c *as_shard() const override { return this; }
 
 private:
   std::string _name;

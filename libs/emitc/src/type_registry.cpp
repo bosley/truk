@@ -12,7 +12,7 @@ std::string type_registry_c::get_c_type(const type_c *type) {
     return "__truk_void";
   }
 
-  if (auto prim = dynamic_cast<const primitive_type_c *>(type)) {
+  if (auto prim = type->as_primitive_type()) {
     switch (prim->keyword()) {
     case keywords_e::I8:
       return "__truk_i8";
@@ -43,7 +43,7 @@ std::string type_registry_c::get_c_type(const type_c *type) {
     }
   }
 
-  if (auto named = dynamic_cast<const named_type_c *>(type)) {
+  if (auto named = type->as_named_type()) {
     const std::string &name = named->name().name;
     if (_extern_struct_names.count(name)) {
       return "struct " + name;
@@ -51,11 +51,11 @@ std::string type_registry_c::get_c_type(const type_c *type) {
     return name;
   }
 
-  if (auto ptr = dynamic_cast<const pointer_type_c *>(type)) {
+  if (auto ptr = type->as_pointer_type()) {
     return get_c_type(ptr->pointee_type()) + "*";
   }
 
-  if (auto arr = dynamic_cast<const array_type_c *>(type)) {
+  if (auto arr = type->as_array_type()) {
     if (arr->size().has_value()) {
       return get_c_type(arr->element_type());
     } else {
@@ -63,11 +63,11 @@ std::string type_registry_c::get_c_type(const type_c *type) {
     }
   }
 
-  if (auto map = dynamic_cast<const map_type_c *>(type)) {
+  if (auto map = type->as_map_type()) {
     return get_map_type_name(map->key_type(), map->value_type());
   }
 
-  if (auto tuple = dynamic_cast<const tuple_type_c *>(type)) {
+  if (auto tuple = type->as_tuple_type()) {
     std::string name = "__truk_tuple";
     for (const auto &elem : tuple->element_types()) {
       std::string elem_type = get_c_type(elem.get());
@@ -85,7 +85,7 @@ std::string type_registry_c::get_c_type(const type_c *type) {
     return name;
   }
 
-  if (auto func = dynamic_cast<const function_type_c *>(type)) {
+  if (auto func = type->as_function_type()) {
     std::string ret_type = get_c_type(func->return_type());
     std::string func_type = ret_type + " (*)(";
 
@@ -120,16 +120,16 @@ std::string type_registry_c::get_c_type_for_sizeof(const type_c *type) {
     return "__truk_void";
   }
 
-  if (auto prim = dynamic_cast<const primitive_type_c *>(type)) {
+  if (auto prim = type->as_primitive_type()) {
     return get_c_type(prim);
   }
 
-  if (auto named = dynamic_cast<const named_type_c *>(type)) {
+  if (auto named = type->as_named_type()) {
     return named->name().name;
   }
 
-  if (auto ptr = dynamic_cast<const pointer_type_c *>(type)) {
-    if (auto arr = dynamic_cast<const array_type_c *>(ptr->pointee_type())) {
+  if (auto ptr = type->as_pointer_type()) {
+    if (auto arr = ptr->pointee_type()->as_array_type()) {
       if (arr->size().has_value()) {
         std::string base = get_c_type_for_sizeof(arr->element_type());
         return base + "(*)[" + std::to_string(arr->size().value()) + "]";
@@ -138,7 +138,7 @@ std::string type_registry_c::get_c_type_for_sizeof(const type_c *type) {
     return get_c_type_for_sizeof(ptr->pointee_type()) + "*";
   }
 
-  if (auto arr = dynamic_cast<const array_type_c *>(type)) {
+  if (auto arr = type->as_array_type()) {
     if (arr->size().has_value()) {
       std::string base = get_c_type_for_sizeof(arr->element_type());
       return base + "[" + std::to_string(arr->size().value()) + "]";
@@ -157,7 +157,7 @@ type_registry_c::get_array_pointer_type(const type_c *array_type,
     return "";
   }
 
-  auto arr = dynamic_cast<const array_type_c *>(array_type);
+  auto arr = array_type->as_array_type();
   if (!arr || !arr->size().has_value()) {
     return "";
   }
@@ -166,7 +166,7 @@ type_registry_c::get_array_pointer_type(const type_c *array_type,
   std::vector<size_t> dimensions;
 
   const type_c *current = array_type;
-  while (auto current_arr = dynamic_cast<const array_type_c *>(current)) {
+  while (auto current_arr = current->as_array_type()) {
     if (current_arr->size().has_value()) {
       dimensions.push_back(current_arr->size().value());
       current = current_arr->element_type();
@@ -209,7 +209,7 @@ void type_registry_c::ensure_slice_typedef(const type_c *element_type,
     _slice_types_emitted.insert(slice_name);
     std::string elem_type_for_sizeof = get_c_type_for_sizeof(element_type);
 
-    if (auto arr = dynamic_cast<const array_type_c *>(element_type)) {
+    if (auto arr = element_type->as_array_type()) {
       if (arr->size().has_value()) {
         std::string pointer_type = get_array_pointer_type(element_type, "data");
         header_stream << "typedef struct {\n  " << pointer_type
@@ -223,7 +223,7 @@ void type_registry_c::ensure_slice_typedef(const type_c *element_type,
 }
 
 bool type_registry_c::is_slice_type(const type_c *type) {
-  if (auto arr = dynamic_cast<const array_type_c *>(type)) {
+  if (auto arr = type->as_array_type()) {
     return !arr->size().has_value();
   }
   return false;
@@ -265,7 +265,7 @@ void type_registry_c::ensure_map_typedef(const type_c *key_type,
 }
 
 bool type_registry_c::is_map_type(const type_c *type) {
-  return dynamic_cast<const map_type_c *>(type) != nullptr;
+  return type->as_map_type() != nullptr;
 }
 
 void type_registry_c::register_struct_name(const std::string &name) {
