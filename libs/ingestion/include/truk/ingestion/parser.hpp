@@ -80,6 +80,7 @@ private:
   language::nodes::type_ptr parse_array_type();
   language::nodes::type_ptr parse_pointer_type();
   language::nodes::type_ptr parse_function_type();
+  language::nodes::type_ptr parse_tuple_type();
 
   language::nodes::base_ptr parse_statement();
   language::nodes::base_ptr parse_block();

@@ -166,6 +166,22 @@ private:
   type_ptr _value_type;
 };
 
+class tuple_type_c : public type_c {
+public:
+  tuple_type_c() = delete;
+  tuple_type_c(std::size_t source_index, std::vector<type_ptr> element_types)
+      : type_c(keywords_e::UNKNOWN_KEYWORD, source_index),
+        _element_types(std::move(element_types)) {}
+
+  const std::vector<type_ptr> &element_types() const { return _element_types; }
+  std::size_t arity() const { return _element_types.size(); }
+
+  void accept(visitor_if &visitor) const override;
+
+private:
+  std::vector<type_ptr> _element_types;
+};
+
 class fn_c : public base_c {
 public:
   fn_c() = delete;
@@ -288,25 +304,34 @@ private:
 class let_c : public base_c {
 public:
   let_c() = delete;
-  let_c(std::size_t source_index, identifier_s name, base_ptr initializer)
-      : base_c(keywords_e::LET, source_index), _name(std::move(name)),
+  let_c(std::size_t source_index, std::vector<identifier_s> names,
+        base_ptr initializer)
+      : base_c(keywords_e::LET, source_index), _names(std::move(names)),
         _initializer(std::move(initializer)) {}
 
-  const identifier_s &name() const { return _name; }
+  const std::vector<identifier_s> &names() const { return _names; }
   const base_c *initializer() const { return _initializer.get(); }
-  const type_c *inferred_type() const { return _inferred_type.get(); }
+  const std::vector<type_ptr> &inferred_types() const {
+    return _inferred_types;
+  }
 
-  void set_inferred_type(type_ptr type) const {
-    _inferred_type = std::move(type);
+  bool is_single() const { return _names.size() == 1; }
+  bool is_destructuring() const { return _names.size() > 1; }
+
+  void set_inferred_types(std::vector<type_ptr> types) const {
+    _inferred_types = std::move(types);
   }
 
   void accept(visitor_if &visitor) const override;
-  std::optional<std::string> symbol_name() const override { return _name.name; }
+  std::optional<std::string> symbol_name() const override {
+    return is_single() ? std::optional<std::string>(_names[0].name)
+                       : std::nullopt;
+  }
 
 private:
-  identifier_s _name;
+  std::vector<identifier_s> _names;
   base_ptr _initializer;
-  mutable type_ptr _inferred_type;
+  mutable std::vector<type_ptr> _inferred_types;
 };
 
 class if_c : public base_c {
@@ -378,19 +403,19 @@ private:
 class return_c : public base_c {
 public:
   return_c() = delete;
-  return_c(std::size_t source_index,
-           std::optional<base_ptr> expression = std::nullopt)
+  return_c(std::size_t source_index, std::vector<base_ptr> expressions)
       : base_c(keywords_e::RETURN, source_index),
-        _expression(std::move(expression)) {}
+        _expressions(std::move(expressions)) {}
 
-  const base_c *expression() const {
-    return _expression ? _expression->get() : nullptr;
-  }
+  const std::vector<base_ptr> &expressions() const { return _expressions; }
+  bool is_void() const { return _expressions.empty(); }
+  bool is_single() const { return _expressions.size() == 1; }
+  bool is_multiple() const { return _expressions.size() > 1; }
 
   void accept(visitor_if &visitor) const override;
 
 private:
-  std::optional<base_ptr> _expression;
+  std::vector<base_ptr> _expressions;
 };
 
 class break_c : public base_c {

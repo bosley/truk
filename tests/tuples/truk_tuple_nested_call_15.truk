@@ -1,0 +1,12 @@
+fn inner() : (i32, i32) {
+  return 5, 10;
+}
+
+fn outer() : i32 {
+  let a, b = inner();
+  return a + b;
+}
+
+fn main() : i32 {
+  return outer();
+}

@@ -44,12 +44,17 @@ var_decl        ::= "var" IDENTIFIER type_annotation ("=" expression)? ";"
 
 const_decl      ::= "const" IDENTIFIER type_annotation "=" expression ";"
 
+let_decl        ::= "let" identifier_list "=" expression ";"
+
+identifier_list ::= IDENTIFIER ("," IDENTIFIER)*
+
 type_annotation ::= ":" type
 
 type            ::= primitive_type
                   | array_type
                   | pointer_type
                   | map_type
+                  | tuple_type
                   | IDENTIFIER
 
 primitive_type  ::= "i8" | "i16" | "i32" | "i64"
@@ -63,11 +68,14 @@ pointer_type    ::= "*" type
 
 map_type        ::= "map" "[" type "," type "]"
 
+tuple_type      ::= "(" type ("," type)+ ")"
+
 block           ::= "{" statement* "}"
 
 statement       ::= expression_stmt
                   | var_decl
                   | const_decl
+                  | let_decl
                   | if_stmt
                   | while_stmt
                   | for_stmt
@@ -85,7 +93,7 @@ while_stmt      ::= "while" expression block
 
 for_stmt        ::= "for" expression? ";" expression? ";" expression? block
 
-return_stmt     ::= "return" expression? ";"
+return_stmt     ::= "return" (expression ("," expression)*)? ";"
 
 break_stmt      ::= "break" ";"
 
@@ -151,7 +159,7 @@ struct_literal  ::= IDENTIFIER "{" (field_init ("," field_init)* ","?)? "}"
 
 field_init      ::= IDENTIFIER ":" expression
 
-IDENTIFIER      ::= [a-zA-Z_][a-zA-Z0-9_]*
+IDENTIFIER      ::= [a-zA-Z_][a-zA-Z0-9_]* | "_"
 
 INTEGER         ::= [0-9]+ | "0x"[0-9a-fA-F]+ | "0b"[01]+ | "0o"[0-7]+
 

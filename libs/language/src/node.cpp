@@ -19,6 +19,8 @@ void function_type_c::accept(visitor_if &visitor) const {
 
 void map_type_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
+void tuple_type_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
+
 void fn_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void lambda_c::accept(visitor_if &visitor) const { visitor.visit(*this); }

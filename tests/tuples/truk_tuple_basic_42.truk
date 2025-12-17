@@ -1,0 +1,8 @@
+fn get_values() : (i32, i32) {
+  return 10, 32;
+}
+
+fn main() : i32 {
+  let x, y = get_values();
+  return x + y;
+}

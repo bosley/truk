@@ -191,6 +191,20 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return resolved;
   }
 
+  if (auto *tuple = dynamic_cast<const tuple_type_c *>(type_node)) {
+    auto result = std::make_unique<type_entry_s>(type_kind_e::TUPLE, "tuple");
+
+    for (const auto &elem_type : tuple->element_types()) {
+      auto resolved = resolve_type(elem_type.get());
+      if (!resolved) {
+        return nullptr;
+      }
+      result->tuple_element_types.push_back(std::move(resolved));
+    }
+
+    return result;
+  }
+
   return nullptr;
 }
 
@@ -227,6 +241,17 @@ std::string type_checker_c::get_type_name_for_error(const type_c *type_node) {
            get_type_name_for_error(map->value_type()) + "]";
   }
 
+  if (auto *tuple = dynamic_cast<const tuple_type_c *>(type_node)) {
+    std::string result = "(";
+    for (size_t i = 0; i < tuple->element_types().size(); ++i) {
+      if (i > 0)
+        result += ", ";
+      result += get_type_name_for_error(tuple->element_types()[i].get());
+    }
+    result += ")";
+    return result;
+  }
+
   return "<unknown>";
 }
 
@@ -259,6 +284,17 @@ std::string type_checker_c::get_type_name_from_entry(const type_entry_s *type) {
              ", " + get_type_name_from_entry(type->map_value_type.get()) + "]";
     }
     return "map[<unknown>, <unknown>]";
+  }
+
+  if (type->kind == type_kind_e::TUPLE) {
+    std::string result = "(";
+    for (size_t i = 0; i < type->tuple_element_types.size(); ++i) {
+      if (i > 0)
+        result += ", ";
+      result += get_type_name_from_entry(type->tuple_element_types[i].get());
+    }
+    result += ")";
+    return result;
   }
 
   return base_name;
@@ -978,6 +1014,14 @@ void type_checker_c::visit(const map_type_c &node) {
   _current_expression_type = std::move(map_type);
 }
 
+void type_checker_c::visit(const tuple_type_c &node) {
+  for (const auto &elem_type : node.element_types()) {
+    if (elem_type) {
+      elem_type->accept(*this);
+    }
+  }
+}
+
 void type_checker_c::visit(const fn_c &node) {
   auto it = _decl_to_file.find(&node);
   if (it != _decl_to_file.end()) {
@@ -1174,7 +1218,11 @@ void type_checker_c::visit(const var_c &node) {
 void type_checker_c::visit(const let_c &node) {
   auto it = _decl_to_file.find(&node);
   if (it != _decl_to_file.end()) {
-    _global_to_file[node.name().name] = it->second;
+    for (const auto &name : node.names()) {
+      if (name.name != "_") {
+        _global_to_file[name.name] = it->second;
+      }
+    }
   }
 
   if (!node.initializer()) {
@@ -1190,21 +1238,58 @@ void type_checker_c::visit(const let_c &node) {
     return;
   }
 
-  auto inferred_type =
-      std::make_unique<type_entry_s>(*_current_expression_type);
+  if (node.is_single()) {
+    auto inferred_type =
+        std::make_unique<type_entry_s>(*_current_expression_type);
 
-  if (inferred_type->kind == type_kind_e::VOID_TYPE) {
-    report_error("Cannot declare variable with void type", node.source_index());
-    return;
+    if (inferred_type->kind == type_kind_e::VOID_TYPE) {
+      report_error("Cannot declare variable with void type",
+                   node.source_index());
+      return;
+    }
+
+    std::vector<type_ptr> type_nodes;
+    auto type_node = create_type_node_from_entry(inferred_type.get());
+    if (type_node) {
+      type_nodes.push_back(std::move(type_node));
+      node.set_inferred_types(std::move(type_nodes));
+    }
+
+    const std::string &var_name = node.names()[0].name;
+    if (var_name != "_") {
+      register_symbol(var_name, std::move(inferred_type), true,
+                      node.source_index());
+    }
+  } else {
+    if (_current_expression_type->kind != type_kind_e::TUPLE) {
+      report_error("Destructuring requires a tuple type", node.source_index());
+      return;
+    }
+
+    if (node.names().size() !=
+        _current_expression_type->tuple_element_types.size()) {
+      report_error("Destructuring arity mismatch", node.source_index());
+      return;
+    }
+
+    std::vector<type_ptr> type_nodes;
+    for (size_t i = 0; i < node.names().size(); ++i) {
+      const auto &var_name = node.names()[i].name;
+      auto elem_type = std::make_unique<type_entry_s>(
+          *_current_expression_type->tuple_element_types[i]);
+
+      auto type_node = create_type_node_from_entry(elem_type.get());
+      if (type_node) {
+        type_nodes.push_back(std::move(type_node));
+      }
+
+      if (var_name != "_") {
+        register_symbol(var_name, std::move(elem_type), true,
+                        node.source_index());
+      }
+    }
+    node.set_inferred_types(std::move(type_nodes));
   }
-
-  auto type_node = create_type_node_from_entry(inferred_type.get());
-  if (type_node) {
-    node.set_inferred_type(std::move(type_node));
-  }
-
-  register_symbol(node.name().name, std::move(inferred_type), true,
-                  node.source_index());
 }
 
 void type_checker_c::visit(const const_c &node) {
@@ -1306,26 +1391,59 @@ void type_checker_c::visit(const for_c &node) {
 }
 
 void type_checker_c::visit(const return_c &node) {
-  if (node.expression()) {
-    node.expression()->accept(*this);
+  if (!_current_function_return_type) {
+    report_error("Return statement outside of function", node.source_index());
+    return;
+  }
 
-    if (_current_function_return_type) {
-      if (!_current_expression_type) {
-        report_error("Return expression has no type", node.source_index());
-      } else {
-        _current_expression_type =
-            resolve_untyped_literal(_current_expression_type.get(),
-                                    _current_function_return_type.get());
-        if (!is_compatible_for_assignment(_current_function_return_type.get(),
-                                          _current_expression_type.get())) {
-          report_error("Return type mismatch", node.source_index());
-        }
+  if (node.is_void()) {
+    if (_current_function_return_type->kind != type_kind_e::VOID_TYPE) {
+      report_error("Function must return a value", node.source_index());
+    }
+    return;
+  }
+
+  if (node.is_single()) {
+    node.expressions()[0]->accept(*this);
+
+    if (_current_expression_type) {
+      _current_expression_type = resolve_untyped_literal(
+          _current_expression_type.get(), _current_function_return_type.get());
+      if (!is_compatible_for_assignment(_current_function_return_type.get(),
+                                        _current_expression_type.get())) {
+        report_error("Return type mismatch", node.source_index());
       }
     }
-  } else {
-    if (_current_function_return_type &&
-        _current_function_return_type->name != "void") {
-      report_error("Function must return a value", node.source_index());
+    return;
+  }
+
+  if (node.is_multiple()) {
+    if (_current_function_return_type->kind != type_kind_e::TUPLE) {
+      report_error("Function does not return a tuple", node.source_index());
+      return;
+    }
+
+    if (node.expressions().size() !=
+        _current_function_return_type->tuple_element_types.size()) {
+      report_error("Tuple arity mismatch in return", node.source_index());
+      return;
+    }
+
+    for (size_t i = 0; i < node.expressions().size(); ++i) {
+      node.expressions()[i]->accept(*this);
+
+      if (_current_expression_type) {
+        auto expected =
+            _current_function_return_type->tuple_element_types[i].get();
+        _current_expression_type =
+            resolve_untyped_literal(_current_expression_type.get(), expected);
+        if (!is_compatible_for_assignment(expected,
+                                          _current_expression_type.get())) {
+          report_error("Tuple element type mismatch at position " +
+                           std::to_string(i),
+                       node.source_index());
+        }
+      }
     }
   }
 }
@@ -2158,6 +2276,8 @@ void symbol_collector_c::visit(const array_type_c &node) {}
 void symbol_collector_c::visit(const function_type_c &node) {}
 void symbol_collector_c::visit(const map_type_c &node) {}
 
+void symbol_collector_c::visit(const tuple_type_c &node) {}
+
 void symbol_collector_c::visit(const fn_c &node) {
   auto it = _decl_to_file.find(&node);
   if (it != _decl_to_file.end()) {
@@ -2293,26 +2413,33 @@ void symbol_collector_c::visit(const let_c &node) {
     node.initializer()->accept(*this);
   }
 
-  auto let_type = std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "let");
-  auto let_symbol = std::make_unique<symbol_entry_s>(
-      node.name().name, std::move(let_type), true, node.source_index());
+  for (const auto &name : node.names()) {
+    if (name.name == "_") {
+      continue;
+    }
 
-  if (_current_scope->kind == scope_kind_e::GLOBAL) {
-    let_symbol->scope_kind = symbol_scope_e::GLOBAL;
-    _result.global_symbols[node.name().name] = let_symbol.get();
-  } else if (_current_scope->kind == scope_kind_e::LAMBDA ||
-             (_current_scope->parent &&
-              _current_scope->parent->kind == scope_kind_e::LAMBDA)) {
-    let_symbol->scope_kind = symbol_scope_e::LAMBDA_LOCAL;
-  } else {
-    let_symbol->scope_kind = symbol_scope_e::FUNCTION_LOCAL;
+    auto let_type =
+        std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "let");
+    auto let_symbol = std::make_unique<symbol_entry_s>(
+        name.name, std::move(let_type), true, node.source_index());
+
+    if (_current_scope->kind == scope_kind_e::GLOBAL) {
+      let_symbol->scope_kind = symbol_scope_e::GLOBAL;
+      _result.global_symbols[name.name] = let_symbol.get();
+    } else if (_current_scope->kind == scope_kind_e::LAMBDA ||
+               (_current_scope->parent &&
+                _current_scope->parent->kind == scope_kind_e::LAMBDA)) {
+      let_symbol->scope_kind = symbol_scope_e::LAMBDA_LOCAL;
+    } else {
+      let_symbol->scope_kind = symbol_scope_e::FUNCTION_LOCAL;
+    }
+
+    let_symbol->declaring_node = &node;
+
+    auto *let_symbol_ptr = let_symbol.get();
+    _memory.set(name.name, std::move(let_symbol));
+    _current_scope->symbols[name.name] = let_symbol_ptr;
   }
-
-  let_symbol->declaring_node = &node;
-
-  auto *let_symbol_ptr = let_symbol.get();
-  _memory.set(node.name().name, std::move(let_symbol));
-  _current_scope->symbols[node.name().name] = let_symbol_ptr;
 }
 
 void symbol_collector_c::visit(const const_c &node) {
@@ -2372,8 +2499,10 @@ void symbol_collector_c::visit(const for_c &node) {
 }
 
 void symbol_collector_c::visit(const return_c &node) {
-  if (node.expression()) {
-    node.expression()->accept(*this);
+  for (const auto &expr : node.expressions()) {
+    if (expr) {
+      expr->accept(*this);
+    }
   }
 }
 
@@ -2514,6 +2643,8 @@ void lambda_capture_validator_c::visit(const array_type_c &node) {}
 void lambda_capture_validator_c::visit(const function_type_c &node) {}
 void lambda_capture_validator_c::visit(const map_type_c &node) {}
 
+void lambda_capture_validator_c::visit(const tuple_type_c &node) {}
+
 void lambda_capture_validator_c::visit(const fn_c &node) {
   auto it = _symbols.scope_map.find(&node);
   if (it != _symbols.scope_map.end()) {
@@ -2611,8 +2742,10 @@ void lambda_capture_validator_c::visit(const for_c &node) {
 }
 
 void lambda_capture_validator_c::visit(const return_c &node) {
-  if (node.expression()) {
-    node.expression()->accept(*this);
+  for (const auto &expr : node.expressions()) {
+    if (expr) {
+      expr->accept(*this);
+    }
   }
 }
 
@@ -2861,6 +2994,17 @@ type_checker_c::create_type_node_from_entry(const type_entry_s *entry) {
       return nullptr;
     return std::make_unique<language::nodes::map_type_c>(0, std::move(key_type),
                                                          std::move(value_type));
+  }
+  case type_kind_e::TUPLE: {
+    std::vector<language::nodes::type_ptr> element_types;
+    for (const auto &elem : entry->tuple_element_types) {
+      auto elem_type = create_type_node_from_entry(elem.get());
+      if (!elem_type)
+        return nullptr;
+      element_types.push_back(std::move(elem_type));
+    }
+    return std::make_unique<language::nodes::tuple_type_c>(
+        0, std::move(element_types));
   }
   case type_kind_e::VOID_TYPE: {
     return std::make_unique<language::nodes::primitive_type_c>(

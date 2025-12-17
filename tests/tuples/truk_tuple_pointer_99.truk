@@ -1,0 +1,14 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+fn get_point_data() : (i32, *Point) {
+  var p: Point = Point{x: 50, y: 49};
+  return 99, &p;
+}
+
+fn main() : i32 {
+  let code, ptr = get_point_data();
+  return code;
+}

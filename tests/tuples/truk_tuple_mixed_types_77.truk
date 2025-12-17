@@ -1,0 +1,8 @@
+fn get_mixed() : (i32, *u8, bool) {
+  return 77, "hello", true;
+}
+
+fn main() : i32 {
+  let num, txt, flag = get_mixed();
+  return num;
+}

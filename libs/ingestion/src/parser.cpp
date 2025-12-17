@@ -353,8 +353,10 @@ language::nodes::base_ptr parser_c::parse_lambda() {
   } else {
     auto expr = parse_expression();
     std::vector<language::nodes::base_ptr> statements;
+    std::vector<language::nodes::base_ptr> return_exprs;
+    return_exprs.push_back(std::move(expr));
     statements.push_back(std::make_unique<language::nodes::return_c>(
-        expr->source_index(), std::move(expr)));
+        return_exprs[0]->source_index(), std::move(return_exprs)));
     body = std::make_unique<language::nodes::block_c>(fn_token.source_index,
                                                       std::move(statements));
   }
@@ -442,9 +444,13 @@ language::nodes::base_ptr parser_c::parse_const_decl() {
 language::nodes::base_ptr parser_c::parse_let_decl() {
   const auto &let_token =
       consume_keyword(language::keywords_e::LET, "Expected 'let' keyword");
-  const auto &name_token = consume_identifier("Expected variable name");
-  language::nodes::identifier_s name(name_token.lexeme,
-                                     name_token.source_index);
+
+  std::vector<language::nodes::identifier_s> names;
+
+  do {
+    const auto &name_token = consume_identifier("Expected variable name");
+    names.emplace_back(name_token.lexeme, name_token.source_index);
+  } while (match(token_type_e::COMMA));
 
   consume(token_type_e::EQUAL, "Expected '=' in let declaration");
 
@@ -453,7 +459,7 @@ language::nodes::base_ptr parser_c::parse_let_decl() {
   consume(token_type_e::SEMICOLON, "Expected ';' after let declaration");
 
   return std::make_unique<language::nodes::let_c>(
-      let_token.source_index, std::move(name), std::move(initializer));
+      let_token.source_index, std::move(names), std::move(initializer));
 }
 
 language::nodes::type_ptr parser_c::parse_type_annotation() {
@@ -467,6 +473,9 @@ language::nodes::type_ptr parser_c::parse_type_internal() {
   }
   if (check(token_type_e::LEFT_BRACKET)) {
     return parse_array_type();
+  }
+  if (check(token_type_e::LEFT_PAREN)) {
+    return parse_tuple_type();
   }
   if (check(token_type_e::KEYWORD)) {
     const auto &token = peek();
@@ -614,6 +623,32 @@ language::nodes::type_ptr parser_c::parse_function_type() {
       fn_token.source_index, std::move(param_types), std::move(return_type));
 }
 
+language::nodes::type_ptr parser_c::parse_tuple_type() {
+  const auto &paren_token = consume(token_type_e::LEFT_PAREN, "Expected '('");
+
+  std::vector<language::nodes::type_ptr> element_types;
+
+  if (!check(token_type_e::RIGHT_PAREN)) {
+    do {
+      auto elem_type = parse_type_internal();
+      if (!elem_type) {
+        throw parse_error("Expected type in tuple", peek().line, peek().column);
+      }
+      element_types.push_back(std::move(elem_type));
+    } while (match(token_type_e::COMMA));
+  }
+
+  consume(token_type_e::RIGHT_PAREN, "Expected ')' after tuple types");
+
+  if (element_types.size() < 2) {
+    throw parse_error("Tuple must have at least 2 elements", paren_token.line,
+                      paren_token.column);
+  }
+
+  return std::make_unique<language::nodes::tuple_type_c>(
+      paren_token.source_index, std::move(element_types));
+}
+
 language::nodes::base_ptr parser_c::parse_statement() {
   if (check_keyword(language::keywords_e::VAR)) {
     return parse_var_decl();
@@ -748,15 +783,18 @@ language::nodes::base_ptr parser_c::parse_return_stmt() {
   const auto &return_token = consume_keyword(language::keywords_e::RETURN,
                                              "Expected 'return' keyword");
 
-  std::optional<language::nodes::base_ptr> expression = std::nullopt;
+  std::vector<language::nodes::base_ptr> expressions;
+
   if (!check(token_type_e::SEMICOLON)) {
-    expression = parse_expression();
+    do {
+      expressions.push_back(parse_expression());
+    } while (match(token_type_e::COMMA));
   }
 
   consume(token_type_e::SEMICOLON, "Expected ';' after return statement");
 
   return std::make_unique<language::nodes::return_c>(return_token.source_index,
-                                                     std::move(expression));
+                                                     std::move(expressions));
 }
 
 language::nodes::base_ptr parser_c::parse_break_stmt() {

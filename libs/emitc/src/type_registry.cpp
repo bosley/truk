@@ -67,6 +67,24 @@ std::string type_registry_c::get_c_type(const type_c *type) {
     return get_map_type_name(map->key_type(), map->value_type());
   }
 
+  if (auto tuple = dynamic_cast<const tuple_type_c *>(type)) {
+    std::string name = "__truk_tuple";
+    for (const auto &elem : tuple->element_types()) {
+      std::string elem_type = get_c_type(elem.get());
+      for (char c : elem_type) {
+        if (c == '*') {
+          name += "_ptr";
+        } else if (c == '[' || c == ']') {
+        } else if (c == ' ') {
+          name += "_";
+        } else {
+          name += c;
+        }
+      }
+    }
+    return name;
+  }
+
   if (auto func = dynamic_cast<const function_type_c *>(type)) {
     std::string ret_type = get_c_type(func->return_type());
     std::string func_type = ret_type + " (*)(";

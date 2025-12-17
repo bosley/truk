@@ -43,6 +43,14 @@ void dependency_visitor_c::visit(const map_type_c &node) {
   }
 }
 
+void dependency_visitor_c::visit(const tuple_type_c &node) {
+  for (const auto &elem_type : node.element_types()) {
+    if (elem_type) {
+      elem_type->accept(*this);
+    }
+  }
+}
+
 void dependency_visitor_c::visit(const fn_c &node) {
   if (node.return_type()) {
     node.return_type()->accept(*this);
@@ -102,7 +110,11 @@ void dependency_visitor_c::visit(const const_c &node) {
 }
 
 void dependency_visitor_c::visit(const let_c &node) {
-  _local_scope.insert(node.name().name);
+  for (const auto &name : node.names()) {
+    if (name.name != "_") {
+      _local_scope.insert(name.name);
+    }
+  }
   if (node.initializer()) {
     node.initializer()->accept(*this);
   }
@@ -150,8 +162,10 @@ void dependency_visitor_c::visit(const for_c &node) {
 }
 
 void dependency_visitor_c::visit(const return_c &node) {
-  if (node.expression()) {
-    node.expression()->accept(*this);
+  for (const auto &expr : node.expressions()) {
+    if (expr) {
+      expr->accept(*this);
+    }
   }
 }
 
