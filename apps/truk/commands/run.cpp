@@ -49,8 +49,7 @@ int run(const run_options_s &opts) {
   std::unordered_map<std::string, std::vector<std::string>> file_to_shards;
   for (const auto &decl : parse_result.declarations) {
     decl_to_file[decl.get()] = opts.input_file;
-    if (auto *shard_node =
-            dynamic_cast<const truk::language::nodes::shard_c *>(decl.get())) {
+    if (auto *shard_node = decl.get()->as_shard()){
       file_to_shards[opts.input_file].push_back(shard_node->name());
     }
   }
