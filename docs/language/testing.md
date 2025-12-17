@@ -14,6 +14,8 @@ The `truk test` command provides a built-in testing framework for discovering an
 |----------|------------|-------------|
 | `__truk_test_fail` | `t: *__truk_test_context_s`<br>`msg: *u8` | Manually fail the test with a message |
 | `__truk_test_log` | `t: *__truk_test_context_s`<br>`msg: *u8` | Log a message during test execution |
+| `__truk_test_get_argc` | `t: *__truk_test_context_s` | Get argc from test context (returns `i32`) |
+| `__truk_test_get_argv` | `t: *__truk_test_context_s` | Get argv from test context (returns `**i8`) |
 | `__truk_test_assert_i8` | `t: *__truk_test_context_s`<br>`expected: i8`<br>`actual: i8`<br>`msg: *u8` | Assert i8 equality |
 | `__truk_test_assert_i16` | `t: *__truk_test_context_s`<br>`expected: i16`<br>`actual: i16`<br>`msg: *u8` | Assert i16 equality |
 | `__truk_test_assert_i32` | `t: *__truk_test_context_s`<br>`expected: i32`<br>`actual: i32`<br>`msg: *u8` | Assert i32 equality |
@@ -76,6 +78,9 @@ truk test math.truk
 
 # Test all files in a directory (recursive)
 truk test tests/
+
+# Pass arguments to tests using --
+truk test math.truk -- --verbose --filter=addition
 ```
 
 ### Output
@@ -274,6 +279,72 @@ fn test_custom(t: *__truk_test_context_s) : void {
   }
 }
 ```
+
+## Accessing Command-Line Arguments
+
+Tests can access command-line arguments passed after the `--` separator using accessor functions:
+
+```truk
+extern fn __truk_test_get_argc(t: *__truk_test_context_s) : i32;
+extern fn __truk_test_get_argv(t: *__truk_test_context_s) : **i8;
+```
+
+### Usage
+
+Pass arguments to your tests:
+
+```bash
+truk test mytest.truk -- --verbose --filter=foo --count=10
+```
+
+Access them in your test:
+
+```truk
+extern struct __truk_test_context_s;
+extern fn __truk_test_get_argc(t: *__truk_test_context_s) : i32;
+extern fn __truk_test_get_argv(t: *__truk_test_context_s) : **i8;
+extern fn __truk_test_log(t: *__truk_test_context_s, msg: *u8) : void;
+extern fn __truk_test_assert_true(t: *__truk_test_context_s, 
+                                   condition: bool, 
+                                   msg: *u8) : void;
+
+cimport <stdio.h>;
+extern fn printf(fmt: *i8, ...args): i32;
+
+fn test_with_args(t: *__truk_test_context_s) : void {
+  var argc: i32 = __truk_test_get_argc(t);
+  var argv: **i8 = __truk_test_get_argv(t);
+  
+  printf("Test received %d arguments\n", argc);
+  
+  var i: i32 = 0;
+  while i < argc {
+    printf("  arg[%d]: %s\n", i, argv[i]);
+    i = i + 1;
+  }
+  
+  __truk_test_assert_true(t, argc >= 1, "should have at least argv[0]");
+}
+```
+
+**Output:**
+```
+Running test_with_args...
+Test received 4 arguments
+  arg[0]: mytest.truk
+  arg[1]: --verbose
+  arg[2]: --filter=foo
+  arg[3]: --count=10
+  PASSED (1 assertions)
+
+1/1 tests passed
+```
+
+**Notes:**
+- `argv[0]` is always the test filename
+- Arguments are available to all test functions in the file
+- Arguments persist across multiple tests in the same file
+- Use this for test configuration, filtering, or verbose output
 
 ## Multiple Tests
 
@@ -565,7 +636,7 @@ truk test tests/ || echo "Tests failed!"
 
 ## Limitations
 
-- No test filtering (all tests in a file run)
+- No built-in test filtering (but can be implemented using command-line arguments)
 - No test parallelization
 - No test coverage reporting
 - No parameterized tests
@@ -608,6 +679,48 @@ fn test_complex_logic(t: *__truk_test_context_s) : void {
   __truk_test_assert_true(t, result2, "or condition");
 }
 ```
+
+### Custom Test Filtering
+
+Use command-line arguments to implement custom test filtering:
+
+```truk
+extern struct __truk_test_context_s;
+extern fn __truk_test_get_argc(t: *__truk_test_context_s) : i32;
+extern fn __truk_test_get_argv(t: *__truk_test_context_s) : **i8;
+extern fn __truk_test_log(t: *__truk_test_context_s, msg: *u8) : void;
+
+cimport <string.h>;
+extern fn strstr(haystack: *i8, needle: *i8) : *i8;
+
+fn should_run_test(t: *__truk_test_context_s, test_name: *i8) : bool {
+  var argc: i32 = __truk_test_get_argc(t);
+  var argv: **i8 = __truk_test_get_argv(t);
+  
+  var i: i32 = 1;
+  while i < argc {
+    if strstr(argv[i], "--filter=") != nil {
+      var filter: *i8 = argv[i] + 9;
+      if strstr(test_name, filter) != nil {
+        return true;
+      }
+      return false;
+    }
+    i = i + 1;
+  }
+  
+  return true;
+}
+
+fn test_addition(t: *__truk_test_context_s) : void {
+  if !should_run_test(t, "addition") {
+    __truk_test_log(t, "Skipped by filter");
+    return;
+  }
+}
+```
+
+Run with: `truk test math.truk -- --filter=addition`
 
 ## Summary
 
