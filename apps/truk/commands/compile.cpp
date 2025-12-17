@@ -103,9 +103,12 @@ int compile(const compile_options_s &opts) {
   }
 
   if (!emit_result.metadata.has_main_function) {
-    reporter.report_generic_error(
-        core::error_phase_e::CODE_EMISSION,
-        "No main function found. Cannot compile to executable");
+    std::string error_msg =
+        opts.output_file.has_value()
+            ? "No main function found. Cannot compile to executable"
+            : "No main function found. Cannot run program";
+    reporter.report_generic_error(core::error_phase_e::CODE_EMISSION,
+                                  error_msg);
     reporter.print_summary();
     return 1;
   }
@@ -120,7 +123,10 @@ int compile(const compile_options_s &opts) {
   std::string c_output = assembly_result.source;
 
   truk::tcc::tcc_compiler_c compiler;
-  compiler.set_output_type(truk::tcc::OUTPUT_EXE);
+
+  if (opts.output_file.has_value()) {
+    compiler.set_output_type(truk::tcc::OUTPUT_EXE);
+  }
 
   for (const auto &path : opts.include_paths) {
     compiler.add_include_path(path);
@@ -135,17 +141,42 @@ int compile(const compile_options_s &opts) {
     compiler.set_rpath(path);
   }
 
-  auto compile_result = compiler.compile_string(c_output, opts.output_file);
+  if (opts.output_file.has_value()) {
+    auto compile_result = compiler.compile_string(c_output, *opts.output_file);
 
-  if (!compile_result.success) {
-    reporter.report_compilation_error(compile_result.error_message);
-    reporter.print_summary();
-    return 1;
+    if (!compile_result.success) {
+      reporter.report_compilation_error(compile_result.error_message);
+      reporter.print_summary();
+      return 1;
+    }
+
+    fmt::print("Successfully compiled '{}' to '{}'\n", opts.input_file,
+               *opts.output_file);
+    return 0;
+  } else {
+    int argc = static_cast<int>(opts.program_args.size()) + 1;
+    std::vector<char *> argv_ptrs;
+    argv_ptrs.reserve(argc + 1);
+
+    std::string program_name = opts.input_file;
+    argv_ptrs.push_back(const_cast<char *>(program_name.c_str()));
+
+    for (const auto &arg : opts.program_args) {
+      argv_ptrs.push_back(const_cast<char *>(arg.c_str()));
+    }
+    argv_ptrs.push_back(nullptr);
+
+    auto run_result =
+        compiler.compile_and_run(c_output, argc, argv_ptrs.data());
+
+    if (!run_result.success) {
+      reporter.report_compilation_error(run_result.error_message);
+      reporter.print_summary();
+      return 1;
+    }
+
+    return run_result.exit_code;
   }
-
-  fmt::print("Successfully compiled '{}' to '{}'\n", opts.input_file,
-             opts.output_file);
-  return 0;
 }
 
 } // namespace truk::commands

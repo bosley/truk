@@ -1,19 +1,11 @@
 #pragma once
 
-#include <string>
-#include <vector>
+#include "compile.hpp"
 
 namespace truk::commands {
 
-struct run_options_s {
-  std::string input_file;
-  std::vector<std::string> include_paths;
-  std::vector<std::string> library_paths;
-  std::vector<std::string> libraries;
-  std::vector<std::string> rpaths;
-  std::vector<std::string> program_args;
-};
+using run_options_s = compile_options_s;
 
-int run(const run_options_s &opts);
+inline int run(const run_options_s &opts) { return compile(opts); }
 
 } // namespace truk::commands
