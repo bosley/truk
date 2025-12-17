@@ -66,11 +66,15 @@ struct compilation_unit_metadata_s {
   std::unordered_set<std::string> defined_functions;
   std::unordered_set<std::string> defined_structs;
   std::unordered_set<std::string> extern_structs;
+  std::vector<std::string> test_functions;
+  bool has_test_setup{false};
+  bool has_test_teardown{false};
   bool has_main_function{false};
   int main_function_count{0};
 
   bool is_library() const { return !has_main_function; }
   bool has_multiple_mains() const { return main_function_count > 1; }
+  bool has_tests() const { return !test_functions.empty(); }
 };
 
 enum class assembly_type_e { APPLICATION, LIBRARY };
@@ -98,6 +102,7 @@ struct result_c {
   std::string assemble_code() const;
   assembly_result_s assemble(assembly_type_e type,
                              const std::string &header_name = "") const;
+  std::string assemble_test_runner() const;
 };
 
 class emitter_c : public truk::language::nodes::visitor_if {

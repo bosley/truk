@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 add_library(sxs STATIC 
     src/runtime.c
     src/ds/map.c
+    src/test.c
 )
 
 target_include_directories(sxs PUBLIC include)

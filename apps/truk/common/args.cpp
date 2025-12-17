@@ -17,6 +17,11 @@ void print_usage(const char *program_name) {
              program_name);
   fmt::print(stderr, "    Run Truk source directly (JIT mode, no output "
                      "file)\n\n");
+  fmt::print(stderr,
+             "  {} test <file.truk> [-I path]... [-L path]... "
+             "[-l lib]... [-rpath path]...\n",
+             program_name);
+  fmt::print(stderr, "    Run test functions (fn test_*)\n\n");
   fmt::print(stderr, "  {} toc <file.truk> -o output.c [-I path]...\n",
              program_name);
   fmt::print(stderr, "    Compile Truk source to C\n\n");
@@ -47,7 +52,7 @@ parsed_args_s parse_args(int argc, char **argv) {
   int idx = 1;
 
   if (std::strcmp(argv[1], "toc") == 0 || std::strcmp(argv[1], "tcc") == 0 ||
-      std::strcmp(argv[1], "run") == 0) {
+      std::strcmp(argv[1], "run") == 0 || std::strcmp(argv[1], "test") == 0) {
     args.command = argv[1];
     idx = 2;
   }

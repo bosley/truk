@@ -134,6 +134,15 @@ void emitter_c::internal_finalize() {
         embedded::runtime_files.at("src/ds/map.c").content);
   }
 
+  if (embedded::runtime_files.count("include/sxs/test.h")) {
+    final_header << cdef::strip_pragma_and_includes(
+        embedded::runtime_files.at("include/sxs/test.h").content);
+  }
+  if (embedded::runtime_files.count("src/test.c")) {
+    final_header << cdef::strip_pragma_and_includes(
+        embedded::runtime_files.at("src/test.c").content);
+  }
+
   final_header << "typedef struct {\n  __truk_void* data;\n  __truk_u64 "
                   "len;\n} truk_slice_void;\n\n";
 
@@ -247,7 +256,7 @@ void emitter_c::ensure_tuple_typedef(
   _structs << "typedef struct {\n";
   for (size_t i = 0; i < element_types.size(); ++i) {
     const type_c *elem_type = element_types[i];
-    
+
     std::vector<size_t> array_dims;
     const type_c *base_type = elem_type;
     while (auto arr = dynamic_cast<const array_type_c *>(base_type)) {
@@ -258,7 +267,7 @@ void emitter_c::ensure_tuple_typedef(
         break;
       }
     }
-    
+
     if (auto func = dynamic_cast<const function_type_c *>(base_type)) {
       std::string ret_type = emit_type(func->return_type());
       _structs << "  " << ret_type << " (*_" << i;
@@ -440,6 +449,33 @@ void emitter_c::visit(const tuple_type_c &node) {
 void emitter_c::visit(const fn_c &node) {
   if (_collecting_declarations) {
     _function_names.insert(node.name().name);
+
+    if (node.name().name.rfind("test_", 0) == 0) {
+      if (node.params().size() == 1) {
+        const auto &param = node.params()[0];
+        if (auto ptr_type =
+                dynamic_cast<const pointer_type_c *>(param.type.get())) {
+          if (auto named_type = dynamic_cast<const named_type_c *>(
+                  ptr_type->pointee_type())) {
+            if (named_type->name().name == "__truk_test_context_s") {
+              if (auto prim_ret = dynamic_cast<const primitive_type_c *>(
+                      node.return_type())) {
+                if (prim_ret->keyword() == keywords_e::VOID) {
+                  if (node.name().name == "test_setup") {
+                    _result.metadata.has_test_setup = true;
+                  } else if (node.name().name == "test_teardown") {
+                    _result.metadata.has_test_teardown = true;
+                  } else {
+                    _result.metadata.test_functions.push_back(node.name().name);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     return;
   }
 
@@ -650,7 +686,8 @@ void emitter_c::visit(const lambda_c &node) {
   std::string saved_context = _current_node_context;
   std::string saved_function_name = _current_function_name;
   const type_c *saved_return_type = _current_function_return_type;
-  std::vector<const type_c *> saved_tuple_return_types = _current_tuple_return_types;
+  std::vector<const type_c *> saved_tuple_return_types =
+      _current_tuple_return_types;
   std::stringstream saved_functions;
 
   std::string lambda_name =
@@ -861,11 +898,11 @@ void emitter_c::visit(const var_c &node) {
   if (auto func = dynamic_cast<const function_type_c *>(base_type)) {
     std::string ret_type = emit_type(func->return_type());
     std::string func_decl = ret_type + " (*" + node.name().name;
-    
+
     for (size_t dim : array_dims) {
       func_decl += "[" + std::to_string(dim) + "]";
     }
-    
+
     func_decl += ")(";
 
     const auto &param_types = func->param_types();
@@ -909,7 +946,7 @@ void emitter_c::visit(const var_c &node) {
       _functions << cdef::indent(_indent_level) << type_str << " "
                  << node.name().name;
     }
-    
+
     const type_c *current_type = node.type();
     while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
       if (arr->size().has_value()) {
@@ -1049,7 +1086,7 @@ void emitter_c::visit(const let_c &node) {
       register_variable_type(var_name, var_type);
 
       _functions << cdef::indent(_indent_level);
-      
+
       std::vector<size_t> array_dims;
       const type_c *base_type = var_type;
       while (auto arr = dynamic_cast<const array_type_c *>(base_type)) {
@@ -1060,7 +1097,7 @@ void emitter_c::visit(const let_c &node) {
           break;
         }
       }
-      
+
       if (auto func = dynamic_cast<const function_type_c *>(base_type)) {
         std::string ret_type = emit_type(func->return_type());
         _functions << ret_type << " (*" << var_name;
@@ -1085,7 +1122,7 @@ void emitter_c::visit(const let_c &node) {
         if (!array_dims.empty()) {
           _functions << ";\n";
           _functions << cdef::indent(_indent_level);
-          _functions << "memcpy(" << var_name << ", " << tmp_var << "._" << i 
+          _functions << "memcpy(" << var_name << ", " << tmp_var << "._" << i
                      << ", sizeof(" << var_name << "));\n";
         } else {
           _functions << " = " << tmp_var << "._" << i << ";\n";
@@ -1095,7 +1132,7 @@ void emitter_c::visit(const let_c &node) {
         std::string dims = get_array_dimensions(var_type);
         _functions << type_str << " " << var_name << dims << ";\n";
         _functions << cdef::indent(_indent_level);
-        _functions << "memcpy(" << var_name << ", " << tmp_var << "._" << i 
+        _functions << "memcpy(" << var_name << ", " << tmp_var << "._" << i
                    << ", sizeof(" << var_name << "));\n";
       } else {
         std::string type_str = emit_type(var_type);
@@ -1260,10 +1297,10 @@ void emitter_c::visit(const return_c &node) {
     for (size_t i = 0; i < node.expressions().size(); ++i) {
       std::string expr = emit_expression(node.expressions()[i].get());
       _functions << cdef::indent(_indent_level);
-      
-      if (i < _current_tuple_return_types.size() && 
+
+      if (i < _current_tuple_return_types.size() &&
           is_array_type(_current_tuple_return_types[i])) {
-        _functions << "memcpy(" << tmp_var << "._" << i << ", " << expr 
+        _functions << "memcpy(" << tmp_var << "._" << i << ", " << expr
                    << ", sizeof(" << tmp_var << "._" << i << "));\n";
       } else {
         _functions << tmp_var << "._" << i << " = " << expr << ";\n";
@@ -1928,6 +1965,63 @@ assembly_result_s result_c::assemble(assembly_type_e type,
 
   return assembly_result_s(assembly_type_e::LIBRARY, source_content,
                            header_content, header_name);
+}
+
+std::string result_c::assemble_test_runner() const {
+  std::string output;
+
+  if (metadata.test_functions.empty()) {
+    for (const auto &chunk : chunks) {
+      output += chunk;
+    }
+    return output;
+  }
+
+  for (const auto &chunk : chunks) {
+    output += chunk;
+  }
+
+  output += "\nint main(int argc, char** argv) {\n";
+  output += "    (void)argc;\n";
+  output += "    (void)argv;\n";
+  output += "    int total_tests = 0;\n";
+  output += "    int total_failed = 0;\n\n";
+
+  for (const auto &test_name : metadata.test_functions) {
+    output += "    {\n";
+    output += "        __truk_test_context_s ctx = {0};\n";
+    output += "        ctx.current_test_name = \"" + test_name + "\";\n";
+    output +=
+        "        printf(\"Running %s...\\n\", ctx.current_test_name);\n\n";
+
+    if (metadata.has_test_setup) {
+      output += "        test_setup(&ctx);\n";
+    }
+
+    output += "        " + test_name + "(&ctx);\n\n";
+
+    if (metadata.has_test_teardown) {
+      output += "        test_teardown(&ctx);\n";
+    }
+
+    output += "        total_tests++;\n";
+    output += "        if (ctx.has_failed) {\n";
+    output += "            printf(\"  FAILED (%d/%d assertions)\\n\", "
+              "ctx.failed, ctx.failed + ctx.passed);\n";
+    output += "            total_failed++;\n";
+    output += "        } else {\n";
+    output +=
+        "            printf(\"  PASSED (%d assertions)\\n\", ctx.passed);\n";
+    output += "        }\n";
+    output += "    }\n\n";
+  }
+
+  output += "    printf(\"\\n%d/%d tests passed\\n\", total_tests - "
+            "total_failed, total_tests);\n";
+  output += "    return total_failed;\n";
+  output += "}\n";
+
+  return output;
 }
 
 bool emitter_c::is_private_identifier(const std::string &name) const {

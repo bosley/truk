@@ -579,9 +579,11 @@ void type_checker_c::validate_builtin_call(const call_c &node,
                 node.source_index());
             return;
           }
-          if (value_type->kind == type_kind_e::POINTER && value_type->pointee_type) {
+          if (value_type->kind == type_kind_e::POINTER &&
+              value_type->pointee_type) {
             auto pointee = value_type->pointee_type.get();
-            if (pointee->kind == type_kind_e::ARRAY && pointee->array_size.has_value()) {
+            if (pointee->kind == type_kind_e::ARRAY &&
+                pointee->array_size.has_value()) {
               report_error(
                   "Maps with pointer-to-array values are not supported: " +
                       get_type_name_from_entry(value_type) +
@@ -1031,23 +1033,23 @@ void type_checker_c::visit(const map_type_c &node) {
     return;
   }
 
-  if (value_type->kind == type_kind_e::ARRAY && value_type->array_size.has_value()) {
-    report_error(
-        "Maps with fixed-size array values are not supported: " +
-            get_type_name_from_entry(value_type.get()) +
-            ". Consider wrapping the array in a struct",
-        node.source_index());
+  if (value_type->kind == type_kind_e::ARRAY &&
+      value_type->array_size.has_value()) {
+    report_error("Maps with fixed-size array values are not supported: " +
+                     get_type_name_from_entry(value_type.get()) +
+                     ". Consider wrapping the array in a struct",
+                 node.source_index());
     return;
   }
 
   if (value_type->kind == type_kind_e::POINTER && value_type->pointee_type) {
     auto pointee = value_type->pointee_type.get();
-    if (pointee->kind == type_kind_e::ARRAY && pointee->array_size.has_value()) {
-      report_error(
-          "Maps with pointer-to-array values are not supported: " +
-              get_type_name_from_entry(value_type.get()) +
-              ". Consider wrapping the array in a struct",
-          node.source_index());
+    if (pointee->kind == type_kind_e::ARRAY &&
+        pointee->array_size.has_value()) {
+      report_error("Maps with pointer-to-array values are not supported: " +
+                       get_type_name_from_entry(value_type.get()) +
+                       ". Consider wrapping the array in a struct",
+                   node.source_index());
       return;
     }
   }
