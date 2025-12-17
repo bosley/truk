@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sxs/ds/map.h>
+#include <sxs/runtime.h>
 
 struct __truk_map_node_t {
   unsigned hash;
@@ -110,7 +111,7 @@ static __truk_map_node_t *__truk_map_newnode(__truk_map_base_t *m,
   __truk_map_node_t *node;
   int ksize = m->ksize;
   int voffset = ksize + ((sizeof(void *) - ksize) % sizeof(void *));
-  node = malloc(sizeof(*node) + voffset + vsize);
+  node = __truk_runtime_sxs_alloc(sizeof(*node) + voffset + vsize);
   if (!node)
     return NULL;
   memcpy(node + 1, key, ksize);
@@ -187,11 +188,11 @@ void __truk_map_deinit_(__truk_map_base_t *m) {
     node = m->buckets[i];
     while (node) {
       next = node->next;
-      free(node);
+      __truk_runtime_sxs_free(node);
       node = next;
     }
   }
-  free(m->buckets);
+  __truk_runtime_sxs_free(m->buckets);
 }
 
 void *__truk_map_get_(__truk_map_base_t *m, const void *key) {
@@ -222,7 +223,7 @@ int __truk_map_set_(__truk_map_base_t *m, const void *key, void *value,
   return 0;
 fail:
   if (node)
-    free(node);
+    __truk_runtime_sxs_free(node);
   return -1;
 }
 
@@ -232,7 +233,7 @@ void __truk_map_remove_(__truk_map_base_t *m, const void *key) {
   if (next) {
     node = *next;
     *next = (*next)->next;
-    free(node);
+    __truk_runtime_sxs_free(node);
     m->nnodes--;
   }
 }
