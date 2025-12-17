@@ -1,0 +1,9 @@
+fn get_nested() : ([2][2]i32, i32) {
+  var arr: [2][2]i32 = [[10, 20], [5, 5]];
+  return arr, 0;
+}
+
+fn main() : i32 {
+  let nested, idx = get_nested();
+  return nested[0][0] + nested[0][1] + nested[1][0] + nested[1][1];
+}

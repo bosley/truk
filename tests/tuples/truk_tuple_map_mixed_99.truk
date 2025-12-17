@@ -1,0 +1,16 @@
+fn get_mixed() : (i32, map[*u8, i32], *u8) {
+  var m: map[*u8, i32] = make(@map[*u8, i32]);
+  m["key"] = 99;
+  return 0, m, "key";
+}
+
+fn main() : i32 {
+  let code, mymap, key = get_mixed();
+  var ptr: *i32 = mymap[key];
+  var result: i32 = code;
+  if ptr != nil {
+    result = *ptr;
+  }
+  delete(mymap);
+  return result;
+}

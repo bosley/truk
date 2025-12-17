@@ -1,0 +1,11 @@
+fn get_data() : ([2]fn(i32) : i32, i32) {
+  var ops: [2]fn(i32) : i32;
+  ops[0] = fn(x: i32) : i32 { return x + 5; };
+  ops[1] = fn(x: i32) : i32 { return x * 2; };
+  return ops, 10;
+}
+
+fn main() : i32 {
+  let funcs, val = get_data();
+  return funcs[0](val) + funcs[1](val);
+}

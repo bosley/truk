@@ -74,10 +74,10 @@ std::string type_registry_c::get_c_type(const type_c *type) {
       for (char c : elem_type) {
         if (c == '*') {
           name += "_ptr";
-        } else if (c == '[' || c == ']') {
+        } else if (c == '[' || c == ']' || c == '(' || c == ')' || c == ',') {
         } else if (c == ' ') {
           name += "_";
-        } else {
+        } else if (std::isalnum(c) || c == '_') {
           name += c;
         }
       }
@@ -129,6 +129,12 @@ std::string type_registry_c::get_c_type_for_sizeof(const type_c *type) {
   }
 
   if (auto ptr = dynamic_cast<const pointer_type_c *>(type)) {
+    if (auto arr = dynamic_cast<const array_type_c *>(ptr->pointee_type())) {
+      if (arr->size().has_value()) {
+        std::string base = get_c_type_for_sizeof(arr->element_type());
+        return base + "(*)[" + std::to_string(arr->size().value()) + "]";
+      }
+    }
     return get_c_type_for_sizeof(ptr->pointee_type()) + "*";
   }
 
@@ -233,13 +239,13 @@ std::string type_registry_c::get_map_type_name(const type_c *key_type,
   for (auto &c : sanitized_key) {
     if (c == '*')
       c = 'p';
-    if (c == '[' || c == ']' || c == ' ')
+    if (c == '[' || c == ']' || c == ' ' || c == '(' || c == ')')
       c = '_';
   }
   for (auto &c : sanitized_value) {
     if (c == '*')
       c = 'p';
-    if (c == '[' || c == ']' || c == ' ')
+    if (c == '[' || c == ']' || c == ' ' || c == '(' || c == ')')
       c = '_';
   }
   return "__truk_map_" + sanitized_key + "_" + sanitized_value;

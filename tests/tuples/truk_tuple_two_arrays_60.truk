@@ -1,0 +1,10 @@
+fn get_arrays() : ([2]i32, [2]i32) {
+  var a: [2]i32 = [10, 20];
+  var b: [2]i32 = [15, 15];
+  return a, b;
+}
+
+fn main() : i32 {
+  let arr1, arr2 = get_arrays();
+  return arr1[0] + arr1[1] + arr2[0] + arr2[1];
+}

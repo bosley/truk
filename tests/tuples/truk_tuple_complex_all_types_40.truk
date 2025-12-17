@@ -1,0 +1,20 @@
+fn get_everything() : (fn(i32, i32) : i32, [2]i32, map[i32, i32], i32) {
+  var mul: fn(i32, i32) : i32 = fn(a: i32, b: i32) : i32 {
+    return a * b;
+  };
+  var arr: [2]i32 = [5, 10];
+  var m: map[i32, i32] = make(@map[i32, i32]);
+  m[1] = 20;
+  return mul, arr, m, 2;
+}
+
+fn main() : i32 {
+  let operation, array, mymap, multiplier = get_everything();
+  var ptr: *i32 = mymap[1];
+  var result: i32 = 0;
+  if ptr != nil {
+    result = operation(array[0], multiplier) + array[1] + *ptr;
+  }
+  delete(mymap);
+  return result;
+}

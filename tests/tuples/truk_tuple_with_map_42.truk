@@ -1,0 +1,17 @@
+fn get_map_and_key() : (map[i32, i32], i32) {
+  var m: map[i32, i32] = make(@map[i32, i32]);
+  m[1] = 42;
+  m[2] = 100;
+  return m, 1;
+}
+
+fn main() : i32 {
+  let mymap, key = get_map_and_key();
+  var ptr: *i32 = mymap[key];
+  var result: i32 = 0;
+  if ptr != nil {
+    result = *ptr;
+  }
+  delete(mymap);
+  return result;
+}

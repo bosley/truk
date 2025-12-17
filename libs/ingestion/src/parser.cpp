@@ -352,11 +352,12 @@ language::nodes::base_ptr parser_c::parse_lambda() {
     body = parse_block();
   } else {
     auto expr = parse_expression();
+    std::size_t expr_idx = expr->source_index();
     std::vector<language::nodes::base_ptr> statements;
     std::vector<language::nodes::base_ptr> return_exprs;
     return_exprs.push_back(std::move(expr));
     statements.push_back(std::make_unique<language::nodes::return_c>(
-        return_exprs[0]->source_index(), std::move(return_exprs)));
+        expr_idx, std::move(return_exprs)));
     body = std::make_unique<language::nodes::block_c>(fn_token.source_index,
                                                       std::move(statements));
   }

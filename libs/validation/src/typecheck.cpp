@@ -568,6 +568,29 @@ void type_checker_c::validate_builtin_call(const call_c &node,
       }
 
       if (resolved->kind == type_kind_e::MAP) {
+        if (resolved->map_value_type) {
+          auto value_type = resolved->map_value_type.get();
+          if (value_type->kind == type_kind_e::ARRAY &&
+              value_type->array_size.has_value()) {
+            report_error(
+                "Maps with fixed-size array values are not supported: " +
+                    get_type_name_from_entry(value_type) +
+                    ". Consider wrapping the array in a struct",
+                node.source_index());
+            return;
+          }
+          if (value_type->kind == type_kind_e::POINTER && value_type->pointee_type) {
+            auto pointee = value_type->pointee_type.get();
+            if (pointee->kind == type_kind_e::ARRAY && pointee->array_size.has_value()) {
+              report_error(
+                  "Maps with pointer-to-array values are not supported: " +
+                      get_type_name_from_entry(value_type) +
+                      ". Consider wrapping the array in a struct",
+                  node.source_index());
+              return;
+            }
+          }
+        }
         _current_expression_type = std::move(resolved);
         return;
       }
@@ -1008,6 +1031,27 @@ void type_checker_c::visit(const map_type_c &node) {
     return;
   }
 
+  if (value_type->kind == type_kind_e::ARRAY && value_type->array_size.has_value()) {
+    report_error(
+        "Maps with fixed-size array values are not supported: " +
+            get_type_name_from_entry(value_type.get()) +
+            ". Consider wrapping the array in a struct",
+        node.source_index());
+    return;
+  }
+
+  if (value_type->kind == type_kind_e::POINTER && value_type->pointee_type) {
+    auto pointee = value_type->pointee_type.get();
+    if (pointee->kind == type_kind_e::ARRAY && pointee->array_size.has_value()) {
+      report_error(
+          "Maps with pointer-to-array values are not supported: " +
+              get_type_name_from_entry(value_type.get()) +
+              ". Consider wrapping the array in a struct",
+          node.source_index());
+      return;
+    }
+  }
+
   auto map_type = std::make_unique<type_entry_s>(type_kind_e::MAP, "map");
   map_type->map_key_type = std::move(key_type);
   map_type->map_value_type = std::move(value_type);
@@ -1114,6 +1158,7 @@ void type_checker_c::visit(const lambda_c &node) {
 
   push_scope();
 
+  auto saved_return_type = std::move(_current_function_return_type);
   _current_function_return_type = std::move(return_type);
 
   for (const auto &param : node.params()) {
@@ -1132,7 +1177,7 @@ void type_checker_c::visit(const lambda_c &node) {
     node.body()->accept(*this);
   }
 
-  _current_function_return_type.reset();
+  _current_function_return_type = std::move(saved_return_type);
 
   pop_scope();
 

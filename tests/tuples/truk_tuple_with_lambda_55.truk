@@ -1,0 +1,11 @@
+fn get_lambda_and_value() : (fn(i32) : i32, i32) {
+  var adder: fn(i32) : i32 = fn(x: i32) : i32 {
+    return x + 10;
+  };
+  return adder, 45;
+}
+
+fn main() : i32 {
+  let func, val = get_lambda_and_value();
+  return func(val);
+}

@@ -195,6 +195,8 @@ private:
   void ensure_map_typedef(const truk::language::nodes::type_c *key_type,
                           const truk::language::nodes::type_c *value_type);
   bool is_map_type(const truk::language::nodes::type_c *type);
+  bool is_array_type(const truk::language::nodes::type_c *type);
+  std::string get_array_dimensions(const truk::language::nodes::type_c *type);
   std::string get_tuple_type_name(
       const std::vector<const truk::language::nodes::type_c *> &element_types);
   void ensure_tuple_typedef(
