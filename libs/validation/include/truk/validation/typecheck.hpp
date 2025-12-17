@@ -218,6 +218,7 @@ public:
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
+  void visit(const truk::language::nodes::let_c &node) override;
   void visit(const truk::language::nodes::if_c &node) override;
   void visit(const truk::language::nodes::while_c &node) override;
   void visit(const truk::language::nodes::for_c &node) override;
@@ -316,6 +317,9 @@ private:
   resolve_untyped_literal(const type_entry_s *literal_type,
                           const type_entry_s *target_type);
 
+  truk::language::nodes::type_ptr
+  create_type_node_from_entry(const type_entry_s *entry);
+
   bool is_private_identifier(const std::string &name) const;
   std::string
   get_defining_file_for_struct(const std::string &struct_name) const;
@@ -347,6 +351,7 @@ public:
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
+  void visit(const truk::language::nodes::let_c &node) override;
   void visit(const truk::language::nodes::if_c &node) override;
   void visit(const truk::language::nodes::while_c &node) override;
   void visit(const truk::language::nodes::for_c &node) override;
@@ -400,6 +405,7 @@ public:
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
+  void visit(const truk::language::nodes::let_c &node) override;
   void visit(const truk::language::nodes::if_c &node) override;
   void visit(const truk::language::nodes::while_c &node) override;
   void visit(const truk::language::nodes::for_c &node) override;

@@ -83,6 +83,8 @@ void expression_visitor_c::visit(const var_c &node) {}
 
 void expression_visitor_c::visit(const const_c &node) {}
 
+void expression_visitor_c::visit(const let_c &node) {}
+
 void expression_visitor_c::visit(const if_c &node) {}
 
 void expression_visitor_c::visit(const while_c &node) {}

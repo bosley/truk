@@ -101,6 +101,13 @@ void dependency_visitor_c::visit(const const_c &node) {
   }
 }
 
+void dependency_visitor_c::visit(const let_c &node) {
+  _local_scope.insert(node.name().name);
+  if (node.initializer()) {
+    node.initializer()->accept(*this);
+  }
+}
+
 void dependency_visitor_c::visit(const if_c &node) {
   if (node.condition()) {
     node.condition()->accept(*this);

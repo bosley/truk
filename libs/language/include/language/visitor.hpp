@@ -13,6 +13,7 @@ class lambda_c;
 class struct_c;
 class var_c;
 class const_c;
+class let_c;
 class if_c;
 class while_c;
 class for_c;
@@ -52,6 +53,7 @@ public:
   virtual void visit(const struct_c &node) = 0;
   virtual void visit(const var_c &node) = 0;
   virtual void visit(const const_c &node) = 0;
+  virtual void visit(const let_c &node) = 0;
   virtual void visit(const if_c &node) = 0;
   virtual void visit(const while_c &node) = 0;
   virtual void visit(const for_c &node) = 0;

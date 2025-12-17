@@ -439,6 +439,23 @@ language::nodes::base_ptr parser_c::parse_const_decl() {
       std::move(value));
 }
 
+language::nodes::base_ptr parser_c::parse_let_decl() {
+  const auto &let_token =
+      consume_keyword(language::keywords_e::LET, "Expected 'let' keyword");
+  const auto &name_token = consume_identifier("Expected variable name");
+  language::nodes::identifier_s name(name_token.lexeme,
+                                     name_token.source_index);
+
+  consume(token_type_e::EQUAL, "Expected '=' in let declaration");
+
+  auto initializer = parse_expression();
+
+  consume(token_type_e::SEMICOLON, "Expected ';' after let declaration");
+
+  return std::make_unique<language::nodes::let_c>(
+      let_token.source_index, std::move(name), std::move(initializer));
+}
+
 language::nodes::type_ptr parser_c::parse_type_annotation() {
   consume(token_type_e::COLON, "Expected ':' in type annotation");
   return parse_type_internal();
@@ -603,6 +620,9 @@ language::nodes::base_ptr parser_c::parse_statement() {
   }
   if (check_keyword(language::keywords_e::CONST)) {
     return parse_const_decl();
+  }
+  if (check_keyword(language::keywords_e::LET)) {
+    return parse_let_decl();
   }
   if (check_keyword(language::keywords_e::IF)) {
     return parse_if_stmt();

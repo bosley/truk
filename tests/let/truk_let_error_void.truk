@@ -1,0 +1,7 @@
+fn void_fn() : void {
+}
+
+fn main() : i32 {
+  let x = void_fn();
+  return 0;
+}

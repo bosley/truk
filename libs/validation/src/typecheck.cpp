@@ -1171,6 +1171,42 @@ void type_checker_c::visit(const var_c &node) {
                   node.source_index());
 }
 
+void type_checker_c::visit(const let_c &node) {
+  auto it = _decl_to_file.find(&node);
+  if (it != _decl_to_file.end()) {
+    _global_to_file[node.name().name] = it->second;
+  }
+
+  if (!node.initializer()) {
+    report_error("let declaration requires an initializer",
+                 node.source_index());
+    return;
+  }
+
+  node.initializer()->accept(*this);
+
+  if (!_current_expression_type) {
+    report_error("Cannot infer type from initializer", node.source_index());
+    return;
+  }
+
+  auto inferred_type =
+      std::make_unique<type_entry_s>(*_current_expression_type);
+
+  if (inferred_type->kind == type_kind_e::VOID_TYPE) {
+    report_error("Cannot declare variable with void type", node.source_index());
+    return;
+  }
+
+  auto type_node = create_type_node_from_entry(inferred_type.get());
+  if (type_node) {
+    node.set_inferred_type(std::move(type_node));
+  }
+
+  register_symbol(node.name().name, std::move(inferred_type), true,
+                  node.source_index());
+}
+
 void type_checker_c::visit(const const_c &node) {
   auto const_type = resolve_type(node.type());
   if (!const_type) {
@@ -2252,6 +2288,33 @@ void symbol_collector_c::visit(const var_c &node) {
   _current_scope->symbols[node.name().name] = var_symbol_ptr;
 }
 
+void symbol_collector_c::visit(const let_c &node) {
+  if (node.initializer()) {
+    node.initializer()->accept(*this);
+  }
+
+  auto let_type = std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "let");
+  auto let_symbol = std::make_unique<symbol_entry_s>(
+      node.name().name, std::move(let_type), true, node.source_index());
+
+  if (_current_scope->kind == scope_kind_e::GLOBAL) {
+    let_symbol->scope_kind = symbol_scope_e::GLOBAL;
+    _result.global_symbols[node.name().name] = let_symbol.get();
+  } else if (_current_scope->kind == scope_kind_e::LAMBDA ||
+             (_current_scope->parent &&
+              _current_scope->parent->kind == scope_kind_e::LAMBDA)) {
+    let_symbol->scope_kind = symbol_scope_e::LAMBDA_LOCAL;
+  } else {
+    let_symbol->scope_kind = symbol_scope_e::FUNCTION_LOCAL;
+  }
+
+  let_symbol->declaring_node = &node;
+
+  auto *let_symbol_ptr = let_symbol.get();
+  _memory.set(node.name().name, std::move(let_symbol));
+  _current_scope->symbols[node.name().name] = let_symbol_ptr;
+}
+
 void symbol_collector_c::visit(const const_c &node) {
   if (node.value()) {
     node.value()->accept(*this);
@@ -2497,6 +2560,12 @@ void lambda_capture_validator_c::visit(const const_c &node) {
   }
 }
 
+void lambda_capture_validator_c::visit(const let_c &node) {
+  if (node.initializer()) {
+    node.initializer()->accept(*this);
+  }
+}
+
 void lambda_capture_validator_c::visit(const if_c &node) {
   if (node.condition()) {
     node.condition()->accept(*this);
@@ -2716,5 +2785,94 @@ void lambda_capture_validator_c::visit(const type_param_c &node) {}
 void lambda_capture_validator_c::visit(const import_c &node) {}
 void lambda_capture_validator_c::visit(const cimport_c &node) {}
 void lambda_capture_validator_c::visit(const shard_c &node) {}
+
+language::nodes::type_ptr
+type_checker_c::create_type_node_from_entry(const type_entry_s *entry) {
+  if (!entry) {
+    return nullptr;
+  }
+
+  switch (entry->kind) {
+  case type_kind_e::PRIMITIVE: {
+    language::keywords_e keyword = language::keywords_e::UNKNOWN_KEYWORD;
+    if (entry->name == "i8")
+      keyword = language::keywords_e::I8;
+    else if (entry->name == "i16")
+      keyword = language::keywords_e::I16;
+    else if (entry->name == "i32")
+      keyword = language::keywords_e::I32;
+    else if (entry->name == "i64")
+      keyword = language::keywords_e::I64;
+    else if (entry->name == "u8")
+      keyword = language::keywords_e::U8;
+    else if (entry->name == "u16")
+      keyword = language::keywords_e::U16;
+    else if (entry->name == "u32")
+      keyword = language::keywords_e::U32;
+    else if (entry->name == "u64")
+      keyword = language::keywords_e::U64;
+    else if (entry->name == "f32")
+      keyword = language::keywords_e::F32;
+    else if (entry->name == "f64")
+      keyword = language::keywords_e::F64;
+    else if (entry->name == "bool")
+      keyword = language::keywords_e::BOOL;
+    else if (entry->name == "void")
+      keyword = language::keywords_e::VOID;
+    return std::make_unique<language::nodes::primitive_type_c>(keyword, 0);
+  }
+  case type_kind_e::STRUCT: {
+    language::nodes::identifier_s id(entry->name, 0);
+    return std::make_unique<language::nodes::named_type_c>(0, std::move(id));
+  }
+  case type_kind_e::POINTER: {
+    auto pointee = create_type_node_from_entry(entry->pointee_type.get());
+    if (!pointee)
+      return nullptr;
+    return std::make_unique<language::nodes::pointer_type_c>(
+        0, std::move(pointee));
+  }
+  case type_kind_e::ARRAY: {
+    auto element = create_type_node_from_entry(entry->element_type.get());
+    if (!element)
+      return nullptr;
+    return std::make_unique<language::nodes::array_type_c>(
+        0, std::move(element), entry->array_size);
+  }
+  case type_kind_e::FUNCTION: {
+    std::vector<language::nodes::type_ptr> param_types;
+    for (const auto &param : entry->function_param_types) {
+      auto param_type = create_type_node_from_entry(param.get());
+      if (!param_type)
+        return nullptr;
+      param_types.push_back(std::move(param_type));
+    }
+    auto return_type =
+        create_type_node_from_entry(entry->function_return_type.get());
+    if (!return_type)
+      return nullptr;
+    return std::make_unique<language::nodes::function_type_c>(
+        0, std::move(param_types), std::move(return_type), entry->is_variadic);
+  }
+  case type_kind_e::MAP: {
+    auto key_type = create_type_node_from_entry(entry->map_key_type.get());
+    auto value_type = create_type_node_from_entry(entry->map_value_type.get());
+    if (!key_type || !value_type)
+      return nullptr;
+    return std::make_unique<language::nodes::map_type_c>(0, std::move(key_type),
+                                                         std::move(value_type));
+  }
+  case type_kind_e::VOID_TYPE: {
+    return std::make_unique<language::nodes::primitive_type_c>(
+        language::keywords_e::VOID, 0);
+  }
+  case type_kind_e::UNTYPED_INTEGER:
+  case type_kind_e::UNTYPED_FLOAT:
+    return std::make_unique<language::nodes::primitive_type_c>(
+        language::keywords_e::I32, 0);
+  }
+
+  return nullptr;
+}
 
 } // namespace truk::validation

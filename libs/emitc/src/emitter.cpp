@@ -770,6 +770,93 @@ void emitter_c::visit(const var_c &node) {
   _functions << ";\n";
 }
 
+void emitter_c::visit(const let_c &node) {
+  if (_collecting_declarations && _indent_level == 0) {
+    return;
+  }
+
+  const std::string &var_name = node.name().name;
+
+  auto var_type = node.inferred_type();
+  if (!var_type) {
+    add_error("Cannot determine type for let variable: " + var_name, &node);
+    return;
+  }
+
+  register_variable_type(var_name, var_type);
+
+  if (auto map = dynamic_cast<const map_type_c *>(var_type)) {
+    ensure_map_typedef(map->key_type(), map->value_type());
+  }
+
+  bool is_private = is_private_identifier(var_name);
+  bool is_library = _result.metadata.is_library();
+
+  if (auto func = dynamic_cast<const function_type_c *>(var_type)) {
+    std::string ret_type = emit_type(func->return_type());
+    std::string func_decl = ret_type + " (*" + var_name + ")(";
+
+    const auto &param_types = func->param_types();
+    for (size_t i = 0; i < param_types.size(); ++i) {
+      if (i > 0) {
+        func_decl += ", ";
+      }
+      func_decl += emit_type(param_types[i].get());
+    }
+
+    if (param_types.empty()) {
+      func_decl += "void";
+    }
+
+    if (func->has_variadic()) {
+      if (!param_types.empty()) {
+        func_decl += ", ";
+      }
+      func_decl += "...";
+    }
+
+    func_decl += ")";
+
+    if (_indent_level == 0) {
+      if (is_private && is_library) {
+        _functions << "static ";
+      }
+      _functions << func_decl;
+    } else {
+      _functions << cdef::indent(_indent_level) << func_decl;
+    }
+  } else {
+    std::string type_str = emit_type(var_type);
+
+    if (_indent_level == 0) {
+      if (is_private && is_library) {
+        _functions << "static ";
+      }
+      _functions << type_str << " " << var_name;
+    } else {
+      _functions << cdef::indent(_indent_level) << type_str << " " << var_name;
+    }
+  }
+
+  const type_c *current_type = var_type;
+  while (auto arr = dynamic_cast<const array_type_c *>(current_type)) {
+    if (arr->size().has_value()) {
+      _functions << "[" << arr->size().value() << "]";
+      current_type = arr->element_type();
+    } else {
+      ensure_slice_typedef(arr->element_type());
+      break;
+    }
+  }
+
+  if (node.initializer()) {
+    std::string init = emit_expression(node.initializer());
+    _functions << " = " << init;
+  }
+
+  _functions << ";\n";
+}
+
 void emitter_c::visit(const const_c &node) {
   if (_collecting_declarations && _indent_level == 0) {
     return;

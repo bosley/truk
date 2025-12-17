@@ -29,6 +29,8 @@ void var_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void const_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
+void let_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
+
 void if_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void while_c::accept(visitor_if &visitor) const { visitor.visit(*this); }

@@ -285,6 +285,30 @@ private:
   base_ptr _value;
 };
 
+class let_c : public base_c {
+public:
+  let_c() = delete;
+  let_c(std::size_t source_index, identifier_s name, base_ptr initializer)
+      : base_c(keywords_e::LET, source_index), _name(std::move(name)),
+        _initializer(std::move(initializer)) {}
+
+  const identifier_s &name() const { return _name; }
+  const base_c *initializer() const { return _initializer.get(); }
+  const type_c *inferred_type() const { return _inferred_type.get(); }
+
+  void set_inferred_type(type_ptr type) const {
+    _inferred_type = std::move(type);
+  }
+
+  void accept(visitor_if &visitor) const override;
+  std::optional<std::string> symbol_name() const override { return _name.name; }
+
+private:
+  identifier_s _name;
+  base_ptr _initializer;
+  mutable type_ptr _inferred_type;
+};
+
 class if_c : public base_c {
 public:
   if_c() = delete;

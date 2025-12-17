@@ -37,6 +37,7 @@ public:
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
+  void visit(const truk::language::nodes::let_c &node) override;
   void visit(const truk::language::nodes::if_c &node) override;
   void visit(const truk::language::nodes::while_c &node) override;
   void visit(const truk::language::nodes::for_c &node) override;

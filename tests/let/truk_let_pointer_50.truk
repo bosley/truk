@@ -1,0 +1,10 @@
+struct Point {
+  x: i32,
+  y: i32
+}
+
+fn main() : i32 {
+  var p: Point = Point{x: 25, y: 25};
+  let ptr = &p;
+  return ptr->x + ptr->y;
+}
