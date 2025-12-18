@@ -149,6 +149,7 @@ public:
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
+  void visit(const truk::language::nodes::enum_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
   void visit(const truk::language::nodes::let_c &node) override;
@@ -159,6 +160,7 @@ public:
   void visit(const truk::language::nodes::break_c &node) override;
   void visit(const truk::language::nodes::continue_c &node) override;
   void visit(const truk::language::nodes::defer_c &node) override;
+  void visit(const truk::language::nodes::match_c &node) override;
   void visit(const truk::language::nodes::binary_op_c &node) override;
   void visit(const truk::language::nodes::unary_op_c &node) override;
   void visit(const truk::language::nodes::cast_c &node) override;
@@ -175,6 +177,7 @@ public:
   void visit(const truk::language::nodes::import_c &node) override;
   void visit(const truk::language::nodes::cimport_c &node) override;
   void visit(const truk::language::nodes::shard_c &node) override;
+  void visit(const truk::language::nodes::enum_value_access_c &node) override;
 
 private:
   void collect_declarations(const truk::language::nodes::base_c *root);
@@ -233,6 +236,8 @@ private:
   emit_expr_struct_literal(const truk::language::nodes::struct_literal_c &node);
   std::string get_binary_op_string(truk::language::nodes::binary_op_e op);
   std::string get_unary_op_string(truk::language::nodes::unary_op_e op);
+  std::string process_char_literal(const std::string &lexeme,
+                                   const truk::language::nodes::base_c *node);
 
   std::vector<const truk::language::nodes::base_c *> _declarations;
   std::unordered_map<const truk::language::nodes::base_c *, std::string>
@@ -246,6 +251,8 @@ private:
   std::stringstream _functions;
   int _indent_level{0};
   std::unordered_set<std::string> _function_names;
+  std::unordered_set<std::string> _enum_type_names;
+  std::unordered_set<std::string> _extern_enum_type_names;
   type_registry_c _type_registry;
   variable_registry_c _variable_registry;
   builtin_registry_c _builtin_registry;
@@ -256,6 +263,7 @@ private:
   const truk::language::nodes::type_c *_current_function_return_type{nullptr};
   int _lambda_counter{0};
   int _temp_counter{0};
+  int _match_counter{0};
   std::unordered_set<std::string> _generated_tuple_typedefs;
   std::vector<const truk::language::nodes::type_c *>
       _current_tuple_return_types;

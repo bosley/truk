@@ -6,25 +6,42 @@
 
 ---
 
-**Note:** Identifiers starting with underscore (`_`) are private to their defining file. See [privacy.md](privacy.md) for details.
+## Notes
+
+- **Privacy:** Identifiers starting with underscore (`_`) are private to their defining file. See [privacy.md](privacy.md) for details.
+- **Enums:** Enum values are accessed via member syntax: `EnumName.VALUE`. The type checker disambiguates between struct member access and enum value access.
+- **Cast Precedence:** The `as` cast operator has higher precedence than binary operators but lower than unary operators. This means:
+  - `*ptr as i32` works as `(*ptr) as i32` ✓
+  - `a * b as i32` requires `(a * b) as i32` for casting the result
+  - `x as i32 + 5` works as `(x as i32) + 5` ✓
+- **Literal Types:**
+  - Integer literals have untyped integer type, default to `i32`
+  - Float literals have untyped float type, default to `f64`
+  - String literals are `*u8` (pointer to unsigned 8-bit)
+  - Char literals are `i8` (signed 8-bit, matching C's `char` type)
+  - Boolean literals are `bool`
+  - `nil` is a pointer to `void`
 
 ```
 program         ::= declaration*
 
 declaration     ::= fn_decl
                   | struct_decl
+                  | enum_decl
                   | var_decl
                   | const_decl
                   | extern_decl
                   | shard_decl
 
-extern_decl     ::= "extern" (extern_fn_decl | extern_struct_decl | extern_var_decl)
+extern_decl     ::= "extern" (extern_fn_decl | extern_struct_decl | extern_enum_decl | extern_var_decl)
 
 shard_decl      ::= "shard" STRING ";"
 
 extern_fn_decl  ::= "fn" IDENTIFIER "(" param_list? ")" (":" type)? ";"
 
 extern_struct_decl ::= "struct" IDENTIFIER ("{" field_list? "}" | ";")
+
+extern_enum_decl ::= "enum" IDENTIFIER ":" primitive_type ("{" enum_value_list? "}" | ";")
 
 extern_var_decl ::= "var" IDENTIFIER type_annotation ";"
 
@@ -39,6 +56,12 @@ struct_decl     ::= "struct" IDENTIFIER "{" field_list? "}"
 field_list      ::= field ("," field)* ","?
 
 field           ::= IDENTIFIER type_annotation
+
+enum_decl       ::= "enum" IDENTIFIER ":" primitive_type "{" enum_value_list? "}"
+
+enum_value_list ::= enum_value ("," enum_value)* ","?
+
+enum_value      ::= IDENTIFIER ("=" INTEGER)?
 
 var_decl        ::= "var" IDENTIFIER type_annotation ("=" expression)? ";"
 
@@ -79,6 +102,7 @@ statement       ::= expression_stmt
                   | if_stmt
                   | while_stmt
                   | for_stmt
+                  | match_stmt
                   | return_stmt
                   | break_stmt
                   | continue_stmt
@@ -92,6 +116,10 @@ if_stmt         ::= "if" expression block ("else" (if_stmt | block))?
 while_stmt      ::= "while" expression block
 
 for_stmt        ::= "for" expression? ";" expression? ";" expression? block
+
+match_stmt      ::= "match" expression "{" match_case+ "}"
+
+match_case      ::= ("case" expression | "_") "=>" (statement | block) ","
 
 return_stmt     ::= "return" (expression ("," expression)*)? ";"
 
@@ -123,12 +151,14 @@ shift           ::= additive (("<<" | ">>") additive)*
 
 additive        ::= multiplicative (("+" | "-") multiplicative)*
 
-multiplicative  ::= unary (("*" | "/" | "%") unary)*
+multiplicative  ::= cast (("*" | "/" | "%") cast)*
+
+cast            ::= unary ("as" type)*
 
 unary           ::= ("!" | "-" | "~" | "&" | "*") unary
                   | postfix
 
-postfix         ::= primary (call | index | member | cast)*
+postfix         ::= primary (call | index | member)*
 
 call            ::= "(" argument_list? ")"
 
@@ -138,11 +168,10 @@ index           ::= "[" expression "]"
 
 member          ::= "." IDENTIFIER
 
-cast            ::= "as" type
-
 primary         ::= INTEGER
                   | FLOAT
                   | STRING
+                  | CHAR
                   | "true" | "false"
                   | "nil"
                   | IDENTIFIER
@@ -166,4 +195,12 @@ INTEGER         ::= [0-9]+ | "0x"[0-9a-fA-F]+ | "0b"[01]+ | "0o"[0-7]+
 FLOAT           ::= [0-9]+"."[0-9]+([eE][+-]?[0-9]+)?
 
 STRING          ::= '"' ([^"\\\n] | "\\" .)* '"'
+
+CHAR            ::= "'" (CHAR_CONTENT | ESCAPE_SEQUENCE) "'"
+
+CHAR_CONTENT    ::= [^'\\\n]
+
+ESCAPE_SEQUENCE ::= "\\" ("n" | "t" | "r" | "0" | "\\" | "'" | "\"" | "x" HEX HEX)
+
+HEX             ::= [0-9a-fA-F]
 ```

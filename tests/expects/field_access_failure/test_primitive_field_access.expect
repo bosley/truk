@@ -1,3 +1,10 @@
-Type error: Member access requires struct type
+error: Member access requires struct type
+  --> field_access_failure/test_primitive_field_access.truk:3:13
+  |
+2 |     var x: i32 = 42;
+3 |     return x.field;
+  |             ^
+4 | }
+  |
 
 Compilation failed with 1 error(s)

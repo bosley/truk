@@ -1,0 +1,10 @@
+enum Status : i32 {
+  OK = 0,
+  _INTERNAL_ERROR = 15,
+  PENDING = 30
+}
+
+fn main() : i32 {
+  var s: Status = Status._INTERNAL_ERROR;
+  return s as i32;
+}

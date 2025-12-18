@@ -24,6 +24,7 @@ public:
   void visit(const language::nodes::fn_c &node) override;
   void visit(const language::nodes::lambda_c &node) override;
   void visit(const language::nodes::struct_c &node) override;
+  void visit(const language::nodes::enum_c &node) override;
   void visit(const language::nodes::var_c &node) override;
   void visit(const language::nodes::const_c &node) override;
   void visit(const language::nodes::let_c &node) override;
@@ -34,6 +35,7 @@ public:
   void visit(const language::nodes::break_c &node) override;
   void visit(const language::nodes::continue_c &node) override;
   void visit(const language::nodes::defer_c &node) override;
+  void visit(const language::nodes::match_c &node) override;
   void visit(const language::nodes::binary_op_c &node) override;
   void visit(const language::nodes::unary_op_c &node) override;
   void visit(const language::nodes::cast_c &node) override;
@@ -50,6 +52,7 @@ public:
   void visit(const language::nodes::import_c &node) override;
   void visit(const language::nodes::cimport_c &node) override;
   void visit(const language::nodes::shard_c &node) override;
+  void visit(const language::nodes::enum_value_access_c &node) override;
 
 private:
   bool _has_control_flow{false};

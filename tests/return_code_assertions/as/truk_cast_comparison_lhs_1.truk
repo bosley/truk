@@ -1,0 +1,8 @@
+fn main() : i32 {
+    var x: i64 = 10;
+    var y: i32 = 10;
+    if x as i32 == y {
+        return 1;
+    }
+    return 0;
+}

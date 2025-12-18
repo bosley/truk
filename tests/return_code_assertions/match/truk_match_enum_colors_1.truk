@@ -1,0 +1,11 @@
+enum Color : i32 { RED = 0, GREEN = 1, BLUE = 2 }
+
+fn main() : i32 {
+  var c: Color = Color.GREEN;
+  match c {
+    case Color.RED => return 0,
+    case Color.GREEN => return 1,
+    case Color.BLUE => return 2,
+    _ => return 99,
+  }
+}

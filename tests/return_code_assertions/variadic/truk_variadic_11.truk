@@ -11,7 +11,7 @@ fn average_f64(count: i32, ...nums) : i32 {
     sum = sum + val;
     i = i + 1;
   }
-  var avg: f64 = sum / count as f64;
+  var avg: f64 = sum / (count as f64);
   printf("Sum=%f Count=%d Average=%f\n", sum, count, avg);
   return avg as i32;
 }

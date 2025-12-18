@@ -1,0 +1,5 @@
+fn main() : i32 {
+    var x: i64 = 25;
+    var ptr: *i64 = &x;
+    return *ptr as i32;
+}

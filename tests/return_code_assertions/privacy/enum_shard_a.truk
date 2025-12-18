@@ -1,0 +1,30 @@
+shard "enum_test";
+
+enum _PrivateLevel : i32 {
+  LOW = 1,
+  MEDIUM = 5,
+  HIGH = 10
+}
+
+enum PublicLevel : i32 {
+  BEGINNER = 0,
+  EXPERT = 100
+}
+
+enum MixedStatus : i32 {
+  OK = 0,
+  _INTERNAL = 50,
+  ERROR = 99
+}
+
+fn _get_private_level() : _PrivateLevel {
+  return _PrivateLevel.MEDIUM;
+}
+
+fn get_public_level() : PublicLevel {
+  return PublicLevel.EXPERT;
+}
+
+fn get_mixed_internal() : MixedStatus {
+  return MixedStatus._INTERNAL;
+}

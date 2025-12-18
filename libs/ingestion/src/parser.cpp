@@ -3,9 +3,8 @@
 
 namespace truk::ingestion {
 
-parser_c::parser_c(const char *data, std::size_t len) : _data(data), _len(len) {
-  _tokens = tokenize();
-}
+parser_c::parser_c(const char *data, std::size_t len)
+    : _data(data), _len(len) {}
 
 parser_c::~parser_c() = default;
 
@@ -34,6 +33,15 @@ parse_result_s parser_c::parse() {
   parse_result_s result;
   result.source_data = _data;
   result.source_len = _len;
+  try {
+    _tokens = tokenize();
+  } catch (const tokenizer_exception_c &e) {
+    result.success = false;
+    result.error_message = e.what();
+    result.error_line = e.line();
+    result.error_column = e.column();
+    return result;
+  }
   try {
     auto all_decls = parse_program();
 
@@ -180,6 +188,9 @@ language::nodes::base_ptr parser_c::parse_declaration() {
   if (check_keyword(language::keywords_e::STRUCT)) {
     return parse_struct_decl();
   }
+  if (check_keyword(language::keywords_e::ENUM)) {
+    return parse_enum_decl();
+  }
   if (check_keyword(language::keywords_e::VAR)) {
     return parse_var_decl();
   }
@@ -187,8 +198,8 @@ language::nodes::base_ptr parser_c::parse_declaration() {
     return parse_const_decl();
   }
   const auto &token = peek();
-  throw parse_error("Expected declaration (fn, struct, var, const, import, "
-                    "cimport, shard, or extern)",
+  throw parse_error("Expected declaration (fn, struct, enum, var, const, "
+                    "import, cimport, shard, or extern)",
                     token.line, token.column);
 }
 
@@ -279,12 +290,15 @@ language::nodes::base_ptr parser_c::parse_extern_decl() {
     return parse_fn_decl(true);
   } else if (check_keyword(language::keywords_e::STRUCT)) {
     return parse_struct_decl(true);
+  } else if (check_keyword(language::keywords_e::ENUM)) {
+    return parse_enum_decl(true);
   } else if (check_keyword(language::keywords_e::VAR)) {
     return parse_var_decl(true);
   } else {
     const auto &token = peek();
-    throw parse_error("Expected 'fn', 'struct', or 'var' after 'extern'",
-                      token.line, token.column);
+    throw parse_error(
+        "Expected 'fn', 'struct', 'enum', or 'var' after 'extern'", token.line,
+        token.column);
   }
 }
 
@@ -389,6 +403,36 @@ language::nodes::base_ptr parser_c::parse_struct_decl(bool is_extern) {
 
   return std::make_unique<language::nodes::struct_c>(
       struct_token.source_index, std::move(name), std::move(fields), is_extern);
+}
+
+language::nodes::base_ptr parser_c::parse_enum_decl(bool is_extern) {
+  const auto &enum_token =
+      consume_keyword(language::keywords_e::ENUM, "Expected 'enum' keyword");
+  const auto &name_token = consume_identifier("Expected enum name");
+  language::nodes::identifier_s name(name_token.lexeme,
+                                     name_token.source_index);
+
+  consume(token_type_e::COLON, "Expected ':' after enum name");
+
+  auto backing_type = parse_type_internal();
+
+  std::vector<language::nodes::enum_value_s> values;
+
+  if (check(token_type_e::SEMICOLON)) {
+    consume(token_type_e::SEMICOLON, "Expected ';' after enum backing type");
+  } else {
+    consume(token_type_e::LEFT_BRACE, "Expected '{' after enum backing type");
+
+    if (!check(token_type_e::RIGHT_BRACE)) {
+      values = parse_enum_value_list();
+    }
+
+    consume(token_type_e::RIGHT_BRACE, "Expected '}' after enum values");
+  }
+
+  return std::make_unique<language::nodes::enum_c>(
+      enum_token.source_index, std::move(name), std::move(backing_type),
+      std::move(values), is_extern);
 }
 
 language::nodes::base_ptr parser_c::parse_var_decl(bool is_extern) {
@@ -668,6 +712,9 @@ language::nodes::base_ptr parser_c::parse_statement() {
   if (check_keyword(language::keywords_e::FOR)) {
     return parse_for_stmt();
   }
+  if (check_keyword(language::keywords_e::MATCH)) {
+    return parse_match_stmt();
+  }
   if (check_keyword(language::keywords_e::RETURN)) {
     return parse_return_stmt();
   }
@@ -777,6 +824,86 @@ language::nodes::base_ptr parser_c::parse_for_stmt() {
   return std::make_unique<language::nodes::for_c>(
       for_token.source_index, std::move(init), std::move(condition),
       std::move(post), std::move(body));
+}
+
+language::nodes::base_ptr parser_c::parse_match_stmt() {
+  const auto &match_token =
+      consume_keyword(language::keywords_e::MATCH, "Expected 'match' keyword");
+
+  auto scrutinee = parse_expression();
+
+  consume(token_type_e::LEFT_BRACE, "Expected '{' after match expression");
+
+  std::vector<language::nodes::match_case_s> cases;
+  bool has_wildcard = false;
+
+  while (!check(token_type_e::RIGHT_BRACE) && !is_at_end()) {
+    bool is_wildcard = false;
+    language::nodes::base_ptr pattern = nullptr;
+
+    if (check(token_type_e::IDENTIFIER) && peek().lexeme == "_") {
+      advance();
+      is_wildcard = true;
+      if (has_wildcard) {
+        throw parse_error("Match statement can only have one wildcard case",
+                          previous().line, previous().column);
+      }
+      has_wildcard = true;
+    } else {
+      consume_keyword(language::keywords_e::CASE,
+                      "Expected 'case' keyword or '_' wildcard");
+      pattern = parse_expression();
+    }
+
+    if (!check(token_type_e::FAT_ARROW)) {
+      throw parse_error("Expected '=>' after case pattern", peek().line,
+                        peek().column);
+    }
+    advance();
+
+    language::nodes::base_ptr body;
+    if (check(token_type_e::LEFT_BRACE)) {
+      body = parse_block();
+    } else {
+      if (check_keyword(language::keywords_e::RETURN)) {
+        const auto &return_token = consume_keyword(language::keywords_e::RETURN,
+                                                   "Expected 'return' keyword");
+        std::vector<language::nodes::base_ptr> expressions;
+        if (!check(token_type_e::COMMA)) {
+          expressions.push_back(parse_expression());
+        }
+        body = std::make_unique<language::nodes::return_c>(
+            return_token.source_index, std::move(expressions));
+      } else if (check_keyword(language::keywords_e::BREAK)) {
+        const auto &break_token = consume_keyword(language::keywords_e::BREAK,
+                                                  "Expected 'break' keyword");
+        body = std::make_unique<language::nodes::break_c>(
+            break_token.source_index);
+      } else if (check_keyword(language::keywords_e::CONTINUE)) {
+        const auto &continue_token = consume_keyword(
+            language::keywords_e::CONTINUE, "Expected 'continue' keyword");
+        body = std::make_unique<language::nodes::continue_c>(
+            continue_token.source_index);
+      } else {
+        body = parse_expression();
+      }
+    }
+
+    consume(token_type_e::COMMA, "Expected ',' after case body");
+
+    cases.emplace_back(std::move(pattern), std::move(body), is_wildcard);
+  }
+
+  if (!has_wildcard) {
+    throw parse_error(
+        "Match statement must have a wildcard '_' case for exhaustiveness",
+        match_token.line, match_token.column);
+  }
+
+  consume(token_type_e::RIGHT_BRACE, "Expected '}' after match cases");
+
+  return std::make_unique<language::nodes::match_c>(
+      match_token.source_index, std::move(scrutinee), std::move(cases));
 }
 
 language::nodes::base_ptr parser_c::parse_return_stmt() {
@@ -951,7 +1078,7 @@ language::nodes::base_ptr parser_c::parse_assignment() {
 }
 
 language::nodes::base_ptr parser_c::parse_cast() {
-  auto expr = parse_logical_or();
+  auto expr = parse_unary();
 
   while (check(token_type_e::KEYWORD)) {
     const auto &tok = peek();
@@ -1129,7 +1256,7 @@ language::nodes::base_ptr parser_c::parse_additive() {
 }
 
 language::nodes::base_ptr parser_c::parse_multiplicative() {
-  auto expr = parse_unary();
+  auto expr = parse_cast();
 
   while (match(token_type_e::STAR) || match(token_type_e::SLASH) ||
          match(token_type_e::PERCENT)) {
@@ -1233,16 +1360,6 @@ language::nodes::base_ptr parser_c::parse_postfix() {
           std::move(expr));
       expr = std::make_unique<language::nodes::member_access_c>(
           arrow_token.source_index, std::move(deref), std::move(field));
-    } else if (check(token_type_e::KEYWORD)) {
-      const auto &tok = peek();
-      if (tok.keyword && tok.keyword.value() == language::keywords_e::AS) {
-        advance();
-        auto target_type = parse_type();
-        expr = std::make_unique<language::nodes::cast_c>(
-            tok.source_index, std::move(expr), std::move(target_type));
-      } else {
-        break;
-      }
     } else {
       break;
     }
@@ -1270,6 +1387,13 @@ language::nodes::base_ptr parser_c::parse_primary() {
     const auto &token = previous();
     return std::make_unique<language::nodes::literal_c>(
         token.source_index, language::nodes::literal_type_e::STRING,
+        token.lexeme);
+  }
+
+  if (match(token_type_e::CHAR_LITERAL)) {
+    const auto &token = previous();
+    return std::make_unique<language::nodes::literal_c>(
+        token.source_index, language::nodes::literal_type_e::CHAR,
         token.lexeme);
   }
 
@@ -1320,9 +1444,9 @@ language::nodes::base_ptr parser_c::parse_primary() {
       if (is_struct_literal) {
         return parse_struct_literal();
       }
-    } else {
-      _current = saved_pos;
     }
+
+    _current = saved_pos;
 
     const auto &id_token = advance();
     language::nodes::identifier_s id(id_token.lexeme, id_token.source_index);
@@ -1416,6 +1540,52 @@ language::nodes::struct_field_s parser_c::parse_field() {
   auto type = parse_type_annotation();
 
   return language::nodes::struct_field_s(std::move(name), std::move(type));
+}
+
+std::vector<language::nodes::enum_value_s> parser_c::parse_enum_value_list() {
+  std::vector<language::nodes::enum_value_s> values;
+  values.push_back(parse_enum_value());
+
+  while (match(token_type_e::COMMA)) {
+    if (check(token_type_e::RIGHT_BRACE)) {
+      break;
+    }
+    values.push_back(parse_enum_value());
+  }
+
+  return values;
+}
+
+language::nodes::enum_value_s parser_c::parse_enum_value() {
+  const auto &name_token = consume_identifier("Expected enum value name");
+  language::nodes::identifier_s name(name_token.lexeme,
+                                     name_token.source_index);
+
+  std::optional<std::int64_t> explicit_value = std::nullopt;
+
+  if (match(token_type_e::EQUAL)) {
+    const auto &value_token =
+        consume(token_type_e::INTEGER_LITERAL, "Expected integer literal");
+
+    std::string value_str = value_token.lexeme;
+    std::int64_t value = 0;
+
+    if (value_str.size() >= 2 && value_str[0] == '0' && value_str[1] == 'x') {
+      value = std::stoll(value_str.substr(2), nullptr, 16);
+    } else if (value_str.size() >= 2 && value_str[0] == '0' &&
+               value_str[1] == 'b') {
+      value = std::stoll(value_str.substr(2), nullptr, 2);
+    } else if (value_str.size() >= 2 && value_str[0] == '0' &&
+               value_str[1] == 'o') {
+      value = std::stoll(value_str.substr(2), nullptr, 8);
+    } else {
+      value = std::stoll(value_str);
+    }
+
+    explicit_value = value;
+  }
+
+  return language::nodes::enum_value_s(std::move(name), explicit_value);
 }
 
 std::vector<language::nodes::base_ptr> parser_c::parse_argument_list() {

@@ -417,6 +417,30 @@ bool type_checker_c::is_comparable_type(const type_entry_s *type) {
     return true;
   }
 
+  if (type->kind == type_kind_e::ENUM) {
+    return true;
+  }
+
+  return false;
+}
+
+bool type_checker_c::is_matchable_type(const type_entry_s *type) const {
+  if (!type) {
+    return false;
+  }
+
+  if (type->kind == type_kind_e::PRIMITIVE) {
+    return true;
+  }
+
+  if (type->kind == type_kind_e::ENUM) {
+    return true;
+  }
+
+  if (type->kind == type_kind_e::POINTER) {
+    return true;
+  }
+
   return false;
 }
 
@@ -1229,6 +1253,67 @@ void type_checker_c::visit(const struct_c &node) {
   _memory.defer_hoist("__type__" + node.name().name);
 }
 
+void type_checker_c::visit(const enum_c &node) {
+  auto it = _decl_to_file.find(&node);
+  if (it != _decl_to_file.end()) {
+    _current_file = it->second;
+  }
+
+  auto backing_type = resolve_type(node.backing_type());
+  if (!backing_type) {
+    report_error("Unknown enum backing type: " +
+                     get_type_name_for_error(node.backing_type()),
+                 node.source_index());
+    return;
+  }
+
+  if (backing_type->kind != type_kind_e::PRIMITIVE ||
+      backing_type->pointer_depth > 0) {
+    report_error("Enum backing type must be a non-pointer primitive integer "
+                 "type (i8, i16, i32, i64, u8, u16, u32, u64)",
+                 node.source_index());
+    return;
+  }
+
+  if (backing_type->name == "f32" || backing_type->name == "f64" ||
+      backing_type->name == "bool" || backing_type->name == "void") {
+    report_error("Enum backing type must be an integer type (i8, i16, i32, "
+                 "i64, u8, u16, u32, u64)",
+                 node.source_index());
+    return;
+  }
+
+  auto enum_type =
+      std::make_unique<type_entry_s>(type_kind_e::ENUM, node.name().name);
+  enum_type->enum_backing_type = std::make_unique<type_entry_s>(*backing_type);
+
+  std::int64_t next_value = 0;
+  std::unordered_set<std::string> value_names;
+
+  for (const auto &enum_value : node.values()) {
+    if (value_names.count(enum_value.name.name)) {
+      report_error("Duplicate enum value name: " + enum_value.name.name,
+                   enum_value.name.source_index);
+      continue;
+    }
+    value_names.insert(enum_value.name.name);
+
+    std::int64_t value;
+    if (enum_value.explicit_value.has_value()) {
+      value = enum_value.explicit_value.value();
+      next_value = value + 1;
+    } else {
+      value = next_value;
+      next_value++;
+    }
+
+    enum_type->enum_values[enum_value.name.name] = value;
+  }
+
+  register_type(node.name().name, std::move(enum_type));
+  _memory.defer_hoist("__type__" + node.name().name);
+}
+
 void type_checker_c::visit(const var_c &node) {
   auto it = _decl_to_file.find(&node);
   if (it != _decl_to_file.end()) {
@@ -1526,6 +1611,79 @@ void type_checker_c::visit(const defer_c &node) {
   }
 }
 
+void type_checker_c::visit(const match_c &node) {
+  if (node.scrutinee()) {
+    node.scrutinee()->accept(*this);
+  }
+
+  auto scrutinee_type = std::move(_current_expression_type);
+  if (!scrutinee_type) {
+    report_error("Cannot determine type of match scrutinee expression",
+                 node.source_index());
+    return;
+  }
+
+  if (!is_matchable_type(scrutinee_type.get())) {
+    report_error(
+        "Match scrutinee must be a primitive type, enum, or pointer type",
+        node.source_index());
+  }
+
+  bool found_wildcard = false;
+  for (const auto &case_arm : node.cases()) {
+    if (case_arm.is_wildcard) {
+      found_wildcard = true;
+      if (case_arm.body) {
+        case_arm.body->accept(*this);
+      }
+    } else {
+      if (case_arm.pattern) {
+        case_arm.pattern->accept(*this);
+
+        auto pattern_type = std::move(_current_expression_type);
+        if (pattern_type && scrutinee_type) {
+          if (pattern_type->kind == type_kind_e::UNTYPED_INTEGER ||
+              pattern_type->kind == type_kind_e::UNTYPED_FLOAT) {
+            pattern_type = resolve_untyped_literal(pattern_type.get(),
+                                                   scrutinee_type.get());
+          }
+
+          bool types_match =
+              types_equal(scrutinee_type.get(), pattern_type.get());
+
+          if (!types_match && scrutinee_type->kind == type_kind_e::POINTER &&
+              pattern_type->kind == type_kind_e::POINTER &&
+              pattern_type->name == "void" &&
+              pattern_type->pointer_depth == 1) {
+            types_match = true;
+          }
+
+          if (!types_match && pattern_type->kind == type_kind_e::POINTER &&
+              scrutinee_type->kind == type_kind_e::POINTER &&
+              scrutinee_type->name == "void" &&
+              scrutinee_type->pointer_depth == 1) {
+            types_match = true;
+          }
+
+          if (!types_match) {
+            report_error("Case pattern type does not match scrutinee type",
+                         case_arm.pattern->source_index());
+          }
+        }
+      }
+
+      if (case_arm.body) {
+        case_arm.body->accept(*this);
+      }
+    }
+  }
+
+  if (!found_wildcard) {
+    report_error("Match statement must have a wildcard '_' case",
+                 node.source_index());
+  }
+}
+
 void type_checker_c::visit(const binary_op_c &node) {
   node.left()->accept(*this);
   auto left_type = std::move(_current_expression_type);
@@ -1724,6 +1882,26 @@ void type_checker_c::visit(const cast_c &node) {
     return;
   }
 
+  if (target_type->kind == type_kind_e::ENUM) {
+    report_error("Cannot cast to enum type; use enum literals instead (e.g., "
+                 "EnumName.VALUE)",
+                 node.source_index());
+    return;
+  }
+
+  if (_current_expression_type->kind == type_kind_e::ENUM) {
+    if (!_current_expression_type->enum_backing_type) {
+      report_error("Enum type has no backing type", node.source_index());
+      return;
+    }
+    if (!types_equal(target_type.get(),
+                     _current_expression_type->enum_backing_type.get())) {
+      report_error("Enum can only be cast to its backing type",
+                   node.source_index());
+      return;
+    }
+  }
+
   _current_expression_type = std::move(target_type);
 }
 
@@ -1907,6 +2085,22 @@ void type_checker_c::visit(const index_c &node) {
 }
 
 void type_checker_c::visit(const member_access_c &node) {
+  if (auto *id_node = node.object()->as_identifier()) {
+    auto *type_entry = lookup_type(id_node->id().name);
+    if (type_entry && type_entry->kind == type_kind_e::ENUM) {
+      const auto &value_name = node.field().name;
+      auto value_it = type_entry->enum_values.find(value_name);
+      if (value_it == type_entry->enum_values.end()) {
+        report_error("Enum '" + id_node->id().name +
+                         "' does not have a value named '" + value_name + "'",
+                     node.source_index());
+        return;
+      }
+      _current_expression_type = std::make_unique<type_entry_s>(*type_entry);
+      return;
+    }
+  }
+
   node.object()->accept(*this);
 
   if (!_current_expression_type) {
@@ -1963,6 +2157,10 @@ void type_checker_c::visit(const literal_c &node) {
     _current_expression_type =
         std::make_unique<type_entry_s>(type_kind_e::POINTER, "u8");
     _current_expression_type->pointer_depth = 1;
+    break;
+  case literal_type_e::CHAR:
+    _current_expression_type =
+        std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "i8");
     break;
   case literal_type_e::BOOL:
     _current_expression_type =
@@ -2209,6 +2407,32 @@ void type_checker_c::visit(const cimport_c &node) {}
 
 void type_checker_c::visit(const shard_c &node) {}
 
+void type_checker_c::visit(const enum_value_access_c &node) {
+  auto *enum_type = lookup_type(node.enum_name().name);
+  if (!enum_type) {
+    report_error("Undefined enum type: " + node.enum_name().name,
+                 node.source_index());
+    return;
+  }
+
+  if (enum_type->kind != type_kind_e::ENUM) {
+    report_error("'" + node.enum_name().name + "' is not an enum type",
+                 node.source_index());
+    return;
+  }
+
+  auto value_it = enum_type->enum_values.find(node.value_name().name);
+  if (value_it == enum_type->enum_values.end()) {
+    report_error("Enum '" + node.enum_name().name +
+                     "' does not have a value named '" +
+                     node.value_name().name + "'",
+                 node.source_index());
+    return;
+  }
+
+  _current_expression_type = std::make_unique<type_entry_s>(*enum_type);
+}
+
 bool type_checker_c::is_private_identifier(const std::string &name) const {
   return !name.empty() && name[0] == '_';
 }
@@ -2432,6 +2656,13 @@ void symbol_collector_c::visit(const struct_c &node) {
   }
 }
 
+void symbol_collector_c::visit(const enum_c &node) {
+  auto it = _decl_to_file.find(&node);
+  if (it != _decl_to_file.end()) {
+    _current_file = it->second;
+  }
+}
+
 void symbol_collector_c::visit(const var_c &node) {
   auto it = _decl_to_file.find(&node);
   if (it != _decl_to_file.end()) {
@@ -2571,6 +2802,21 @@ void symbol_collector_c::visit(const defer_c &node) {
   }
 }
 
+void symbol_collector_c::visit(const match_c &node) {
+  if (node.scrutinee()) {
+    node.scrutinee()->accept(*this);
+  }
+
+  for (const auto &case_arm : node.cases()) {
+    if (case_arm.pattern) {
+      case_arm.pattern->accept(*this);
+    }
+    if (case_arm.body) {
+      case_arm.body->accept(*this);
+    }
+  }
+}
+
 void symbol_collector_c::visit(const binary_op_c &node) {
   if (node.left()) {
     node.left()->accept(*this);
@@ -2672,6 +2918,7 @@ void symbol_collector_c::visit(const type_param_c &node) {}
 void symbol_collector_c::visit(const import_c &node) {}
 void symbol_collector_c::visit(const cimport_c &node) {}
 void symbol_collector_c::visit(const shard_c &node) {}
+void symbol_collector_c::visit(const enum_value_access_c &node) {}
 
 lambda_capture_validator_c::lambda_capture_validator_c(
     const symbol_collection_result_s &symbols,
@@ -2734,6 +2981,8 @@ void lambda_capture_validator_c::visit(const lambda_c &node) {
 }
 
 void lambda_capture_validator_c::visit(const struct_c &node) {}
+
+void lambda_capture_validator_c::visit(const enum_c &node) {}
 
 void lambda_capture_validator_c::visit(const var_c &node) {
   if (node.initializer()) {
@@ -2811,6 +3060,21 @@ void lambda_capture_validator_c::visit(const continue_c &node) {}
 void lambda_capture_validator_c::visit(const defer_c &node) {
   if (node.deferred_code()) {
     node.deferred_code()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const match_c &node) {
+  if (node.scrutinee()) {
+    node.scrutinee()->accept(*this);
+  }
+
+  for (const auto &case_arm : node.cases()) {
+    if (case_arm.pattern) {
+      case_arm.pattern->accept(*this);
+    }
+    if (case_arm.body) {
+      case_arm.body->accept(*this);
+    }
   }
 }
 
@@ -2974,6 +3238,7 @@ void lambda_capture_validator_c::visit(const type_param_c &node) {}
 void lambda_capture_validator_c::visit(const import_c &node) {}
 void lambda_capture_validator_c::visit(const cimport_c &node) {}
 void lambda_capture_validator_c::visit(const shard_c &node) {}
+void lambda_capture_validator_c::visit(const enum_value_access_c &node) {}
 
 language::nodes::type_ptr
 type_checker_c::create_type_node_from_entry(const type_entry_s *entry) {
@@ -3011,6 +3276,10 @@ type_checker_c::create_type_node_from_entry(const type_entry_s *entry) {
     return std::make_unique<language::nodes::primitive_type_c>(keyword, 0);
   }
   case type_kind_e::STRUCT: {
+    language::nodes::identifier_s id(entry->name, 0);
+    return std::make_unique<language::nodes::named_type_c>(0, std::move(id));
+  }
+  case type_kind_e::ENUM: {
     language::nodes::identifier_s id(entry->name, 0);
     return std::make_unique<language::nodes::named_type_c>(0, std::move(id));
   }

@@ -1,0 +1,8 @@
+enum FloatEnum : f32 {
+    ZERO = 0,
+    ONE = 1
+}
+
+fn main() : i32 {
+    return 0;
+}

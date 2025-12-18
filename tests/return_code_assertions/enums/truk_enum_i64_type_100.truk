@@ -1,0 +1,8 @@
+enum BigValue : i64 {
+    LARGE = 100
+}
+
+fn main() : i32 {
+    var v: BigValue = BigValue.LARGE;
+    return v as i64 as i32;
+}

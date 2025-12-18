@@ -1,0 +1,26 @@
+enum Operation : i32 {
+    ADD = 0,
+    SUBTRACT = 1,
+    MULTIPLY = 2,
+    DIVIDE = 3
+}
+
+fn compute(op: Operation, a: i32, b: i32) : i32 {
+    if op == Operation.ADD {
+        return a + b;
+    }
+    if op == Operation.SUBTRACT {
+        return a - b;
+    }
+    if op == Operation.MULTIPLY {
+        return a * b;
+    }
+    if op == Operation.DIVIDE {
+        return a / b;
+    }
+    return 0;
+}
+
+fn main() : i32 {
+    return compute(Operation.MULTIPLY, 1, 2);
+}

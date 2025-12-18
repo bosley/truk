@@ -1,0 +1,13 @@
+enum Value : i32 {
+    A = 5,
+    B = 10,
+    C = 15
+}
+
+fn main() : i32 {
+    var v: Value = Value.C;
+    var ptr1: *Value = &v;
+    var ptr2: **Value = &ptr1;
+    var result: Value = **ptr2;
+    return result as i32;
+}

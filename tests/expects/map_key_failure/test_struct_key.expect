@@ -1,10 +1,66 @@
-Type error: Invalid map key type: Point. Keys must be primitives (integers, floats, bool) or string pointers (*u8, *i8)
-Type error: Unknown variable type: map[Point, i32]
-Type error: Undefined identifier: m
-Type error: Undefined identifier: m
-Type error: Index operation on invalid type
-Type error: Assignment with invalid types
-Type error: Undefined identifier: m
-Type error: Failed to resolve argument type for delete
+error: Invalid map key type: Point. Keys must be primitives (integers, floats, bool) or string pointers (*u8, *i8)
+  --> map_key_failure/test_struct_key.truk:4:12
+  |
+3 | fn main() : i32 {
+4 |     var m: map[Point, i32] = make(@map[Point, i32]);
+  |            ^
+5 |     var p: Point = Point{x: 1, y: 2};
+  |
+error: Unknown variable type: map[Point, i32]
+  --> map_key_failure/test_struct_key.truk:4:5
+  |
+3 | fn main() : i32 {
+4 |     var m: map[Point, i32] = make(@map[Point, i32]);
+  |     ^
+5 |     var p: Point = Point{x: 1, y: 2};
+  |
+error: Undefined identifier: m
+  --> map_key_failure/test_struct_key.truk:6:5
+  |
+5 |     var p: Point = Point{x: 1, y: 2};
+6 |     m[p] = 42;
+  |     ^
+7 |     delete(m);
+  |
+error: Undefined identifier: m
+  --> map_key_failure/test_struct_key.truk:6:5
+  |
+5 |     var p: Point = Point{x: 1, y: 2};
+6 |     m[p] = 42;
+  |     ^
+7 |     delete(m);
+  |
+error: Index operation on invalid type
+  --> map_key_failure/test_struct_key.truk:6:6
+  |
+5 |     var p: Point = Point{x: 1, y: 2};
+6 |     m[p] = 42;
+  |      ^
+7 |     delete(m);
+  |
+error: Assignment with invalid types
+  --> map_key_failure/test_struct_key.truk:6:10
+  |
+5 |     var p: Point = Point{x: 1, y: 2};
+6 |     m[p] = 42;
+  |          ^
+7 |     delete(m);
+  |
+error: Undefined identifier: m
+  --> map_key_failure/test_struct_key.truk:7:12
+  |
+6 |     m[p] = 42;
+7 |     delete(m);
+  |            ^
+8 |     return 0;
+  |
+error: Failed to resolve argument type for delete
+  --> map_key_failure/test_struct_key.truk:7:11
+  |
+6 |     m[p] = 42;
+7 |     delete(m);
+  |           ^
+8 |     return 0;
+  |
 
 Compilation failed with 8 error(s)

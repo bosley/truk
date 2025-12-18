@@ -1,0 +1,10 @@
+error: Match statement can only have one wildcard case
+  --> match_failure/test_match_multiple_wildcards.truk:6:5
+  |
+5 |     _ => return 1,
+6 |     _ => return 2,
+  |     ^
+7 |   }
+  |
+
+Compilation failed with 1 error(s)

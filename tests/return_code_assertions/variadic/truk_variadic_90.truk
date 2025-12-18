@@ -8,7 +8,7 @@ fn weighted_sum(w1: i32, w2: i32, ...values) : i32 {
   printf("Weights: w1=%d w2=%d\n", w1, w2);
   printf("Values: a=%lld b=%lld\n", a, b);
   
-  var result: i64 = (a * w1 as i64) + (b * w2 as i64);
+  var result: i64 = (a * (w1 as i64)) + (b * (w2 as i64));
   printf("Weighted sum: %lld\n", result);
   return result as i32;
 }

@@ -1,0 +1,10 @@
+error: Match statement must have a wildcard '_' case for exhaustiveness
+  --> match_failure/test_match_no_wildcard.truk:3:3
+  |
+2 |   var x: i32 = 5;
+3 |   match x {
+  |   ^
+4 |     case 0 => return 0,
+  |
+
+Compilation failed with 1 error(s)

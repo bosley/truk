@@ -1,0 +1,4 @@
+fn main() : i32 {
+  var chars: [3]i8 = ['A', 'B', 'C'];
+  return chars[2] as i32;
+}

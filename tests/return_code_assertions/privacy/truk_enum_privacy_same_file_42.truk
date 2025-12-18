@@ -1,0 +1,16 @@
+enum _PrivateStatus : i32 {
+  OK = 0,
+  ERROR = 1,
+  PENDING = 42
+}
+
+enum PublicStatus : i32 {
+  ACTIVE = 10,
+  INACTIVE = 20
+}
+
+fn main() : i32 {
+  var ps: _PrivateStatus = _PrivateStatus.PENDING;
+  var pub: PublicStatus = PublicStatus.ACTIVE;
+  return ps as i32;
+}

@@ -1,0 +1,10 @@
+error: Match scrutinee must be a primitive type, enum, or pointer type
+  --> match_failure/test_match_non_matchable_type.truk:5:3
+  |
+4 |   var p: Point = Point { x: 1, y: 2 };
+5 |   match p {
+  |   ^
+6 |     case Point { x: 1, y: 2 } => return 0,
+  |
+
+Compilation failed with 1 error(s)

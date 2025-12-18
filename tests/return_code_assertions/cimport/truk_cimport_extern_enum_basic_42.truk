@@ -1,0 +1,14 @@
+cimport "enumheader.h";
+
+extern enum Status : i32 {
+    STATUS_OK = 0,
+    STATUS_ERROR = 1,
+    STATUS_PENDING = 42
+}
+
+extern fn get_status_value(s: Status): i32;
+
+fn main(): i32 {
+    var status: Status = Status.STATUS_PENDING;
+    return get_status_value(status);
+}

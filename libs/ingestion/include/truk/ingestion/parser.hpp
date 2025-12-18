@@ -70,6 +70,7 @@ private:
   language::nodes::base_ptr parse_fn_decl(bool is_extern = false);
   language::nodes::base_ptr parse_lambda();
   language::nodes::base_ptr parse_struct_decl(bool is_extern = false);
+  language::nodes::base_ptr parse_enum_decl(bool is_extern = false);
   language::nodes::base_ptr parse_var_decl(bool is_extern = false);
   language::nodes::base_ptr parse_const_decl();
   language::nodes::base_ptr parse_let_decl();
@@ -87,6 +88,7 @@ private:
   language::nodes::base_ptr parse_if_stmt();
   language::nodes::base_ptr parse_while_stmt();
   language::nodes::base_ptr parse_for_stmt();
+  language::nodes::base_ptr parse_match_stmt();
   language::nodes::base_ptr parse_return_stmt();
   language::nodes::base_ptr parse_break_stmt();
   language::nodes::base_ptr parse_continue_stmt();
@@ -114,6 +116,8 @@ private:
   language::nodes::parameter_s parse_param();
   std::vector<language::nodes::struct_field_s> parse_field_list();
   language::nodes::struct_field_s parse_field();
+  std::vector<language::nodes::enum_value_s> parse_enum_value_list();
+  language::nodes::enum_value_s parse_enum_value();
   std::vector<language::nodes::base_ptr> parse_argument_list();
   language::nodes::base_ptr parse_array_literal();
   language::nodes::base_ptr parse_struct_literal();

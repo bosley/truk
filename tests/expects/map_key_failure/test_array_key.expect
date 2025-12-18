@@ -1,10 +1,66 @@
-Type error: Invalid map key type: [2]i32. Keys must be primitives (integers, floats, bool) or string pointers (*u8, *i8)
-Type error: Unknown variable type: map[[2]i32, i32]
-Type error: Undefined identifier: m
-Type error: Undefined identifier: m
-Type error: Index operation on invalid type
-Type error: Assignment with invalid types
-Type error: Undefined identifier: m
-Type error: Failed to resolve argument type for delete
+error: Invalid map key type: [2]i32. Keys must be primitives (integers, floats, bool) or string pointers (*u8, *i8)
+  --> map_key_failure/test_array_key.truk:2:12
+  |
+1 | fn main() : i32 {
+2 |     var m: map[[2]i32, i32] = make(@map[[2]i32, i32]);
+  |            ^
+3 |     var arr: [2]i32;
+  |
+error: Unknown variable type: map[[2]i32, i32]
+  --> map_key_failure/test_array_key.truk:2:5
+  |
+1 | fn main() : i32 {
+2 |     var m: map[[2]i32, i32] = make(@map[[2]i32, i32]);
+  |     ^
+3 |     var arr: [2]i32;
+  |
+error: Undefined identifier: m
+  --> map_key_failure/test_array_key.truk:6:5
+  |
+5 |     arr[1] = 2;
+6 |     m[arr] = 42;
+  |     ^
+7 |     delete(m);
+  |
+error: Undefined identifier: m
+  --> map_key_failure/test_array_key.truk:6:5
+  |
+5 |     arr[1] = 2;
+6 |     m[arr] = 42;
+  |     ^
+7 |     delete(m);
+  |
+error: Index operation on invalid type
+  --> map_key_failure/test_array_key.truk:6:6
+  |
+5 |     arr[1] = 2;
+6 |     m[arr] = 42;
+  |      ^
+7 |     delete(m);
+  |
+error: Assignment with invalid types
+  --> map_key_failure/test_array_key.truk:6:12
+  |
+5 |     arr[1] = 2;
+6 |     m[arr] = 42;
+  |            ^
+7 |     delete(m);
+  |
+error: Undefined identifier: m
+  --> map_key_failure/test_array_key.truk:7:12
+  |
+6 |     m[arr] = 42;
+7 |     delete(m);
+  |            ^
+8 |     return 0;
+  |
+error: Failed to resolve argument type for delete
+  --> map_key_failure/test_array_key.truk:7:11
+  |
+6 |     m[arr] = 42;
+7 |     delete(m);
+  |           ^
+8 |     return 0;
+  |
 
 Compilation failed with 8 error(s)

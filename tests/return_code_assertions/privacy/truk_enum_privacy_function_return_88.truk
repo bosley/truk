@@ -1,0 +1,18 @@
+enum Result : i32 {
+  SUCCESS = 0,
+  _PARTIAL = 88,
+  FAILURE = 99
+}
+
+fn _internal_operation() : Result {
+  return Result._PARTIAL;
+}
+
+fn public_operation() : Result {
+  return _internal_operation();
+}
+
+fn main() : i32 {
+  var r: Result = public_operation();
+  return r as i32;
+}

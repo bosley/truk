@@ -21,6 +21,7 @@ enum class node_kind_e {
   FN,
   LAMBDA,
   STRUCT,
+  ENUM,
   VAR,
   CONST,
   LET,
@@ -31,6 +32,7 @@ enum class node_kind_e {
   BREAK,
   CONTINUE,
   DEFER,
+  MATCH,
   BINARY_OP,
   UNARY_OP,
   CAST,
@@ -46,7 +48,8 @@ enum class node_kind_e {
   TYPE_PARAM,
   IMPORT,
   CIMPORT,
-  SHARD
+  SHARD,
+  ENUM_VALUE_ACCESS
 };
 
 enum class type_kind_e {
@@ -69,6 +72,7 @@ class tuple_type_c;
 class fn_c;
 class lambda_c;
 class struct_c;
+class enum_c;
 class var_c;
 class const_c;
 class let_c;
@@ -79,6 +83,7 @@ class return_c;
 class break_c;
 class continue_c;
 class defer_c;
+class match_c;
 class binary_op_c;
 class unary_op_c;
 class cast_c;
@@ -95,6 +100,7 @@ class type_param_c;
 class import_c;
 class cimport_c;
 class shard_c;
+class enum_value_access_c;
 
 class base_c {
 public:
@@ -122,6 +128,7 @@ public:
   virtual const fn_c *as_fn() const { return nullptr; }
   virtual const lambda_c *as_lambda() const { return nullptr; }
   virtual const struct_c *as_struct() const { return nullptr; }
+  virtual const enum_c *as_enum() const { return nullptr; }
   virtual const var_c *as_var() const { return nullptr; }
   virtual const const_c *as_const() const { return nullptr; }
   virtual const let_c *as_let() const { return nullptr; }
@@ -132,6 +139,7 @@ public:
   virtual const break_c *as_break() const { return nullptr; }
   virtual const continue_c *as_continue() const { return nullptr; }
   virtual const defer_c *as_defer() const { return nullptr; }
+  virtual const match_c *as_match() const { return nullptr; }
   virtual const binary_op_c *as_binary_op() const { return nullptr; }
   virtual const unary_op_c *as_unary_op() const { return nullptr; }
   virtual const cast_c *as_cast() const { return nullptr; }
@@ -148,6 +156,9 @@ public:
   virtual const import_c *as_import() const { return nullptr; }
   virtual const cimport_c *as_cimport() const { return nullptr; }
   virtual const shard_c *as_shard() const { return nullptr; }
+  virtual const enum_value_access_c *as_enum_value_access() const {
+    return nullptr;
+  }
 
   virtual ~base_c() = default;
 
@@ -204,6 +215,15 @@ struct struct_field_s {
   struct_field_s() = delete;
   struct_field_s(identifier_s n, type_ptr t)
       : name(std::move(n)), type(std::move(t)) {}
+};
+
+struct enum_value_s {
+  identifier_s name;
+  std::optional<std::int64_t> explicit_value;
+
+  enum_value_s() = delete;
+  enum_value_s(identifier_s n, std::optional<std::int64_t> val = std::nullopt)
+      : name(std::move(n)), explicit_value(val) {}
 };
 
 class primitive_type_c : public type_c {
@@ -412,6 +432,32 @@ public:
 private:
   identifier_s _name;
   std::vector<struct_field_s> _fields;
+  bool _is_extern{false};
+};
+
+class enum_c : public base_c {
+public:
+  enum_c() = delete;
+  enum_c(std::size_t source_index, identifier_s name, type_ptr backing_type,
+         std::vector<enum_value_s> values, bool is_extern = false)
+      : base_c(keywords_e::ENUM, source_index), _name(std::move(name)),
+        _backing_type(std::move(backing_type)), _values(std::move(values)),
+        _is_extern(is_extern) {}
+
+  const identifier_s &name() const { return _name; }
+  const type_c *backing_type() const { return _backing_type.get(); }
+  const std::vector<enum_value_s> &values() const { return _values; }
+  bool is_extern() const { return _is_extern; }
+
+  void accept(visitor_if &visitor) const override;
+  std::optional<std::string> symbol_name() const override { return _name.name; }
+  node_kind_e kind() const override { return node_kind_e::ENUM; }
+  const enum_c *as_enum() const override { return this; }
+
+private:
+  identifier_s _name;
+  type_ptr _backing_type;
+  std::vector<enum_value_s> _values;
   bool _is_extern{false};
 };
 
@@ -791,7 +837,7 @@ private:
   type_ptr _type;
 };
 
-enum class literal_type_e { INTEGER, FLOAT, STRING, BOOL, NIL };
+enum class literal_type_e { INTEGER, FLOAT, STRING, CHAR, BOOL, NIL };
 
 class literal_c : public base_c {
 public:
@@ -967,6 +1013,58 @@ public:
 
 private:
   std::string _name;
+};
+
+class enum_value_access_c : public base_c {
+public:
+  enum_value_access_c() = delete;
+  enum_value_access_c(std::size_t source_index, identifier_s enum_name,
+                      identifier_s value_name)
+      : base_c(keywords_e::UNKNOWN_KEYWORD, source_index),
+        _enum_name(std::move(enum_name)), _value_name(std::move(value_name)) {}
+
+  const identifier_s &enum_name() const { return _enum_name; }
+  const identifier_s &value_name() const { return _value_name; }
+
+  void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::ENUM_VALUE_ACCESS; }
+  const enum_value_access_c *as_enum_value_access() const override {
+    return this;
+  }
+
+private:
+  identifier_s _enum_name;
+  identifier_s _value_name;
+};
+
+struct match_case_s {
+  base_ptr pattern;
+  base_ptr body;
+  bool is_wildcard;
+
+  match_case_s() = delete;
+  match_case_s(base_ptr pat, base_ptr b, bool wildcard = false)
+      : pattern(std::move(pat)), body(std::move(b)), is_wildcard(wildcard) {}
+};
+
+class match_c : public base_c {
+public:
+  match_c() = delete;
+  match_c(std::size_t source_index, base_ptr scrutinee,
+          std::vector<match_case_s> cases)
+      : base_c(keywords_e::MATCH, source_index),
+        _scrutinee(std::move(scrutinee)), _cases(std::move(cases)) {}
+
+  const base_c *scrutinee() const { return _scrutinee.get(); }
+  const std::vector<match_case_s> &cases() const { return _cases; }
+
+  void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::MATCH; }
+  const match_c *as_match() const override { return this; }
+
+private:
+  base_ptr _scrutinee;
+  std::vector<match_case_s> _cases;
 };
 
 } // namespace truk::language::nodes

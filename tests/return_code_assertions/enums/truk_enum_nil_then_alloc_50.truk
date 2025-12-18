@@ -1,0 +1,18 @@
+enum Level : i32 {
+    BEGINNER = 10,
+    INTERMEDIATE = 30,
+    EXPERT = 50
+}
+
+fn main() : i32 {
+    var ptr: *Level = nil;
+    
+    if ptr == nil {
+        ptr = make(@Level);
+        *ptr = Level.EXPERT;
+    }
+    
+    var result: i32 = *ptr as i32;
+    delete(ptr);
+    return result;
+}

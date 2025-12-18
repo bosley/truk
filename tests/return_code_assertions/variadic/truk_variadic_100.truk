@@ -18,7 +18,7 @@ fn complex_logic(mode: i32, threshold: i32, ...values) : i32 {
   } else {
     if y > threshold as i64 {
       printf("Mode 2: y > threshold\n");
-      return (y * 2 as i64) as i32;
+      return ((y * 2) as i64) as i32;
     } else {
       printf("Mode 2: y <= threshold\n");
       return (x + y) as i32;

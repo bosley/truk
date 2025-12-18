@@ -1,0 +1,13 @@
+enum Level : i32 {
+    ZERO = 0,
+    TEN = 10,
+    TWENTY = 20,
+    THIRTY = 30
+}
+
+fn main() : i32 {
+    var lvl: Level = Level.TEN;
+    var ptr: *Level = &lvl;
+    *ptr = Level.TWENTY;
+    return lvl as i32;
+}

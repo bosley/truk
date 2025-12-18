@@ -1,0 +1,25 @@
+enum Type : i32 {
+    BASIC = 11,
+    PREMIUM = 77
+}
+
+struct Item {
+    item_type: Type,
+    value: i32
+}
+
+fn main() : i32 {
+    var m: map[i32, Item] = make(@map[i32, Item]);
+    
+    var item: Item = Item{item_type: Type.PREMIUM, value: 100};
+    m[1] = item;
+    
+    var ptr: *Item = m[1];
+    var result: i32 = 0;
+    if ptr != nil {
+        result = ptr->item_type as i32;
+    }
+    
+    delete(m);
+    return result;
+}

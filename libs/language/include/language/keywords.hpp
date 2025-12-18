@@ -9,6 +9,7 @@ enum class keywords_e {
   UNKNOWN_KEYWORD = 0, // not a keyword
   FN,
   STRUCT,
+  ENUM,
   VAR,
   CONST,
   LET,
@@ -29,6 +30,8 @@ enum class keywords_e {
   CIMPORT,
   EXTERN,
   SHARD,
+  MATCH,
+  CASE,
   I8,
   I16,
   I32,

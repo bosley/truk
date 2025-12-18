@@ -1,0 +1,11 @@
+enum State : i32 {
+    IDLE = 0,
+    RUNNING = 1,
+    STOPPED = 2,
+    ERROR = 3
+}
+
+fn main() : i32 {
+    var states: [4]State = [State.IDLE, State.RUNNING, State.STOPPED, State.ERROR];
+    return states[3] as i32;
+}

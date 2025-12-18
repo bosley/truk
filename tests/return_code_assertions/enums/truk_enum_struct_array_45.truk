@@ -1,0 +1,21 @@
+enum Priority : i32 {
+    LOW = 5,
+    MEDIUM = 15,
+    HIGH = 25,
+    CRITICAL = 45
+}
+
+struct Task {
+    priority: Priority,
+    id: i32
+}
+
+fn main() : i32 {
+    var tasks: [3]Task = [
+        Task{priority: Priority.LOW, id: 1},
+        Task{priority: Priority.MEDIUM, id: 2},
+        Task{priority: Priority.CRITICAL, id: 3}
+    ];
+    
+    return tasks[2].priority as i32;
+}

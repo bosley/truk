@@ -1,3 +1,10 @@
-Type error: Argument type mismatch
+error: Argument type mismatch
+  --> arg_type_failure/test_wrong_arg_type.truk:6:15
+  |
+5 | fn main() : i32 {
+6 |     return add(5, "hello");
+  |               ^
+7 | }
+  |
 
 Compilation failed with 1 error(s)

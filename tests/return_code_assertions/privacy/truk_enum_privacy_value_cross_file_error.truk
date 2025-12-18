@@ -1,0 +1,6 @@
+import "enum_shard_a.truk";
+
+fn main() : i32 {
+  var status: MixedStatus = MixedStatus._INTERNAL;
+  return status as i32;
+}

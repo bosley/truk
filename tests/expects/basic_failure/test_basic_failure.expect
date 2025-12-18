@@ -1,3 +1,10 @@
-Type error: Undefined identifier: undeclared_variable
+error: Undefined identifier: undeclared_variable
+  --> basic_failure/test_basic_failure.truk:7:5
+  |
+6 |     printf("Hello, World!\n");
+7 |     undeclared_variable = 42;
+  |     ^
+8 |     return 0;
+  |
 
 Compilation failed with 1 error(s)

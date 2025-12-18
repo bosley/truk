@@ -1,0 +1,14 @@
+enum Priority : i32 {
+    LOW = 1,
+    MEDIUM = 2,
+    HIGH = 3
+}
+
+fn get_priority() : Priority {
+    return Priority.HIGH;
+}
+
+fn main() : i32 {
+    var p: Priority = get_priority();
+    return p as i32;
+}

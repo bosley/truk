@@ -55,21 +55,27 @@ emitter_c &emitter_c::set_c_imports(
 }
 
 result_c emitter_c::finalize() {
-  _current_phase = emission_phase_e::COLLECTION;
-  for (const auto *decl : _declarations) {
-    collect_declarations(decl);
+  try {
+    _current_phase = emission_phase_e::COLLECTION;
+    for (const auto *decl : _declarations) {
+      collect_declarations(decl);
+    }
+
+    _current_phase = emission_phase_e::FORWARD_DECLARATION;
+    emit_forward_declarations();
+
+    _current_phase = emission_phase_e::FUNCTION_DEFINITION;
+    for (const auto *decl : _declarations) {
+      emit(decl);
+    }
+
+    _current_phase = emission_phase_e::FINALIZATION;
+    internal_finalize();
+  } catch (const emitter_exception_c &e) {
+    add_error(e.what(), nullptr);
+  } catch (const std::exception &e) {
+    add_error(std::string("Unexpected error: ") + e.what(), nullptr);
   }
-
-  _current_phase = emission_phase_e::FORWARD_DECLARATION;
-  emit_forward_declarations();
-
-  _current_phase = emission_phase_e::FUNCTION_DEFINITION;
-  for (const auto *decl : _declarations) {
-    emit(decl);
-  }
-
-  _current_phase = emission_phase_e::FINALIZATION;
-  internal_finalize();
 
   return _result;
 }
@@ -860,6 +866,49 @@ void emitter_c::visit(const struct_c &node) {
   _current_node_context = saved_context;
 }
 
+void emitter_c::visit(const enum_c &node) {
+  if (_collecting_declarations) {
+    _enum_type_names.insert(node.name().name);
+    if (node.is_extern()) {
+      _extern_enum_type_names.insert(node.name().name);
+    }
+    return;
+  }
+
+  if (node.is_extern()) {
+    return;
+  }
+
+  emission_phase_e saved_phase = _current_phase;
+  std::string saved_context = _current_node_context;
+
+  _current_phase = emission_phase_e::STRUCT_DEFINITION;
+  _current_node_context = "enum '" + node.name().name + "'";
+
+  std::string backing_type_str = emit_type(node.backing_type());
+
+  _structs << "typedef enum {\n";
+
+  bool first = true;
+  for (const auto &value : node.values()) {
+    if (!first) {
+      _structs << ",\n";
+    }
+    first = false;
+
+    _structs << "  " << node.name().name << "_" << value.name.name;
+
+    if (value.explicit_value.has_value()) {
+      _structs << " = " << value.explicit_value.value();
+    }
+  }
+
+  _structs << "\n} " << node.name().name << ";\n\n";
+
+  _current_phase = saved_phase;
+  _current_node_context = saved_context;
+}
+
 void emitter_c::visit(const var_c &node) {
   if (_collecting_declarations && _indent_level == 0) {
     return;
@@ -1336,6 +1385,58 @@ void emitter_c::visit(const defer_c &node) {
   }
 }
 
+void emitter_c::visit(const match_c &node) {
+  std::string scrutinee_expr = emit_expression(node.scrutinee());
+  std::string temp_var = "_truk_match_" + std::to_string(_match_counter++);
+
+  _functions << cdef::indent(_indent_level) << "{\n";
+  _indent_level++;
+  _functions << cdef::indent(_indent_level) << "auto " << temp_var << " = "
+             << scrutinee_expr << ";\n";
+
+  bool first_case = true;
+  for (const auto &case_arm : node.cases()) {
+    if (case_arm.is_wildcard) {
+      _functions << cdef::indent(_indent_level) << "else ";
+
+      if (auto *block = case_arm.body->as_block()) {
+        case_arm.body->accept(*this);
+        _functions << "\n";
+      } else {
+        _functions << "{\n";
+        _indent_level++;
+        case_arm.body->accept(*this);
+        _indent_level--;
+        _functions << cdef::indent(_indent_level) << "}\n";
+      }
+    } else {
+      if (first_case) {
+        _functions << cdef::indent(_indent_level) << "if (";
+        first_case = false;
+      } else {
+        _functions << cdef::indent(_indent_level) << "else if (";
+      }
+
+      std::string pattern_expr = emit_expression(case_arm.pattern.get());
+      _functions << temp_var << " == " << pattern_expr << ") ";
+
+      if (auto *block = case_arm.body->as_block()) {
+        case_arm.body->accept(*this);
+        _functions << "\n";
+      } else {
+        _functions << "{\n";
+        _indent_level++;
+        case_arm.body->accept(*this);
+        _indent_level--;
+        _functions << cdef::indent(_indent_level) << "}\n";
+      }
+    }
+  }
+
+  _indent_level--;
+  _functions << cdef::indent(_indent_level) << "}\n";
+}
+
 void emitter_c::visit(const binary_op_c &node) {
   _current_expr << emit_expr_binary_op(node);
 }
@@ -1589,6 +1690,8 @@ std::string emitter_c::emit_expr_literal(const literal_c &node) {
     return node.value();
   case literal_type_e::STRING:
     return node.value();
+  case literal_type_e::CHAR:
+    return process_char_literal(node.value(), &node);
   case literal_type_e::BOOL:
     return (node.value() == "true" ? "true" : "false");
   case literal_type_e::NIL:
@@ -1597,11 +1700,49 @@ std::string emitter_c::emit_expr_literal(const literal_c &node) {
   return "";
 }
 
+std::string emitter_c::process_char_literal(const std::string &lexeme,
+                                            const base_c *node) {
+  std::string content = lexeme.substr(1, lexeme.length() - 2);
+
+  if (content[0] == '\\') {
+    char escape_char = content[1];
+    switch (escape_char) {
+    case 'n':
+      return "'\\n'";
+    case 't':
+      return "'\\t'";
+    case 'r':
+      return "'\\r'";
+    case '0':
+      return "'\\0'";
+    case '\\':
+      return "'\\\\'";
+    case '\'':
+      return "'\\''";
+    case '"':
+      return "'\\\"'";
+    case 'x':
+      return "'" + content + "'";
+    }
+  }
+
+  return "'" + content + "'";
+}
+
 std::string emitter_c::emit_expr_identifier(const identifier_c &node) {
   return node.id().name;
 }
 
 std::string emitter_c::emit_expr_member_access(const member_access_c &node) {
+  if (auto *id_node = node.object()->as_identifier()) {
+    if (_enum_type_names.find(id_node->id().name) != _enum_type_names.end()) {
+      if (_extern_enum_type_names.find(id_node->id().name) !=
+          _extern_enum_type_names.end()) {
+        return node.field().name;
+      }
+      return id_node->id().name + "_" + node.field().name;
+    }
+  }
   std::string obj = emit_expression(node.object());
   return obj + "." + node.field().name;
 }
@@ -1792,6 +1933,10 @@ void emitter_c::visit(const import_c &node) {}
 void emitter_c::visit(const cimport_c &node) {}
 
 void emitter_c::visit(const shard_c &node) {}
+
+void emitter_c::visit(const enum_value_access_c &node) {
+  _current_expr << node.enum_name().name << "_" << node.value_name().name;
+}
 
 std::string result_c::assemble_code() const {
   std::string output;

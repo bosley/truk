@@ -1,0 +1,21 @@
+enum Mode : i32 {
+    SAFE = 10,
+    NORMAL = 44,
+    TURBO = 88
+}
+
+struct Config {
+    mode: Mode,
+    speed: i32
+}
+
+fn get_config() : (Config, i32) {
+    var cfg: Config = Config{mode: Mode.TURBO, speed: 100};
+    return cfg, 42;
+}
+
+fn main() : i32 {
+    let config, extra = get_config();
+    var ptr: *Config = &config;
+    return ptr->mode as i32;
+}

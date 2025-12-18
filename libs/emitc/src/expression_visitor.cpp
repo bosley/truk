@@ -81,6 +81,8 @@ void expression_visitor_c::visit(const fn_c &node) {}
 
 void expression_visitor_c::visit(const struct_c &node) {}
 
+void expression_visitor_c::visit(const enum_c &node) {}
+
 void expression_visitor_c::visit(const var_c &node) {}
 
 void expression_visitor_c::visit(const const_c &node) {}
@@ -101,6 +103,8 @@ void expression_visitor_c::visit(const continue_c &node) {}
 
 void expression_visitor_c::visit(const defer_c &node) {}
 
+void expression_visitor_c::visit(const match_c &node) {}
+
 void expression_visitor_c::visit(const block_c &node) {}
 
 void expression_visitor_c::visit(const type_param_c &node) {}
@@ -110,5 +114,7 @@ void expression_visitor_c::visit(const import_c &node) {}
 void expression_visitor_c::visit(const cimport_c &node) {}
 
 void expression_visitor_c::visit(const shard_c &node) {}
+
+void expression_visitor_c::visit(const enum_value_access_c &node) {}
 
 } // namespace truk::emitc

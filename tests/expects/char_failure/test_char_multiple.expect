@@ -1,0 +1,10 @@
+error: Unterminated character literal
+  --> char_failure/test_char_multiple.truk:2:17
+  |
+1 | fn main() : i32 {
+2 |   var c: i8 = 'ab';
+  |                 ^
+3 |   return 0;
+  |
+
+Compilation failed with 1 error(s)

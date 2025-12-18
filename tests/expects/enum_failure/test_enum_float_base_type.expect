@@ -1,0 +1,9 @@
+error: Enum backing type must be an integer type (i8, i16, i32, i64, u8, u16, u32, u64)
+  --> enum_failure/test_enum_float_base_type.truk:1:1
+  |
+1 | enum FloatEnum : f32 {
+  | ^
+2 |     ZERO = 0,
+  |
+
+Compilation failed with 1 error(s)

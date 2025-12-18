@@ -1,3 +1,10 @@
-Type error: Index must be integer type
+error: Index must be integer type
+  --> array_index_failure/test_float_index.truk:4:15
+  |
+3 |     var idx: f32 = 2.5;
+4 |     return arr[idx];
+  |               ^
+5 | }
+  |
 
 Compilation failed with 1 error(s)

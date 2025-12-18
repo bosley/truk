@@ -22,6 +22,9 @@
       "include": "#strings"
     },
     {
+      "include": "#characters"
+    },
+    {
       "include": "#numbers"
     },
     {
@@ -32,6 +35,9 @@
     },
     {
       "include": "#struct-declaration"
+    },
+    {
+      "include": "#enum-declaration"
     },
     {
       "include": "#operators"
@@ -55,7 +61,7 @@
       "patterns": [
         {
           "name": "keyword.control.truk",
-          "match": "\\b(if|else|while|for|return|break|continue|defer|import|cimport|extern|shard)\\b"
+          "match": "\\b(if|else|while|for|return|break|continue|defer|match|case|import|cimport|extern|shard)\\b"
         },
         {
           "name": "keyword.operator.cast.truk",
@@ -76,6 +82,10 @@
         {
           "name": "storage.type.struct.truk",
           "match": "\\bstruct\\b"
+        },
+        {
+          "name": "storage.type.enum.truk",
+          "match": "\\benum\\b"
         },
         {
           "name": "storage.type.variable.truk",
@@ -109,6 +119,25 @@
             {
               "name": "constant.character.escape.truk",
               "match": "\\\\([\"\\\\/bfnrt]|u[0-9a-fA-F]{4})"
+            },
+            {
+              "name": "invalid.illegal.unrecognized-escape.truk",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "characters": {
+      "patterns": [
+        {
+          "name": "string.quoted.single.truk",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.truk",
+              "match": "\\\\([ntr0\\\\'\"x]|x[0-9a-fA-F]{2})"
             },
             {
               "name": "invalid.illegal.unrecognized-escape.truk",
@@ -175,6 +204,21 @@
             },
             "2": {
               "name": "entity.name.type.struct.truk"
+            }
+          }
+        }
+      ]
+    },
+    "enum-declaration": {
+      "patterns": [
+        {
+          "match": "\\b(enum)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*:",
+          "captures": {
+            "1": {
+              "name": "storage.type.enum.truk"
+            },
+            "2": {
+              "name": "entity.name.type.enum.truk"
             }
           }
         }

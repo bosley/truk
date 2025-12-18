@@ -18,6 +18,7 @@ namespace truk::validation {
 enum class type_kind_e {
   PRIMITIVE,
   STRUCT,
+  ENUM,
   FUNCTION,
   POINTER,
   ARRAY,
@@ -50,6 +51,9 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
   std::vector<std::string> struct_field_names;
   std::unordered_map<std::string, std::unique_ptr<type_entry_s>> struct_fields;
 
+  std::unique_ptr<type_entry_s> enum_backing_type;
+  std::unordered_map<std::string, std::int64_t> enum_values;
+
   std::vector<std::unique_ptr<type_entry_s>> function_param_types;
   std::unique_ptr<type_entry_s> function_return_type;
   bool is_variadic{false};
@@ -70,11 +74,16 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
       : kind(other.kind), name(other.name), pointer_depth(other.pointer_depth),
         array_size(other.array_size),
         struct_field_names(other.struct_field_names),
-        is_variadic(other.is_variadic), is_builtin(other.is_builtin),
-        builtin_kind(other.builtin_kind) {
+        enum_values(other.enum_values), is_variadic(other.is_variadic),
+        is_builtin(other.is_builtin), builtin_kind(other.builtin_kind) {
 
     for (const auto &[field_name, field_type] : other.struct_fields) {
       struct_fields[field_name] = std::make_unique<type_entry_s>(*field_type);
+    }
+
+    if (other.enum_backing_type) {
+      enum_backing_type =
+          std::make_unique<type_entry_s>(*other.enum_backing_type);
     }
 
     for (const auto &param_type : other.function_param_types) {
@@ -225,6 +234,7 @@ public:
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
+  void visit(const truk::language::nodes::enum_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
   void visit(const truk::language::nodes::let_c &node) override;
@@ -235,6 +245,7 @@ public:
   void visit(const truk::language::nodes::break_c &node) override;
   void visit(const truk::language::nodes::continue_c &node) override;
   void visit(const truk::language::nodes::defer_c &node) override;
+  void visit(const truk::language::nodes::match_c &node) override;
   void visit(const truk::language::nodes::binary_op_c &node) override;
   void visit(const truk::language::nodes::unary_op_c &node) override;
   void visit(const truk::language::nodes::cast_c &node) override;
@@ -251,6 +262,7 @@ public:
   void visit(const truk::language::nodes::import_c &node) override;
   void visit(const truk::language::nodes::cimport_c &node) override;
   void visit(const truk::language::nodes::shard_c &node) override;
+  void visit(const truk::language::nodes::enum_value_access_c &node) override;
 
 private:
   truk::core::memory_c<2048> _memory;
@@ -309,6 +321,7 @@ private:
   bool is_integer_type(const type_entry_s *type);
   bool is_boolean_type(const type_entry_s *type);
   bool is_comparable_type(const type_entry_s *type);
+  bool is_matchable_type(const type_entry_s *type) const;
   bool is_valid_map_key_type(const type_entry_s *type);
   bool is_compatible_for_assignment(const type_entry_s *target,
                                     const type_entry_s *source);
@@ -359,6 +372,7 @@ public:
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
+  void visit(const truk::language::nodes::enum_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
   void visit(const truk::language::nodes::let_c &node) override;
@@ -369,6 +383,7 @@ public:
   void visit(const truk::language::nodes::break_c &node) override;
   void visit(const truk::language::nodes::continue_c &node) override;
   void visit(const truk::language::nodes::defer_c &node) override;
+  void visit(const truk::language::nodes::match_c &node) override;
   void visit(const truk::language::nodes::binary_op_c &node) override;
   void visit(const truk::language::nodes::unary_op_c &node) override;
   void visit(const truk::language::nodes::cast_c &node) override;
@@ -385,6 +400,7 @@ public:
   void visit(const truk::language::nodes::import_c &node) override;
   void visit(const truk::language::nodes::cimport_c &node) override;
   void visit(const truk::language::nodes::shard_c &node) override;
+  void visit(const truk::language::nodes::enum_value_access_c &node) override;
 
 private:
   truk::core::memory_c<2048> &_memory;
@@ -414,6 +430,7 @@ public:
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
+  void visit(const truk::language::nodes::enum_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
   void visit(const truk::language::nodes::let_c &node) override;
@@ -424,6 +441,7 @@ public:
   void visit(const truk::language::nodes::break_c &node) override;
   void visit(const truk::language::nodes::continue_c &node) override;
   void visit(const truk::language::nodes::defer_c &node) override;
+  void visit(const truk::language::nodes::match_c &node) override;
   void visit(const truk::language::nodes::binary_op_c &node) override;
   void visit(const truk::language::nodes::unary_op_c &node) override;
   void visit(const truk::language::nodes::cast_c &node) override;
@@ -440,6 +458,7 @@ public:
   void visit(const truk::language::nodes::import_c &node) override;
   void visit(const truk::language::nodes::cimport_c &node) override;
   void visit(const truk::language::nodes::shard_c &node) override;
+  void visit(const truk::language::nodes::enum_value_access_c &node) override;
 
 private:
   const symbol_collection_result_s &_symbols;

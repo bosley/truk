@@ -1,3 +1,10 @@
-Type error: Map key type mismatch: expected i32 but got *u8
+error: Map key type mismatch: expected i32 but got *u8
+  --> map_key_failure/test_wrong_key_type.truk:4:22
+  |
+3 |     m[42] = 100;
+4 |     var ptr: *i32 = m["string_key"];
+  |                      ^
+5 |     delete(m);
+  |
 
 Compilation failed with 1 error(s)

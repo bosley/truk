@@ -30,6 +30,8 @@ void control_flow_checker_c::visit(const lambda_c &) {}
 
 void control_flow_checker_c::visit(const struct_c &) {}
 
+void control_flow_checker_c::visit(const enum_c &) {}
+
 void control_flow_checker_c::visit(const var_c &node) {
   check_node(node.initializer());
 }
@@ -106,6 +108,25 @@ void control_flow_checker_c::visit(const continue_c &) {
 
 void control_flow_checker_c::visit(const defer_c &node) {
   check_node(node.deferred_code());
+}
+
+void control_flow_checker_c::visit(const match_c &node) {
+  check_node(node.scrutinee());
+  if (_has_control_flow)
+    return;
+
+  for (const auto &case_arm : node.cases()) {
+    if (case_arm.pattern) {
+      check_node(case_arm.pattern.get());
+      if (_has_control_flow)
+        return;
+    }
+    if (case_arm.body) {
+      check_node(case_arm.body.get());
+      if (_has_control_flow)
+        return;
+    }
+  }
 }
 
 void control_flow_checker_c::visit(const binary_op_c &node) {
@@ -191,5 +212,7 @@ void control_flow_checker_c::visit(const import_c &) {}
 void control_flow_checker_c::visit(const cimport_c &) {}
 
 void control_flow_checker_c::visit(const shard_c &) {}
+
+void control_flow_checker_c::visit(const enum_value_access_c &) {}
 
 } // namespace truk::validation

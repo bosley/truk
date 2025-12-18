@@ -1,0 +1,15 @@
+enum State : i32 {
+  IDLE = 0,
+  _PROCESSING = 33,
+  DONE = 100
+}
+
+fn _set_state(s: *State) : void {
+  *s = State._PROCESSING;
+}
+
+fn main() : i32 {
+  var state: State = State.IDLE;
+  _set_state(&state);
+  return state as i32;
+}

@@ -1,0 +1,5 @@
+fn main() : i32 {
+    var arr: [3]i32 = [10, 40, 30];
+    var val: i64 = arr[1] as i64;
+    return val as i32;
+}

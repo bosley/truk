@@ -1,0 +1,8 @@
+import "enum_shard_a.truk";
+import "enum_shard_b.truk";
+
+fn main() : i32 {
+  var level: PublicLevel = use_public_enum();
+  var status: MixedStatus = use_private_value();
+  return status as i32;
+}
