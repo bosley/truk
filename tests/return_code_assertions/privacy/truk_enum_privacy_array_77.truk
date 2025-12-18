@@ -1,0 +1,10 @@
+enum Priority : i32 {
+  LOW = 11,
+  _MEDIUM = 77,
+  HIGH = 99
+}
+
+fn main() : i32 {
+  var priorities: [3]Priority = [Priority.LOW, Priority._MEDIUM, Priority.HIGH];
+  return priorities[1] as i32;
+}

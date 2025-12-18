@@ -1,0 +1,21 @@
+shard "enum_test";
+
+import "enum_shard_a.truk";
+
+fn use_private_enum() : _PrivateLevel {
+  return _get_private_level();
+}
+
+fn use_public_enum() : PublicLevel {
+  var level: PublicLevel = get_public_level();
+  return level;
+}
+
+fn use_private_value() : MixedStatus {
+  var status: MixedStatus = get_mixed_internal();
+  return status;
+}
+
+fn access_private_value_directly() : MixedStatus {
+  return MixedStatus._INTERNAL;
+}

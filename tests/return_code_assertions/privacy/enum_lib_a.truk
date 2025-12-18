@@ -1,0 +1,22 @@
+enum _InternalCode : i32 {
+  SUCCESS = 0,
+  FAILURE = 1
+}
+
+enum PublicCode : i32 {
+  OK = 100,
+  ERROR = 200,
+  _RESERVED = 300
+}
+
+fn _internal_check() : _InternalCode {
+  return _InternalCode.SUCCESS;
+}
+
+fn public_check() : PublicCode {
+  return PublicCode.OK;
+}
+
+fn get_reserved() : PublicCode {
+  return PublicCode._RESERVED;
+}

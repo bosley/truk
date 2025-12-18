@@ -1,0 +1,6 @@
+import "enum_shard_a.truk";
+
+fn main() : i32 {
+  var level: PublicLevel = PublicLevel.EXPERT;
+  return level as i32;
+}

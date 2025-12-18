@@ -1,0 +1,6 @@
+import "enum_lib_a.truk";
+
+fn main() : i32 {
+  var code: PublicCode = PublicCode._RESERVED;
+  return code as i32;
+}

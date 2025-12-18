@@ -1,0 +1,19 @@
+enum Status : i32 {
+  IDLE = 0,
+  ACTIVE = 25,
+  _INTERNAL = 99
+}
+
+struct Task {
+  name: i32,
+  _status: Status
+}
+
+fn _create_task() : Task {
+  return Task{name: 1, _status: Status.ACTIVE};
+}
+
+fn main() : i32 {
+  var t: Task = _create_task();
+  return t._status as i32;
+}

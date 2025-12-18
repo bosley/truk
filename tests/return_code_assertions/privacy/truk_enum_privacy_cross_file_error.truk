@@ -1,0 +1,6 @@
+import "enum_shard_a.truk";
+
+fn main() : i32 {
+  var level: _PrivateLevel = _PrivateLevel.MEDIUM;
+  return level as i32;
+}
