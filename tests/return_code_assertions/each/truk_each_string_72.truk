@@ -1,0 +1,21 @@
+fn main() : i32 {
+  var buf: [6]u8;
+  buf[0] = 'h' as u8;
+  buf[1] = 'e' as u8;
+  buf[2] = 'l' as u8;
+  buf[3] = 'l' as u8;
+  buf[4] = 'o' as u8;
+  buf[5] = 0;
+  
+  var str: *u8 = &buf[0];
+  var unused: i32 = 0;
+  
+  each(str, &unused, fn(ch: *u8, ctx: *i32) : bool {
+    if *ch >= 'a' as u8 && *ch <= 'z' as u8 {
+      *ch = *ch - 32;
+    }
+    return true;
+  });
+  
+  return buf[0] as i32;
+}

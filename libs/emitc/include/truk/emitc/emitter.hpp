@@ -216,6 +216,7 @@ private:
                               const truk::language::nodes::type_c *type);
   bool is_variable_slice(const std::string &name);
   bool is_variable_map(const std::string &name);
+  bool is_variable_string_ptr(const std::string &name);
   bool is_private_identifier(const std::string &name) const;
 
   std::string emit_expression(const truk::language::nodes::base_c *node);

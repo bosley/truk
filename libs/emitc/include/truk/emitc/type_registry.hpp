@@ -33,6 +33,8 @@ public:
                           std::stringstream &structs_stream);
   bool is_map_type(const truk::language::nodes::type_c *type);
 
+  bool is_string_ptr_type(const truk::language::nodes::type_c *type);
+
   void register_struct_name(const std::string &name);
   void register_extern_struct_name(const std::string &name);
   bool is_extern_struct(const std::string &name) const;

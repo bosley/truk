@@ -1,0 +1,20 @@
+fn is_vowel(ch: u8) : bool {
+  return ch == 'a' as u8 || ch == 'e' as u8 || ch == 'i' as u8 || 
+         ch == 'o' as u8 || ch == 'u' as u8 ||
+         ch == 'A' as u8 || ch == 'E' as u8 || ch == 'I' as u8 || 
+         ch == 'O' as u8 || ch == 'U' as u8;
+}
+
+fn main() : i32 {
+  var str: *u8 = "aeiou";
+  var vowel_count: i32 = 0;
+  
+  each(str, &vowel_count, fn(ch: *u8, ctx: *i32) : bool {
+    if is_vowel(*ch) {
+      *ctx = *ctx + 1;
+    }
+    return true;
+  });
+  
+  return vowel_count;
+}

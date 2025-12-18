@@ -706,9 +706,16 @@ void type_checker_c::validate_builtin_call(const call_c &node,
     bool is_slice = collection_type &&
                     collection_type->kind == type_kind_e::ARRAY &&
                     !collection_type->array_size.has_value();
+    bool is_string_ptr =
+        collection_type && collection_type->kind == type_kind_e::POINTER &&
+        collection_type->pointee_type &&
+        collection_type->pointee_type->kind == type_kind_e::PRIMITIVE &&
+        (collection_type->pointee_type->name == "u8" ||
+         collection_type->pointee_type->name == "i8");
 
-    if (!is_map && !is_slice) {
-      report_error("First argument to 'each' must be a map or slice",
+    if (!is_map && !is_slice && !is_string_ptr) {
+      report_error("First argument to 'each' must be a map, slice, or string "
+                   "pointer (*u8 or *i8)",
                    node.source_index());
       return;
     }
@@ -785,7 +792,7 @@ void type_checker_c::validate_builtin_call(const call_c &node,
           return;
         }
       }
-    } else {
+    } else if (is_slice) {
       if (callback_type->function_param_types.size() != 2) {
         report_error(
             "Callback to 'each' for slice must take 2 parameters (element "
@@ -814,6 +821,29 @@ void type_checker_c::validate_builtin_call(const call_c &node,
                        node.source_index());
           return;
         }
+      }
+    } else if (is_string_ptr) {
+      if (callback_type->function_param_types.size() != 2) {
+        report_error(
+            "Callback to 'each' for string must take 2 parameters (char "
+            "pointer and context)",
+            node.source_index());
+        return;
+      }
+
+      auto &char_param = callback_type->function_param_types[0];
+      if (!char_param || char_param->kind != type_kind_e::POINTER) {
+        report_error("First parameter of 'each' callback for string must be a "
+                     "pointer (char)",
+                     node.source_index());
+        return;
+      }
+
+      if (!types_equal(char_param.get(), collection_type.get())) {
+        report_error(
+            "First parameter of 'each' callback must match string type",
+            node.source_index());
+        return;
       }
     }
 

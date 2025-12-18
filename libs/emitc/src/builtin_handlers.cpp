@@ -165,10 +165,12 @@ public:
     if (node.arguments().size() == 3) {
       bool is_slice = false;
       bool is_map = false;
+      bool is_string_ptr = false;
 
       if (auto ident = node.arguments()[0].get()->as_identifier()) {
         is_slice = emitter.is_variable_slice(ident->id().name);
         is_map = emitter.is_variable_map(ident->id().name);
+        is_string_ptr = emitter.is_variable_string_ptr(ident->id().name);
       }
 
       std::string collection_var =
@@ -193,6 +195,20 @@ public:
               << "__truk_bool __truk_continue = " << callback_func << "(&("
               << collection_var << ").data[__truk_idx], " << context_var
               << ");\n";
+          emitter._functions << cdef::indent(emitter._indent_level)
+                             << "if (!__truk_continue) break;\n";
+          emitter._indent_level--;
+          emitter._functions << cdef::indent(emitter._indent_level) << "}\n";
+        } else if (is_string_ptr) {
+          emitter._functions << cdef::indent(emitter._indent_level)
+                             << "for (__truk_u64 __truk_idx = 0; "
+                             << collection_var
+                             << "[__truk_idx] != 0; __truk_idx++) {\n";
+          emitter._indent_level++;
+          emitter._functions
+              << cdef::indent(emitter._indent_level)
+              << "__truk_bool __truk_continue = " << callback_func << "(&"
+              << collection_var << "[__truk_idx], " << context_var << ");\n";
           emitter._functions << cdef::indent(emitter._indent_level)
                              << "if (!__truk_continue) break;\n";
           emitter._indent_level--;
@@ -243,6 +259,20 @@ public:
               << "__truk_bool __truk_continue = " << callback_func << "(&("
               << collection_var << ").data[__truk_idx], " << context_var
               << ");\n";
+          emitter._functions << cdef::indent(emitter._indent_level)
+                             << "if (!__truk_continue) break;\n";
+          emitter._indent_level--;
+          emitter._functions << cdef::indent(emitter._indent_level) << "}\n";
+        } else if (is_string_ptr) {
+          emitter._functions << cdef::indent(emitter._indent_level)
+                             << "for (__truk_u64 __truk_idx = 0; "
+                             << collection_var
+                             << "[__truk_idx] != 0; __truk_idx++) {\n";
+          emitter._indent_level++;
+          emitter._functions
+              << cdef::indent(emitter._indent_level)
+              << "__truk_bool __truk_continue = " << callback_func << "(&"
+              << collection_var << "[__truk_idx], " << context_var << ");\n";
           emitter._functions << cdef::indent(emitter._indent_level)
                              << "if (!__truk_continue) break;\n";
           emitter._indent_level--;

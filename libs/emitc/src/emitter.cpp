@@ -543,6 +543,10 @@ bool emitter_c::is_variable_map(const std::string &name) {
   return _variable_registry.is_map(name);
 }
 
+bool emitter_c::is_variable_string_ptr(const std::string &name) {
+  return _variable_registry.is_string_ptr(name);
+}
+
 void emitter_c::visit(const primitive_type_c &node) {
   _current_expr << emit_type(&node);
 }

@@ -18,11 +18,13 @@ public:
                          type_registry_c &type_registry);
   bool is_slice(const std::string &name) const;
   bool is_map(const std::string &name) const;
+  bool is_string_ptr(const std::string &name) const;
   const truk::language::nodes::type_c *get_type(const std::string &name) const;
 
 private:
   std::unordered_map<std::string, bool> _variable_is_slice;
   std::unordered_map<std::string, bool> _variable_is_map;
+  std::unordered_map<std::string, bool> _variable_is_string_ptr;
   std::unordered_map<std::string, const truk::language::nodes::type_c *>
       _variable_types;
 };

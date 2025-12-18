@@ -396,7 +396,86 @@ fn main() : i32 {
 }
 ```
 
+**For Strings:**
+
+**Parameters:**
+- `collection`: Null-terminated string pointer (`*u8` or `*i8`)
+- `context`: Pointer to user-provided context data
+- `callback`: Function with signature `fn(char: *u8, ctx: *C) : bool` (or `*i8` for signed)
+  - `char`: Pointer to the current character
+  - `ctx`: Context pointer (same as `context` parameter)
+  - Returns `bool`: `true` to continue iteration, `false` to stop early
+
+**Example - Count characters:**
+
+```truk
+cimport <stdio.h>;
+extern fn printf(fmt: *i8, ...args): i32;
+
+fn main() : i32 {
+  var str: *u8 = "Hello";
+  
+  var count: i32 = 0;
+  each(str, &count, fn(ch: *u8, ctx: *i32) : bool {
+    *ctx = *ctx + 1;
+    return true;
+  });
+  
+  printf("Character count: %d\n", count);
+  return count;
+}
+```
+
+**Example - Find character with early exit:**
+
+```truk
+fn main() : i32 {
+  var str: *u8 = "Hello, World!";
+  
+  var pos: i32 = 0;
+  var found_pos: i32 = -1;
+  each(str, &pos, fn(ch: *u8, ctx: *i32) : bool {
+    if *ch == ',' as u8 {
+      found_pos = *ctx;
+      return false;
+    }
+    *ctx = *ctx + 1;
+    return true;
+  });
+  
+  return found_pos;
+}
+```
+
+**Example - Character modification (uppercase):**
+
+```truk
+fn main() : i32 {
+  var buf: [12]u8;
+  buf[0] = 'h' as u8;
+  buf[1] = 'e' as u8;
+  buf[2] = 'l' as u8;
+  buf[3] = 'l' as u8;
+  buf[4] = 'o' as u8;
+  buf[5] = 0;
+  
+  var str: *u8 = &buf[0];
+  var unused: i32 = 0;
+  
+  each(str, &unused, fn(ch: *u8, ctx: *i32) : bool {
+    if *ch >= 'a' as u8 && *ch <= 'z' as u8 {
+      *ch = *ch - 32;
+    }
+    return true;
+  });
+  
+  return buf[0] as i32;
+}
+```
+
 **Note:** The `each` builtin uses lambdas for the callback. See [lambdas.md](lambdas.md) for more details on lambda syntax and semantics.
+
+**Important:** String iteration assumes null-terminated strings. Iterating over non-null-terminated buffers will cause undefined behavior.
 
 ## Error Handling
 

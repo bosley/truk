@@ -1,0 +1,11 @@
+fn main() : i32 {
+  var str: *u8 = "abc";
+  var count: i32 = 0;
+  
+  each(str, &count, fn(ch: *u8, ctx: *i32) : bool {
+    *ctx = *ctx + 1;
+    return true;
+  });
+  
+  return count;
+}

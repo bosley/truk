@@ -1,0 +1,20 @@
+struct find_context_s {
+  pos: i32,
+  found: i32
+}
+
+fn main() : i32 {
+  var str: *u8 = "Hello";
+  var ctx: find_context_s = find_context_s{pos: 0, found: -1};
+  
+  each(str, &ctx, fn(ch: *u8, context: *find_context_s) : bool {
+    if *ch == 'l' as u8 {
+      (*context).found = (*context).pos;
+      return false;
+    }
+    (*context).pos = (*context).pos + 1;
+    return true;
+  });
+  
+  return ctx.found;
+}

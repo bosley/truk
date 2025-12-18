@@ -11,6 +11,7 @@ void variable_registry_c::register_variable(const std::string &name,
   _variable_types[name] = type;
   _variable_is_slice[name] = type_registry.is_slice_type(type);
   _variable_is_map[name] = type_registry.is_map_type(type);
+  _variable_is_string_ptr[name] = type_registry.is_string_ptr_type(type);
 }
 
 bool variable_registry_c::is_slice(const std::string &name) const {
@@ -21,6 +22,11 @@ bool variable_registry_c::is_slice(const std::string &name) const {
 bool variable_registry_c::is_map(const std::string &name) const {
   auto it = _variable_is_map.find(name);
   return it != _variable_is_map.end() && it->second;
+}
+
+bool variable_registry_c::is_string_ptr(const std::string &name) const {
+  auto it = _variable_is_string_ptr.find(name);
+  return it != _variable_is_string_ptr.end() && it->second;
 }
 
 const type_c *variable_registry_c::get_type(const std::string &name) const {

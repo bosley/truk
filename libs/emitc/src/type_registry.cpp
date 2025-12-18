@@ -268,6 +268,19 @@ bool type_registry_c::is_map_type(const type_c *type) {
   return type->as_map_type() != nullptr;
 }
 
+bool type_registry_c::is_string_ptr_type(const type_c *type) {
+  if (auto ptr = type->as_pointer_type()) {
+    if (auto pointee = ptr->pointee_type()) {
+      if (auto prim = pointee->as_primitive_type()) {
+        auto kw = prim->keyword();
+        return kw == truk::language::keywords_e::U8 ||
+               kw == truk::language::keywords_e::I8;
+      }
+    }
+  }
+  return false;
+}
+
 void type_registry_c::register_struct_name(const std::string &name) {
   _struct_names.insert(name);
 }
