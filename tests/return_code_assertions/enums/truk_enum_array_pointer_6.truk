@@ -1,0 +1,23 @@
+enum Digit : i32 {
+    ZERO = 0,
+    ONE = 1,
+    TWO = 2,
+    THREE = 3,
+    FOUR = 4,
+    FIVE = 5,
+    SIX = 6
+}
+
+fn main() : i32 {
+    var digits: [7]Digit = [
+        Digit.ZERO,
+        Digit.ONE,
+        Digit.TWO,
+        Digit.THREE,
+        Digit.FOUR,
+        Digit.FIVE,
+        Digit.SIX
+    ];
+    var ptr: *Digit = &digits[6];
+    return *ptr as i32;
+}

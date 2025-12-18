@@ -12,6 +12,7 @@ class tuple_type_c;
 class fn_c;
 class lambda_c;
 class struct_c;
+class enum_c;
 class var_c;
 class const_c;
 class let_c;
@@ -38,6 +39,7 @@ class type_param_c;
 class import_c;
 class cimport_c;
 class shard_c;
+class enum_value_access_c;
 
 class visitor_if {
 public:
@@ -53,6 +55,7 @@ public:
   virtual void visit(const fn_c &node) = 0;
   virtual void visit(const lambda_c &node) = 0;
   virtual void visit(const struct_c &node) = 0;
+  virtual void visit(const enum_c &node) = 0;
   virtual void visit(const var_c &node) = 0;
   virtual void visit(const const_c &node) = 0;
   virtual void visit(const let_c &node) = 0;
@@ -79,6 +82,7 @@ public:
   virtual void visit(const import_c &node) = 0;
   virtual void visit(const cimport_c &node) = 0;
   virtual void visit(const shard_c &node) = 0;
+  virtual void visit(const enum_value_access_c &node) = 0;
 };
 
 } // namespace truk::language::nodes

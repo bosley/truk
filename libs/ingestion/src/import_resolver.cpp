@@ -93,6 +93,12 @@ void dependency_visitor_c::visit(const struct_c &node) {
   }
 }
 
+void dependency_visitor_c::visit(const enum_c &node) {
+  if (node.backing_type()) {
+    node.backing_type()->accept(*this);
+  }
+}
+
 void dependency_visitor_c::visit(const var_c &node) {
   _local_scope.insert(node.name().name);
   if (node.initializer()) {
@@ -292,6 +298,8 @@ void dependency_visitor_c::visit(const import_c &) {}
 void dependency_visitor_c::visit(const cimport_c &) {}
 
 void dependency_visitor_c::visit(const shard_c &) {}
+
+void dependency_visitor_c::visit(const enum_value_access_c &) {}
 
 std::string
 import_resolver_c::resolve_import_path(const std::string &import_path,

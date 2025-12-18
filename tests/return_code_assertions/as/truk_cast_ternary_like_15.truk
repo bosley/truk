@@ -1,0 +1,11 @@
+fn main() : i32 {
+    var x: i64 = 10;
+    var y: i64 = 15;
+    var result: i32 = 0;
+    if x as i32 > 5 {
+        result = y as i32;
+    } else {
+        result = x as i32;
+    }
+    return result;
+}

@@ -30,6 +30,8 @@ void control_flow_checker_c::visit(const lambda_c &) {}
 
 void control_flow_checker_c::visit(const struct_c &) {}
 
+void control_flow_checker_c::visit(const enum_c &) {}
+
 void control_flow_checker_c::visit(const var_c &node) {
   check_node(node.initializer());
 }
@@ -191,5 +193,7 @@ void control_flow_checker_c::visit(const import_c &) {}
 void control_flow_checker_c::visit(const cimport_c &) {}
 
 void control_flow_checker_c::visit(const shard_c &) {}
+
+void control_flow_checker_c::visit(const enum_value_access_c &) {}
 
 } // namespace truk::validation

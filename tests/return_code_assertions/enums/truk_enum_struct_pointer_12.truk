@@ -1,0 +1,16 @@
+enum Type : i32 {
+    NONE = 0,
+    BASIC = 12,
+    ADVANCED = 24
+}
+
+struct Item {
+    item_type: Type,
+    count: i32
+}
+
+fn main() : i32 {
+    var item: Item = Item{item_type: Type.BASIC, count: 5};
+    var ptr: *Item = &item;
+    return ptr->item_type as i32;
+}

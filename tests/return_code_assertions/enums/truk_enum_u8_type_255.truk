@@ -1,0 +1,8 @@
+enum Byte : u8 {
+    MAX = 255
+}
+
+fn main() : i32 {
+    var b: Byte = Byte.MAX;
+    return b as u8 as i32;
+}

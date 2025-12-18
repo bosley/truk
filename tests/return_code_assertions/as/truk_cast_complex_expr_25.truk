@@ -1,0 +1,6 @@
+fn main() : i32 {
+    var a: i64 = 10;
+    var b: i64 = 5;
+    var c: i64 = 2;
+    return (((a as i32) * (b as i32)) / (c as i32));
+}

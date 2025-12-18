@@ -149,6 +149,7 @@ public:
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
+  void visit(const truk::language::nodes::enum_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
   void visit(const truk::language::nodes::let_c &node) override;
@@ -175,6 +176,7 @@ public:
   void visit(const truk::language::nodes::import_c &node) override;
   void visit(const truk::language::nodes::cimport_c &node) override;
   void visit(const truk::language::nodes::shard_c &node) override;
+  void visit(const truk::language::nodes::enum_value_access_c &node) override;
 
 private:
   void collect_declarations(const truk::language::nodes::base_c *root);
@@ -246,6 +248,8 @@ private:
   std::stringstream _functions;
   int _indent_level{0};
   std::unordered_set<std::string> _function_names;
+  std::unordered_set<std::string> _enum_type_names;
+  std::unordered_set<std::string> _extern_enum_type_names;
   type_registry_c _type_registry;
   variable_registry_c _variable_registry;
   builtin_registry_c _builtin_registry;

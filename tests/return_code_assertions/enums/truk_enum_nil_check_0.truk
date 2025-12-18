@@ -1,0 +1,14 @@
+enum Result : i32 {
+    SUCCESS = 0,
+    FAILURE = 1
+}
+
+fn main() : i32 {
+    var ptr: *Result = nil;
+    
+    if ptr == nil {
+        return 0;
+    }
+    
+    return 1;
+}

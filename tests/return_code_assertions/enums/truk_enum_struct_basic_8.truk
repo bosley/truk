@@ -1,0 +1,15 @@
+enum Status : i32 {
+    PENDING = 0,
+    ACTIVE = 8,
+    COMPLETE = 16
+}
+
+struct Task {
+    status: Status,
+    id: i32
+}
+
+fn main() : i32 {
+    var t: Task = Task{status: Status.ACTIVE, id: 100};
+    return t.status as i32;
+}

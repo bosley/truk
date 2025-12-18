@@ -1,0 +1,14 @@
+enum Flag : i32 {
+    OFF = 0,
+    ON = 33
+}
+
+fn get_flags() : (Flag, Flag, Flag) {
+    return Flag.OFF, Flag.ON, Flag.OFF;
+}
+
+fn main() : i32 {
+    let f1, f2, f3 = get_flags();
+    var ptr: *Flag = &f2;
+    return *ptr as i32;
+}

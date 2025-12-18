@@ -1,0 +1,12 @@
+enum Color : i32 {
+    RED,
+    GREEN,
+    BLUE,
+    YELLOW,
+    PURPLE
+}
+
+fn main() : i32 {
+    var c: Color = Color.PURPLE;
+    return c as i32;
+}

@@ -1,0 +1,7 @@
+fn get_value() : i64 {
+    return 55;
+}
+
+fn main() : i32 {
+    return get_value() as i32;
+}

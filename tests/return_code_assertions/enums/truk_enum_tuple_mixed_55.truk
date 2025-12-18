@@ -1,0 +1,15 @@
+enum Color : i32 {
+    RED = 10,
+    GREEN = 20,
+    BLUE = 25
+}
+
+fn get_mixed() : (Color, i32, Color) {
+    return Color.RED, 15, Color.BLUE;
+}
+
+fn main() : i32 {
+    let c1, val, c2 = get_mixed();
+    var sum: i32 = (c1 as i32) + val + (c2 as i32);
+    return sum + 5;
+}

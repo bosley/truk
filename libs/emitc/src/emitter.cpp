@@ -860,6 +860,49 @@ void emitter_c::visit(const struct_c &node) {
   _current_node_context = saved_context;
 }
 
+void emitter_c::visit(const enum_c &node) {
+  if (_collecting_declarations) {
+    _enum_type_names.insert(node.name().name);
+    if (node.is_extern()) {
+      _extern_enum_type_names.insert(node.name().name);
+    }
+    return;
+  }
+
+  if (node.is_extern()) {
+    return;
+  }
+
+  emission_phase_e saved_phase = _current_phase;
+  std::string saved_context = _current_node_context;
+
+  _current_phase = emission_phase_e::STRUCT_DEFINITION;
+  _current_node_context = "enum '" + node.name().name + "'";
+
+  std::string backing_type_str = emit_type(node.backing_type());
+
+  _structs << "typedef enum {\n";
+
+  bool first = true;
+  for (const auto &value : node.values()) {
+    if (!first) {
+      _structs << ",\n";
+    }
+    first = false;
+
+    _structs << "  " << node.name().name << "_" << value.name.name;
+
+    if (value.explicit_value.has_value()) {
+      _structs << " = " << value.explicit_value.value();
+    }
+  }
+
+  _structs << "\n} " << node.name().name << ";\n\n";
+
+  _current_phase = saved_phase;
+  _current_node_context = saved_context;
+}
+
 void emitter_c::visit(const var_c &node) {
   if (_collecting_declarations && _indent_level == 0) {
     return;
@@ -1602,6 +1645,15 @@ std::string emitter_c::emit_expr_identifier(const identifier_c &node) {
 }
 
 std::string emitter_c::emit_expr_member_access(const member_access_c &node) {
+  if (auto *id_node = node.object()->as_identifier()) {
+    if (_enum_type_names.find(id_node->id().name) != _enum_type_names.end()) {
+      if (_extern_enum_type_names.find(id_node->id().name) !=
+          _extern_enum_type_names.end()) {
+        return node.field().name;
+      }
+      return id_node->id().name + "_" + node.field().name;
+    }
+  }
   std::string obj = emit_expression(node.object());
   return obj + "." + node.field().name;
 }
@@ -1792,6 +1844,10 @@ void emitter_c::visit(const import_c &node) {}
 void emitter_c::visit(const cimport_c &node) {}
 
 void emitter_c::visit(const shard_c &node) {}
+
+void emitter_c::visit(const enum_value_access_c &node) {
+  _current_expr << node.enum_name().name << "_" << node.value_name().name;
+}
 
 std::string result_c::assemble_code() const {
   std::string output;

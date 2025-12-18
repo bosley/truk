@@ -1,0 +1,8 @@
+struct Data {
+    value: i64
+}
+
+fn main() : i32 {
+    var d: Data = Data{value: 88};
+    return d.value as i32;
+}

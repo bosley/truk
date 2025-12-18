@@ -1,0 +1,13 @@
+enum Status : i32 {
+    OK = 0,
+    ERROR = 42
+}
+
+fn get_status_and_value() : (Status, i32) {
+    return Status.ERROR, 100;
+}
+
+fn main() : i32 {
+    let status, value = get_status_and_value();
+    return status as i32;
+}

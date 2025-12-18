@@ -9,6 +9,7 @@ enum class keywords_e {
   UNKNOWN_KEYWORD = 0, // not a keyword
   FN,
   STRUCT,
+  ENUM,
   VAR,
   CONST,
   LET,

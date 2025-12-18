@@ -1,0 +1,4 @@
+fn main() : i32 {
+    var x: i64 = 42;
+    return x as i32;
+}

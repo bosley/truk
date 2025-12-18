@@ -1,0 +1,8 @@
+enum Code : i32 {
+    ANSWER = 42
+}
+
+fn main() : i32 {
+    var c: Code = Code.ANSWER;
+    return c as i32;
+}

@@ -1,0 +1,13 @@
+enum Level : i32 {
+    LOW = 5,
+    MEDIUM = 7,
+    HIGH = 10
+}
+
+fn get_value(l: Level) : i32 {
+    return l as i32;
+}
+
+fn main() : i32 {
+    return get_value(Level.MEDIUM);
+}

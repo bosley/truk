@@ -1,0 +1,10 @@
+enum Status : i32 {
+    OK = 0,
+    ERROR = 1,
+    PENDING = 2
+}
+
+fn main() : i32 {
+    var s: Status = Status.OK;
+    return s as i32;
+}

@@ -36,6 +36,7 @@ public:
   void visit(const truk::language::nodes::tuple_type_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
+  void visit(const truk::language::nodes::enum_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
   void visit(const truk::language::nodes::const_c &node) override;
   void visit(const truk::language::nodes::let_c &node) override;
@@ -51,6 +52,7 @@ public:
   void visit(const truk::language::nodes::import_c &node) override;
   void visit(const truk::language::nodes::cimport_c &node) override;
   void visit(const truk::language::nodes::shard_c &node) override;
+  void visit(const truk::language::nodes::enum_value_access_c &node) override;
 
 private:
   emitter_c &_emitter;

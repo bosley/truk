@@ -27,6 +27,8 @@ void lambda_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void struct_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
+void enum_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
+
 void var_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void const_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
@@ -84,5 +86,9 @@ void import_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 void cimport_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
 
 void shard_c::accept(visitor_if &visitor) const { visitor.visit(*this); }
+
+void enum_value_access_c::accept(visitor_if &visitor) const {
+  visitor.visit(*this);
+}
 
 } // namespace truk::language::nodes

@@ -1,0 +1,15 @@
+enum Result : i32 {
+    SUCCESS = 0,
+    FAILURE = 1
+}
+
+fn main() : i32 {
+    var r1: Result = Result.FAILURE;
+    var r2: Result = Result.FAILURE;
+    
+    if r1 == r2 {
+        return 1;
+    }
+    
+    return 0;
+}

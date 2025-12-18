@@ -1,0 +1,13 @@
+enum Code : i32 {
+    SUCCESS = 0,
+    WARNING = 7,
+    ERROR = 14
+}
+
+fn main() : i32 {
+    var ptr: *Code = make(@Code);
+    *ptr = Code.WARNING;
+    var result: i32 = *ptr as i32;
+    delete(ptr);
+    return result;
+}

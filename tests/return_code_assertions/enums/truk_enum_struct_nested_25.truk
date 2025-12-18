@@ -1,0 +1,21 @@
+enum Priority : i32 {
+    LOW = 5,
+    MEDIUM = 15,
+    HIGH = 25
+}
+
+struct Config {
+    priority: Priority,
+    value: i32
+}
+
+struct System {
+    config: Config,
+    active: bool
+}
+
+fn main() : i32 {
+    var cfg: Config = Config{priority: Priority.HIGH, value: 100};
+    var sys: System = System{config: cfg, active: true};
+    return sys.config.priority as i32;
+}

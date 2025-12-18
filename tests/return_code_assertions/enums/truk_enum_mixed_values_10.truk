@@ -1,0 +1,11 @@
+enum Mixed : i32 {
+    FIRST = 5,
+    SECOND,
+    THIRD = 10,
+    FOURTH
+}
+
+fn main() : i32 {
+    var m: Mixed = Mixed.THIRD;
+    return m as i32;
+}

@@ -1,0 +1,26 @@
+enum Color : i32 {
+    RED = 0,
+    GREEN = 1,
+    BLUE = 2
+}
+
+fn main() : i32 {
+    var m: map[i32, i32] = make(@map[i32, i32]);
+    
+    var key1: i32 = Color.RED as i32;
+    var key2: i32 = Color.GREEN as i32;
+    var key3: i32 = Color.BLUE as i32;
+    
+    m[key1] = 10;
+    m[key2] = 20;
+    m[key3] = 42;
+    
+    var ptr: *i32 = m[key3];
+    var result: i32 = 0;
+    if ptr != nil {
+        result = *ptr;
+    }
+    
+    delete(m);
+    return result;
+}

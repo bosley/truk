@@ -21,6 +21,7 @@ enum class node_kind_e {
   FN,
   LAMBDA,
   STRUCT,
+  ENUM,
   VAR,
   CONST,
   LET,
@@ -46,7 +47,8 @@ enum class node_kind_e {
   TYPE_PARAM,
   IMPORT,
   CIMPORT,
-  SHARD
+  SHARD,
+  ENUM_VALUE_ACCESS
 };
 
 enum class type_kind_e {
@@ -69,6 +71,7 @@ class tuple_type_c;
 class fn_c;
 class lambda_c;
 class struct_c;
+class enum_c;
 class var_c;
 class const_c;
 class let_c;
@@ -95,6 +98,7 @@ class type_param_c;
 class import_c;
 class cimport_c;
 class shard_c;
+class enum_value_access_c;
 
 class base_c {
 public:
@@ -122,6 +126,7 @@ public:
   virtual const fn_c *as_fn() const { return nullptr; }
   virtual const lambda_c *as_lambda() const { return nullptr; }
   virtual const struct_c *as_struct() const { return nullptr; }
+  virtual const enum_c *as_enum() const { return nullptr; }
   virtual const var_c *as_var() const { return nullptr; }
   virtual const const_c *as_const() const { return nullptr; }
   virtual const let_c *as_let() const { return nullptr; }
@@ -148,6 +153,9 @@ public:
   virtual const import_c *as_import() const { return nullptr; }
   virtual const cimport_c *as_cimport() const { return nullptr; }
   virtual const shard_c *as_shard() const { return nullptr; }
+  virtual const enum_value_access_c *as_enum_value_access() const {
+    return nullptr;
+  }
 
   virtual ~base_c() = default;
 
@@ -204,6 +212,15 @@ struct struct_field_s {
   struct_field_s() = delete;
   struct_field_s(identifier_s n, type_ptr t)
       : name(std::move(n)), type(std::move(t)) {}
+};
+
+struct enum_value_s {
+  identifier_s name;
+  std::optional<std::int64_t> explicit_value;
+
+  enum_value_s() = delete;
+  enum_value_s(identifier_s n, std::optional<std::int64_t> val = std::nullopt)
+      : name(std::move(n)), explicit_value(val) {}
 };
 
 class primitive_type_c : public type_c {
@@ -412,6 +429,32 @@ public:
 private:
   identifier_s _name;
   std::vector<struct_field_s> _fields;
+  bool _is_extern{false};
+};
+
+class enum_c : public base_c {
+public:
+  enum_c() = delete;
+  enum_c(std::size_t source_index, identifier_s name, type_ptr backing_type,
+         std::vector<enum_value_s> values, bool is_extern = false)
+      : base_c(keywords_e::ENUM, source_index), _name(std::move(name)),
+        _backing_type(std::move(backing_type)), _values(std::move(values)),
+        _is_extern(is_extern) {}
+
+  const identifier_s &name() const { return _name; }
+  const type_c *backing_type() const { return _backing_type.get(); }
+  const std::vector<enum_value_s> &values() const { return _values; }
+  bool is_extern() const { return _is_extern; }
+
+  void accept(visitor_if &visitor) const override;
+  std::optional<std::string> symbol_name() const override { return _name.name; }
+  node_kind_e kind() const override { return node_kind_e::ENUM; }
+  const enum_c *as_enum() const override { return this; }
+
+private:
+  identifier_s _name;
+  type_ptr _backing_type;
+  std::vector<enum_value_s> _values;
   bool _is_extern{false};
 };
 
@@ -967,6 +1010,28 @@ public:
 
 private:
   std::string _name;
+};
+
+class enum_value_access_c : public base_c {
+public:
+  enum_value_access_c() = delete;
+  enum_value_access_c(std::size_t source_index, identifier_s enum_name,
+                      identifier_s value_name)
+      : base_c(keywords_e::UNKNOWN_KEYWORD, source_index),
+        _enum_name(std::move(enum_name)), _value_name(std::move(value_name)) {}
+
+  const identifier_s &enum_name() const { return _enum_name; }
+  const identifier_s &value_name() const { return _value_name; }
+
+  void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::ENUM_VALUE_ACCESS; }
+  const enum_value_access_c *as_enum_value_access() const override {
+    return this;
+  }
+
+private:
+  identifier_s _enum_name;
+  identifier_s _value_name;
 };
 
 } // namespace truk::language::nodes

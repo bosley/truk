@@ -1,0 +1,12 @@
+enum Priority : i32 {
+    LOW = 1,
+    MEDIUM = 5,
+    HIGH = 10
+}
+
+fn main() : i32 {
+    var p: Priority = Priority.MEDIUM;
+    var ptr: *Priority = &p;
+    var result: Priority = *ptr;
+    return result as i32;
+}

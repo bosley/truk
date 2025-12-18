@@ -1,0 +1,11 @@
+enum Flags : u8 {
+    NONE = 0x00,
+    READ = 0x01,
+    WRITE = 0x02,
+    ALL = 0xFF
+}
+
+fn main() : i32 {
+    var f: Flags = Flags.ALL;
+    return f as u8 as i32;
+}

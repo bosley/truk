@@ -1,0 +1,15 @@
+enum State : i32 {
+    IDLE = 10,
+    RUNNING = 15,
+    STOPPED = 20
+}
+
+fn main() : i32 {
+    var s: State = State.RUNNING;
+    
+    if s == State.RUNNING {
+        return s as i32;
+    }
+    
+    return 0;
+}
