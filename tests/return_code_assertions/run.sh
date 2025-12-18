@@ -121,7 +121,15 @@ fi
 
 if [ "${PARALLEL}" = true ]; then
     pids=()
-    MAX_PARALLEL=${MAX_PARALLEL:-8}
+    if [ -z "${MAX_PARALLEL}" ]; then
+        if command -v nproc &> /dev/null; then
+            MAX_PARALLEL=$(nproc)
+        elif command -v sysctl &> /dev/null; then
+            MAX_PARALLEL=$(sysctl -n hw.ncpu 2>/dev/null || echo 8)
+        else
+            MAX_PARALLEL=8
+        fi
+    fi
     
     for test_category_dir in "${TEST_DIRS[@]}" ; do
         if [ ! -d "${test_category_dir}" ]; then
