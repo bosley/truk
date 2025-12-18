@@ -226,9 +226,9 @@ var ptr_size: u64 = sizeof(@*i32);
 
 ## Iteration
 
-### `each(collection: map[K, V] | []T, context: *C, callback: fn(...) : bool) -> void`
+### `each(collection: map[K, V] | []T | *u8 | *i8, context: *C, callback: fn(...) : bool) -> void`
 
-Iterates over a map or slice, calling a callback function for each element.
+Iterates over a map, slice, or null-terminated string, calling a callback function for each element.
 
 **For Maps:**
 
