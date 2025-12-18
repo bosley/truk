@@ -321,6 +321,14 @@ import_resolver_c::resolve_import_path(const std::string &import_path,
                                        const std::string &current_file) {
   std::string relative_path = resolve_path(import_path, current_file);
   if (std::filesystem::exists(relative_path)) {
+    if (std::filesystem::is_directory(relative_path)) {
+      std::filesystem::path lib_path =
+          std::filesystem::path(relative_path) / "lib.truk";
+      if (std::filesystem::exists(lib_path)) {
+        return lib_path.string();
+      }
+      return relative_path;
+    }
     return relative_path;
   }
 
@@ -328,6 +336,13 @@ import_resolver_c::resolve_import_path(const std::string &import_path,
     std::filesystem::path candidate =
         std::filesystem::path(include_dir) / import_path;
     if (std::filesystem::exists(candidate)) {
+      if (std::filesystem::is_directory(candidate)) {
+        std::filesystem::path lib_path = candidate / "lib.truk";
+        if (std::filesystem::exists(lib_path)) {
+          return lib_path.string();
+        }
+        return candidate.string();
+      }
       return candidate.string();
     }
   }
@@ -420,6 +435,19 @@ void import_resolver_c::extract_imports_and_declarations(
     if (auto *import_node = decl.get()->as_import()) {
       std::string resolved_path =
           resolve_import_path(import_node->path(), file_path);
+
+      if (std::filesystem::is_directory(resolved_path)) {
+        std::string error_msg = "Cannot import directory '" +
+                                import_node->path() +
+                                "': missing 'lib.truk' file.\n" +
+                                "To import a directory as a library, create a "
+                                "'lib.truk' file inside it.\n" +
+                                "Example: " + resolved_path + "/lib.truk";
+        _errors.push_back(
+            {error_msg, file_path, 0, 0, import_error_type_e::IMPORT_ERROR});
+        continue;
+      }
+
       process_file(resolved_path);
     } else if (auto *cimport_node = decl.get()->as_cimport()) {
       _c_imports.push_back(

@@ -27,6 +27,46 @@ Truk imports are:
 - Relative: paths are resolved relative to the importing file
 - Deduplicated: each file is processed once, even if imported multiple times
 
+## Directory Imports
+
+Import entire directories as libraries by creating a `lib.truk` entry point:
+
+**Project structure:**
+```
+myproject/
+  pkg/
+    database/
+      lib.truk         # Entry point
+      connection.truk  # Implementation
+      pool.truk        # Implementation
+  main.truk
+```
+
+**pkg/database/lib.truk:**
+```truk
+import "connection.truk";
+import "pool.truk";
+```
+
+**main.truk:**
+```truk
+import "pkg/database";
+
+fn main(): i32 {
+    var conn: Connection = connection_new("localhost", 5432);
+    return 0;
+}
+```
+
+When importing a directory, Truk looks for `lib.truk` inside it. This file acts as the public API, importing the implementation files.
+
+**With include paths:**
+```bash
+truk main.truk -I . -o myapp
+```
+
+The `-I` flag tells Truk where to search for imports, enabling modular project organization.
+
 ## C Header Imports
 
 Import C headers using `cimport` with angle brackets or quotes:

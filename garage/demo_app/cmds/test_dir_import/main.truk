@@ -1,0 +1,26 @@
+import "lib_a";
+import "lib_b";
+
+cimport <stdio.h>;
+extern fn printf(fmt: *i8, ...args): i32;
+
+fn main() : i32 {
+  printf("=== Testing Directory Imports ===\n");
+  
+  var p1: Point = point_new(10, 20);
+  printf("Point: (%d, %d)\n", p1.x, p1.y);
+  
+  var dist: i32 = point_distance_squared(p1);
+  printf("Distance squared: %d\n", dist);
+  
+  var sum: i32 = add(5, 7);
+  printf("5 + 7 = %d\n", sum);
+  
+  var prod: i32 = multiply(6, 8);
+  printf("6 * 8 = %d\n", prod);
+  
+  var fact: i32 = factorial(5);
+  printf("5! = %d\n", fact);
+  
+  return 0;
+}
