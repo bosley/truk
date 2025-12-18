@@ -1,0 +1,21 @@
+fn add_ten(x: i32) : i32 {
+  return x + 10;
+}
+
+fn add_twenty(x: i32) : i32 {
+  return x + 20;
+}
+
+fn with_defer_nested() : i32 {
+  var resource: i32 = 5;
+  
+  defer {
+    resource = 999;
+  }
+  
+  return add_twenty(add_ten(resource));
+}
+
+fn main() : i32 {
+  return with_defer_nested();
+}

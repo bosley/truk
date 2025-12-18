@@ -1,0 +1,112 @@
+import "stdlib/io";
+
+fn demo_basic() : i32 {
+  var r: Result = io_println("Hello, world!");
+  if io_is_err(&r) {
+    return -1;
+  }
+  
+  io_eprintln("This goes to stderr");
+  
+  return 0;
+}
+
+fn demo_chaining() : i32 {
+  var r: Result = io_println("First");
+  
+  r = io_and_then(&r, fn(n: i32) : Result {
+    return io_println("Second (only if first succeeded)");
+  });
+  
+  r = io_and_then(&r, fn(n: i32) : Result {
+    return io_println("Third (only if second succeeded)");
+  });
+  
+  return io_unwrap_or(&r, -1);
+}
+
+fn demo_map() : i32 {
+  var r: Result = io_print("Bytes written: ");
+  
+  r = io_map(&r, fn(bytes: i32) : i32 {
+    return bytes * 2;
+  });
+  
+  return io_unwrap_or(&r, 0);
+}
+
+fn demo_with_file() : i32 {
+  var r: Result = io_with_file("test.txt", "w", fn(f: *u8) : Result {
+    var data: *u8 = "Hello from lambda!\n";
+    var write_r: Result = io_write_file(f, data, 19);
+    if io_is_err(&write_r) {
+      return write_r;
+    }
+    
+    var flush_r: Result = io_flush(f);
+    return flush_r;
+  });
+  
+  if io_is_ok(&r) {
+    io_println("File written successfully!");
+  }
+  
+  return io_unwrap_or(&r, -1);
+}
+
+fn demo_manual_file() : i32 {
+  let f, open_r = io_open("manual.txt", "w");
+  if io_is_err(&open_r) {
+    io_eprintln("Failed to open file");
+    return -1;
+  }
+  
+  defer {
+    var close_r: Result = io_close(f);
+    if io_is_err(&close_r) {
+      io_eprintln("Failed to close file");
+    }
+  }
+  
+  var data: *u8 = "Manual file handling\n";
+  var write_r: Result = io_write_file(f, data, 21);
+  
+  return io_unwrap_or(&write_r, -1);
+}
+
+fn demo_or_else() : i32 {
+  var r: Result = io_print("This might fail");
+  
+  r = io_or_else(&r, fn(err: i32) : Result {
+    io_eprintln("Recovering from error!");
+    return io_ok(0);
+  });
+  
+  return io_unwrap(&r);
+}
+
+fn main() : i32 {
+  io_println("=== IO Library Demo ===\n");
+  
+  io_println("1. Basic I/O:");
+  demo_basic();
+  
+  io_println("\n2. Chaining operations:");
+  demo_chaining();
+  
+  io_println("\n3. Map transformation:");
+  demo_map();
+  
+  io_println("\n4. With-file pattern:");
+  demo_with_file();
+  
+  io_println("\n5. Manual file handling:");
+  demo_manual_file();
+  
+  io_println("\n6. Error recovery:");
+  demo_or_else();
+  
+  io_println("\n=== All demos complete! ===");
+  
+  return 0;
+}

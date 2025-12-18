@@ -1,0 +1,130 @@
+shard "stdio";
+
+import "types.truk";
+
+cimport <stdio.h>;
+cimport <unistd.h>;
+
+extern fn write(fd: i32, buf: *u8, count: i32) : i32;
+extern fn read(fd: i32, buf: *u8, count: i32) : i32;
+extern fn fopen(filename: *u8, mode: *u8) : *u8;
+extern fn fclose(stream: *u8) : i32;
+extern fn fwrite(ptr: *u8, size: i32, nmemb: i32, stream: *u8) : i32;
+extern fn fread(ptr: *u8, size: i32, nmemb: i32, stream: *u8) : i32;
+extern fn fflush(stream: *u8) : i32;
+extern fn fprintf(stream: *u8, fmt: *u8, ...args) : i32;
+extern fn printf(fmt: *u8, ...args) : i32;
+extern fn strlen(s: *u8) : i32;
+
+fn _make_ok(value: i32) : Result {
+  return Result{value: value, ok: true};
+}
+
+fn _make_err(value: i32) : Result {
+  return Result{value: value, ok: false};
+}
+
+fn _io_write_fd(fd: i32, buf: *u8, count: i32) : Result {
+  var n: i32 = write(fd, buf, count);
+  if n < 0 {
+    return _make_err(n);
+  }
+  return _make_ok(n);
+}
+
+fn _io_read_fd(fd: i32, buf: *u8, count: i32) : Result {
+  var n: i32 = read(fd, buf, count);
+  if n < 0 {
+    return _make_err(n);
+  }
+  return _make_ok(n);
+}
+
+fn _io_write_stdout(buf: *u8, count: i32) : Result {
+  return _io_write_fd(1, buf, count);
+}
+
+fn _io_write_stderr(buf: *u8, count: i32) : Result {
+  return _io_write_fd(2, buf, count);
+}
+
+fn _io_read_stdin(buf: *u8, count: i32) : Result {
+  return _io_read_fd(0, buf, count);
+}
+
+fn _io_print(msg: *u8) : Result {
+  var n: i32 = printf("%s", msg);
+  if n < 0 {
+    return _make_err(n);
+  }
+  return _make_ok(n);
+}
+
+fn _io_println(msg: *u8) : Result {
+  var n: i32 = printf("%s\n", msg);
+  if n < 0 {
+    return _make_err(n);
+  }
+  return _make_ok(n);
+}
+
+fn _io_eprint(msg: *u8) : Result {
+  var len: i32 = strlen(msg);
+  return _io_write_fd(2, msg, len);
+}
+
+fn _io_eprintln(msg: *u8) : Result {
+  var len: i32 = strlen(msg);
+  var r: Result = _io_write_fd(2, msg, len);
+  if !r.ok {
+    return r;
+  }
+  var newline: *u8 = "\n";
+  return _io_write_fd(2, newline, 1);
+}
+
+fn _io_write_file(f: *u8, buf: *u8, count: i32) : Result {
+  var n: i32 = fwrite(buf, 1, count, f);
+  if n < count {
+    return _make_err(n);
+  }
+  return _make_ok(n);
+}
+
+fn _io_read_file(f: *u8, buf: *u8, count: i32) : Result {
+  var n: i32 = fread(buf, 1, count, f);
+  if n <= 0 {
+    return _make_err(n);
+  }
+  return _make_ok(n);
+}
+
+fn _io_open(filename: *u8, mode: *u8) : (*u8, Result) {
+  var f: *u8 = fopen(filename, mode);
+  if f == nil {
+    return nil, _make_err(-1);
+  }
+  return f, _make_ok(0);
+}
+
+fn _io_close(f: *u8) : Result {
+  if f == nil {
+    return _make_ok(0);
+  }
+  var result: i32 = fclose(f);
+  if result != 0 {
+    return _make_err(result);
+  }
+  return _make_ok(0);
+}
+
+fn _io_flush(f: *u8) : Result {
+  if f == nil {
+    return _make_ok(0);
+  }
+  var result: i32 = fflush(f);
+  if result != 0 {
+    return _make_err(result);
+  }
+  return _make_ok(0);
+}

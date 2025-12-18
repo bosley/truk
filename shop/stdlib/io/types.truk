@@ -1,0 +1,6 @@
+shard "stdio";
+
+struct Result {
+  value: i32,
+  ok: bool
+}
