@@ -105,31 +105,35 @@ void emitter_c::emit_forward_declarations() {
         continue;
       }
 
+      if (fn->name().name.rfind("test_", 0) == 0) {
+        continue;
+      }
+
       bool is_private = is_private_identifier(fn->name().name);
       bool is_library = _result.metadata.is_library();
 
       if (auto func_return = fn->return_type()->as_function_type()) {
         std::string ret_type = emit_type(func_return->return_type());
-        
+
         if (is_private && is_library) {
           _forward_decls << "static ";
         }
-        
+
         _forward_decls << ret_type << " (*" << fn->name().name << "(";
       } else {
         std::string return_type = emit_type(fn->return_type());
-        
+
         if (is_private && is_library) {
           _forward_decls << "static ";
         }
-        
+
         _forward_decls << return_type << " " << fn->name().name << "(";
       }
 
       bool has_variadic = false;
       for (size_t i = 0; i < fn->params().size(); ++i) {
         const auto &param = fn->params()[i];
-        
+
         if (param.is_variadic) {
           has_variadic = true;
           if (i > 0) {
@@ -144,7 +148,7 @@ void emitter_c::emit_forward_declarations() {
           if (auto func = param.type.get()->as_function_type()) {
             std::string ret_type = emit_type(func->return_type());
             _forward_decls << ret_type << " (*" << param.name.name << ")(";
-            
+
             const auto &func_param_types = func->param_types();
             for (size_t j = 0; j < func_param_types.size(); ++j) {
               if (j > 0) {
@@ -152,18 +156,18 @@ void emitter_c::emit_forward_declarations() {
               }
               _forward_decls << emit_type(func_param_types[j].get());
             }
-            
+
             if (func_param_types.empty()) {
               _forward_decls << "void";
             }
-            
+
             if (func->has_variadic()) {
               if (!func_param_types.empty()) {
                 _forward_decls << ", ";
               }
               _forward_decls << "...";
             }
-            
+
             _forward_decls << ")";
           } else {
             std::string param_type = emit_type(param.type.get());
@@ -1445,15 +1449,17 @@ void emitter_c::visit(const return_c &node) {
   if (node.is_single()) {
     const base_c *return_expr = node.expressions()[0].get();
     bool is_call = (return_expr->as_call() != nullptr);
-    
+
     if (is_call) {
       std::string return_type = emit_type(_current_function_return_type);
       std::string tmp_var = "__return_value_" + std::to_string(_temp_counter++);
       std::string expr = emit_expression(return_expr);
-      
-      _functions << cdef::indent(_indent_level) << return_type << " " << tmp_var << " = " << expr << ";\n";
+
+      _functions << cdef::indent(_indent_level) << return_type << " " << tmp_var
+                 << " = " << expr << ";\n";
       emit_all_remaining_defers();
-      _functions << cdef::indent(_indent_level) << "return " << tmp_var << ";\n";
+      _functions << cdef::indent(_indent_level) << "return " << tmp_var
+                 << ";\n";
     } else {
       emit_all_remaining_defers();
       std::string expr = emit_expression(return_expr);
