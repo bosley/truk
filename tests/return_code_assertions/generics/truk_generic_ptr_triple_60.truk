@@ -1,0 +1,15 @@
+struct Box<T> {
+  value: T
+}
+
+fn get_value(ptr: *Box<Box<Box<i32>>>) : i32 {
+  return (*ptr).value.value.value;
+}
+
+fn main() : i32 {
+  var b1: Box<i32> = Box<i32>{value: 60};
+  var b2: Box<Box<i32>> = Box<Box<i32>>{value: b1};
+  var b3: Box<Box<Box<i32>>> = Box<Box<Box<i32>>>{value: b2};
+  
+  return get_value(&b3);
+}

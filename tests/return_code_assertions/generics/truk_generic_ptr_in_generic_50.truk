@@ -1,0 +1,10 @@
+struct Box<T> {
+  value: T
+}
+
+fn main() : i32 {
+  var inner: Box<i32> = Box<i32>{value: 50};
+  var outer: Box<*Box<i32>> = Box<*Box<i32>>{value: &inner};
+  
+  return (*outer.value).value;
+}

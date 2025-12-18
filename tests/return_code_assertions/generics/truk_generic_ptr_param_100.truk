@@ -1,0 +1,16 @@
+struct Box<T> {
+  value: T
+}
+
+fn modify(b: *Box<i32>) : i32 {
+  (*b).value = 100;
+  return (*b).value;
+}
+
+fn main() : i32 {
+  var b: Box<i32> = Box<i32>{value: 42};
+  var ptr: *Box<i32> = &b;
+  
+  var result: i32 = modify(ptr);
+  return result;
+}

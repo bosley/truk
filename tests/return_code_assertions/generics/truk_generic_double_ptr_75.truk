@@ -1,0 +1,11 @@
+struct Box<T> {
+  value: T
+}
+
+fn main() : i32 {
+  var b: Box<i32> = Box<i32>{value: 75};
+  var ptr1: *Box<i32> = &b;
+  var ptr2: **Box<i32> = &ptr1;
+  
+  return (**ptr2).value;
+}
