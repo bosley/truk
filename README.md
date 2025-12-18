@@ -701,4 +701,4 @@ truk is actively developed. See the [compiler internals documentation](docs/comp
 
 ## License
 
-See the repository for license information.
+MIT
