@@ -1,0 +1,10 @@
+error: Case pattern type does not match scrutinee type
+  --> match_failure/test_match_type_mismatch.truk:5:10
+  |
+4 |     case 0 => return 0,
+5 |     case "hello" => return 1,
+  |          ^
+6 |     _ => return 2,
+  |
+
+Compilation failed with 1 error(s)

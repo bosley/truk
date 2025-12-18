@@ -1,0 +1,12 @@
+fn helper(x: i32) : i32 {
+  match x {
+    case 1 => return 10,
+    case 2 => return 20,
+    case 3 => return 30,
+    _ => return 0,
+  }
+}
+
+fn main() : i32 {
+  return helper(2);
+}

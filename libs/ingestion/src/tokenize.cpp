@@ -291,6 +291,11 @@ std::optional<token_s> tokenizer_c::next_token() {
       return make_token(token_type_e::EQUAL_EQUAL, start_pos, start_line,
                         start_column);
     }
+    if (!is_at_end() && current_char() == '>') {
+      advance();
+      return make_token(token_type_e::FAT_ARROW, start_pos, start_line,
+                        start_column);
+    }
     return make_token(token_type_e::EQUAL, start_pos, start_line, start_column);
 
   case '!':

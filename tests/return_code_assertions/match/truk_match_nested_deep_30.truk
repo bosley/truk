@@ -1,0 +1,19 @@
+fn main() : i32 {
+  var a: i32 = 1;
+  var b: i32 = 2;
+  var c: i32 = 3;
+  match a {
+    case 1 => {
+      match b {
+        case 2 => {
+          match c {
+            case 3 => return 30,
+            _ => return 0,
+          }
+        },
+        _ => return 0,
+      }
+    },
+    _ => return 0,
+  }
+}

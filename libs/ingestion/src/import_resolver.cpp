@@ -185,6 +185,21 @@ void dependency_visitor_c::visit(const defer_c &node) {
   }
 }
 
+void dependency_visitor_c::visit(const match_c &node) {
+  if (node.scrutinee()) {
+    node.scrutinee()->accept(*this);
+  }
+
+  for (const auto &case_arm : node.cases()) {
+    if (case_arm.pattern) {
+      case_arm.pattern->accept(*this);
+    }
+    if (case_arm.body) {
+      case_arm.body->accept(*this);
+    }
+  }
+}
+
 void dependency_visitor_c::visit(const binary_op_c &node) {
   if (node.left()) {
     node.left()->accept(*this);

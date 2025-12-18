@@ -32,6 +32,7 @@ enum class node_kind_e {
   BREAK,
   CONTINUE,
   DEFER,
+  MATCH,
   BINARY_OP,
   UNARY_OP,
   CAST,
@@ -82,6 +83,7 @@ class return_c;
 class break_c;
 class continue_c;
 class defer_c;
+class match_c;
 class binary_op_c;
 class unary_op_c;
 class cast_c;
@@ -137,6 +139,7 @@ public:
   virtual const break_c *as_break() const { return nullptr; }
   virtual const continue_c *as_continue() const { return nullptr; }
   virtual const defer_c *as_defer() const { return nullptr; }
+  virtual const match_c *as_match() const { return nullptr; }
   virtual const binary_op_c *as_binary_op() const { return nullptr; }
   virtual const unary_op_c *as_unary_op() const { return nullptr; }
   virtual const cast_c *as_cast() const { return nullptr; }
@@ -1032,6 +1035,36 @@ public:
 private:
   identifier_s _enum_name;
   identifier_s _value_name;
+};
+
+struct match_case_s {
+  base_ptr pattern;
+  base_ptr body;
+  bool is_wildcard;
+
+  match_case_s() = delete;
+  match_case_s(base_ptr pat, base_ptr b, bool wildcard = false)
+      : pattern(std::move(pat)), body(std::move(b)), is_wildcard(wildcard) {}
+};
+
+class match_c : public base_c {
+public:
+  match_c() = delete;
+  match_c(std::size_t source_index, base_ptr scrutinee,
+          std::vector<match_case_s> cases)
+      : base_c(keywords_e::MATCH, source_index),
+        _scrutinee(std::move(scrutinee)), _cases(std::move(cases)) {}
+
+  const base_c *scrutinee() const { return _scrutinee.get(); }
+  const std::vector<match_case_s> &cases() const { return _cases; }
+
+  void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override { return node_kind_e::MATCH; }
+  const match_c *as_match() const override { return this; }
+
+private:
+  base_ptr _scrutinee;
+  std::vector<match_case_s> _cases;
 };
 
 } // namespace truk::language::nodes

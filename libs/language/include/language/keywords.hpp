@@ -30,6 +30,8 @@ enum class keywords_e {
   CIMPORT,
   EXTERN,
   SHARD,
+  MATCH,
+  CASE,
   I8,
   I16,
   I32,

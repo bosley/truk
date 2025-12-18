@@ -160,6 +160,7 @@ public:
   void visit(const truk::language::nodes::break_c &node) override;
   void visit(const truk::language::nodes::continue_c &node) override;
   void visit(const truk::language::nodes::defer_c &node) override;
+  void visit(const truk::language::nodes::match_c &node) override;
   void visit(const truk::language::nodes::binary_op_c &node) override;
   void visit(const truk::language::nodes::unary_op_c &node) override;
   void visit(const truk::language::nodes::cast_c &node) override;
@@ -260,6 +261,7 @@ private:
   const truk::language::nodes::type_c *_current_function_return_type{nullptr};
   int _lambda_counter{0};
   int _temp_counter{0};
+  int _match_counter{0};
   std::unordered_set<std::string> _generated_tuple_typedefs;
   std::vector<const truk::language::nodes::type_c *>
       _current_tuple_return_types;

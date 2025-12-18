@@ -1,0 +1,12 @@
+fn main() : i32 {
+  var x: i32 = 2;
+  var result: i32 = 0;
+  match x {
+    case 1 => result = 5,
+    case 2 => {
+      result = 10;
+    },
+    _ => result = 0,
+  }
+  return result;
+}

@@ -245,6 +245,7 @@ public:
   void visit(const truk::language::nodes::break_c &node) override;
   void visit(const truk::language::nodes::continue_c &node) override;
   void visit(const truk::language::nodes::defer_c &node) override;
+  void visit(const truk::language::nodes::match_c &node) override;
   void visit(const truk::language::nodes::binary_op_c &node) override;
   void visit(const truk::language::nodes::unary_op_c &node) override;
   void visit(const truk::language::nodes::cast_c &node) override;
@@ -320,6 +321,7 @@ private:
   bool is_integer_type(const type_entry_s *type);
   bool is_boolean_type(const type_entry_s *type);
   bool is_comparable_type(const type_entry_s *type);
+  bool is_matchable_type(const type_entry_s *type) const;
   bool is_valid_map_key_type(const type_entry_s *type);
   bool is_compatible_for_assignment(const type_entry_s *target,
                                     const type_entry_s *source);
@@ -381,6 +383,7 @@ public:
   void visit(const truk::language::nodes::break_c &node) override;
   void visit(const truk::language::nodes::continue_c &node) override;
   void visit(const truk::language::nodes::defer_c &node) override;
+  void visit(const truk::language::nodes::match_c &node) override;
   void visit(const truk::language::nodes::binary_op_c &node) override;
   void visit(const truk::language::nodes::unary_op_c &node) override;
   void visit(const truk::language::nodes::cast_c &node) override;
@@ -438,6 +441,7 @@ public:
   void visit(const truk::language::nodes::break_c &node) override;
   void visit(const truk::language::nodes::continue_c &node) override;
   void visit(const truk::language::nodes::defer_c &node) override;
+  void visit(const truk::language::nodes::match_c &node) override;
   void visit(const truk::language::nodes::binary_op_c &node) override;
   void visit(const truk::language::nodes::unary_op_c &node) override;
   void visit(const truk::language::nodes::cast_c &node) override;

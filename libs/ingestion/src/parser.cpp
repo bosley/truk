@@ -704,6 +704,9 @@ language::nodes::base_ptr parser_c::parse_statement() {
   if (check_keyword(language::keywords_e::FOR)) {
     return parse_for_stmt();
   }
+  if (check_keyword(language::keywords_e::MATCH)) {
+    return parse_match_stmt();
+  }
   if (check_keyword(language::keywords_e::RETURN)) {
     return parse_return_stmt();
   }
@@ -813,6 +816,86 @@ language::nodes::base_ptr parser_c::parse_for_stmt() {
   return std::make_unique<language::nodes::for_c>(
       for_token.source_index, std::move(init), std::move(condition),
       std::move(post), std::move(body));
+}
+
+language::nodes::base_ptr parser_c::parse_match_stmt() {
+  const auto &match_token =
+      consume_keyword(language::keywords_e::MATCH, "Expected 'match' keyword");
+
+  auto scrutinee = parse_expression();
+
+  consume(token_type_e::LEFT_BRACE, "Expected '{' after match expression");
+
+  std::vector<language::nodes::match_case_s> cases;
+  bool has_wildcard = false;
+
+  while (!check(token_type_e::RIGHT_BRACE) && !is_at_end()) {
+    bool is_wildcard = false;
+    language::nodes::base_ptr pattern = nullptr;
+
+    if (check(token_type_e::IDENTIFIER) && peek().lexeme == "_") {
+      advance();
+      is_wildcard = true;
+      if (has_wildcard) {
+        throw parse_error("Match statement can only have one wildcard case",
+                          previous().line, previous().column);
+      }
+      has_wildcard = true;
+    } else {
+      consume_keyword(language::keywords_e::CASE,
+                      "Expected 'case' keyword or '_' wildcard");
+      pattern = parse_expression();
+    }
+
+    if (!check(token_type_e::FAT_ARROW)) {
+      throw parse_error("Expected '=>' after case pattern", peek().line,
+                        peek().column);
+    }
+    advance();
+
+    language::nodes::base_ptr body;
+    if (check(token_type_e::LEFT_BRACE)) {
+      body = parse_block();
+    } else {
+      if (check_keyword(language::keywords_e::RETURN)) {
+        const auto &return_token = consume_keyword(language::keywords_e::RETURN,
+                                                   "Expected 'return' keyword");
+        std::vector<language::nodes::base_ptr> expressions;
+        if (!check(token_type_e::COMMA)) {
+          expressions.push_back(parse_expression());
+        }
+        body = std::make_unique<language::nodes::return_c>(
+            return_token.source_index, std::move(expressions));
+      } else if (check_keyword(language::keywords_e::BREAK)) {
+        const auto &break_token = consume_keyword(language::keywords_e::BREAK,
+                                                  "Expected 'break' keyword");
+        body = std::make_unique<language::nodes::break_c>(
+            break_token.source_index);
+      } else if (check_keyword(language::keywords_e::CONTINUE)) {
+        const auto &continue_token = consume_keyword(
+            language::keywords_e::CONTINUE, "Expected 'continue' keyword");
+        body = std::make_unique<language::nodes::continue_c>(
+            continue_token.source_index);
+      } else {
+        body = parse_expression();
+      }
+    }
+
+    consume(token_type_e::COMMA, "Expected ',' after case body");
+
+    cases.emplace_back(std::move(pattern), std::move(body), is_wildcard);
+  }
+
+  if (!has_wildcard) {
+    throw parse_error(
+        "Match statement must have a wildcard '_' case for exhaustiveness",
+        match_token.line, match_token.column);
+  }
+
+  consume(token_type_e::RIGHT_BRACE, "Expected '}' after match cases");
+
+  return std::make_unique<language::nodes::match_c>(
+      match_token.source_index, std::move(scrutinee), std::move(cases));
 }
 
 language::nodes::base_ptr parser_c::parse_return_stmt() {

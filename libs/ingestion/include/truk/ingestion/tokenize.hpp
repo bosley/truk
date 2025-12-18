@@ -51,6 +51,7 @@ enum class token_type_e {
   COLON,
   DOT,
   ARROW,
+  FAT_ARROW,
   DOT_DOT_DOT,
   AT,
   END_OF_FILE,

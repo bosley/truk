@@ -110,6 +110,25 @@ void control_flow_checker_c::visit(const defer_c &node) {
   check_node(node.deferred_code());
 }
 
+void control_flow_checker_c::visit(const match_c &node) {
+  check_node(node.scrutinee());
+  if (_has_control_flow)
+    return;
+
+  for (const auto &case_arm : node.cases()) {
+    if (case_arm.pattern) {
+      check_node(case_arm.pattern.get());
+      if (_has_control_flow)
+        return;
+    }
+    if (case_arm.body) {
+      check_node(case_arm.body.get());
+      if (_has_control_flow)
+        return;
+    }
+  }
+}
+
 void control_flow_checker_c::visit(const binary_op_c &node) {
   check_node(node.left());
   if (_has_control_flow)

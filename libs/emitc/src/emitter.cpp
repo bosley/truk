@@ -1379,6 +1379,58 @@ void emitter_c::visit(const defer_c &node) {
   }
 }
 
+void emitter_c::visit(const match_c &node) {
+  std::string scrutinee_expr = emit_expression(node.scrutinee());
+  std::string temp_var = "_truk_match_" + std::to_string(_match_counter++);
+
+  _functions << cdef::indent(_indent_level) << "{\n";
+  _indent_level++;
+  _functions << cdef::indent(_indent_level) << "auto " << temp_var << " = "
+             << scrutinee_expr << ";\n";
+
+  bool first_case = true;
+  for (const auto &case_arm : node.cases()) {
+    if (case_arm.is_wildcard) {
+      _functions << cdef::indent(_indent_level) << "else ";
+
+      if (auto *block = case_arm.body->as_block()) {
+        case_arm.body->accept(*this);
+        _functions << "\n";
+      } else {
+        _functions << "{\n";
+        _indent_level++;
+        case_arm.body->accept(*this);
+        _indent_level--;
+        _functions << cdef::indent(_indent_level) << "}\n";
+      }
+    } else {
+      if (first_case) {
+        _functions << cdef::indent(_indent_level) << "if (";
+        first_case = false;
+      } else {
+        _functions << cdef::indent(_indent_level) << "else if (";
+      }
+
+      std::string pattern_expr = emit_expression(case_arm.pattern.get());
+      _functions << temp_var << " == " << pattern_expr << ") ";
+
+      if (auto *block = case_arm.body->as_block()) {
+        case_arm.body->accept(*this);
+        _functions << "\n";
+      } else {
+        _functions << "{\n";
+        _indent_level++;
+        case_arm.body->accept(*this);
+        _indent_level--;
+        _functions << cdef::indent(_indent_level) << "}\n";
+      }
+    }
+  }
+
+  _indent_level--;
+  _functions << cdef::indent(_indent_level) << "}\n";
+}
+
 void emitter_c::visit(const binary_op_c &node) {
   _current_expr << emit_expr_binary_op(node);
 }

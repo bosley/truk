@@ -1,0 +1,14 @@
+fn main() : i32 {
+  var sum: i32 = 0;
+  for var i: i32 = 0; i < 5; i = i + 1 {
+    match i {
+      case 0 => sum = sum + 5,
+      case 1 => sum = sum + 10,
+      case 2 => sum = sum + 15,
+      case 3 => sum = sum + 10,
+      case 4 => sum = sum + 5,
+      _ => sum = sum + 0,
+    }
+  }
+  return sum;
+}

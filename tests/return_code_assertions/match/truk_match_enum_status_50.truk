@@ -1,0 +1,11 @@
+enum Status : i32 { OK = 50, ERROR = 100, PENDING = 150 }
+
+fn main() : i32 {
+  var s: Status = Status.OK;
+  match s {
+    case Status.OK => return 50,
+    case Status.ERROR => return 100,
+    case Status.PENDING => return 150,
+    _ => return 0,
+  }
+}

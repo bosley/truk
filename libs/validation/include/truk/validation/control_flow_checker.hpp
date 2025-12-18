@@ -35,6 +35,7 @@ public:
   void visit(const language::nodes::break_c &node) override;
   void visit(const language::nodes::continue_c &node) override;
   void visit(const language::nodes::defer_c &node) override;
+  void visit(const language::nodes::match_c &node) override;
   void visit(const language::nodes::binary_op_c &node) override;
   void visit(const language::nodes::unary_op_c &node) override;
   void visit(const language::nodes::cast_c &node) override;

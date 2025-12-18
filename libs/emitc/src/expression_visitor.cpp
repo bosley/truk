@@ -103,6 +103,8 @@ void expression_visitor_c::visit(const continue_c &node) {}
 
 void expression_visitor_c::visit(const defer_c &node) {}
 
+void expression_visitor_c::visit(const match_c &node) {}
+
 void expression_visitor_c::visit(const block_c &node) {}
 
 void expression_visitor_c::visit(const type_param_c &node) {}

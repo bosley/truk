@@ -66,6 +66,7 @@ public:
   void visit(const truk::language::nodes::break_c &node) override;
   void visit(const truk::language::nodes::continue_c &node) override;
   void visit(const truk::language::nodes::defer_c &node) override;
+  void visit(const truk::language::nodes::match_c &node) override;
   void visit(const truk::language::nodes::binary_op_c &node) override;
   void visit(const truk::language::nodes::unary_op_c &node) override;
   void visit(const truk::language::nodes::cast_c &node) override;

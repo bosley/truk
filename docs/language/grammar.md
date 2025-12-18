@@ -95,6 +95,7 @@ statement       ::= expression_stmt
                   | if_stmt
                   | while_stmt
                   | for_stmt
+                  | match_stmt
                   | return_stmt
                   | break_stmt
                   | continue_stmt
@@ -108,6 +109,10 @@ if_stmt         ::= "if" expression block ("else" (if_stmt | block))?
 while_stmt      ::= "while" expression block
 
 for_stmt        ::= "for" expression? ";" expression? ";" expression? block
+
+match_stmt      ::= "match" expression "{" match_case+ "}"
+
+match_case      ::= ("case" expression | "_") "=>" (statement | block) ","
 
 return_stmt     ::= "return" (expression ("," expression)*)? ";"
 

@@ -88,6 +88,7 @@ private:
   language::nodes::base_ptr parse_if_stmt();
   language::nodes::base_ptr parse_while_stmt();
   language::nodes::base_ptr parse_for_stmt();
+  language::nodes::base_ptr parse_match_stmt();
   language::nodes::base_ptr parse_return_stmt();
   language::nodes::base_ptr parse_break_stmt();
   language::nodes::base_ptr parse_continue_stmt();

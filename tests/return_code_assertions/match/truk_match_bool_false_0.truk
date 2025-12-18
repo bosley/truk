@@ -1,0 +1,8 @@
+fn main() : i32 {
+  var flag: bool = false;
+  match flag {
+    case true => return 1,
+    case false => return 0,
+    _ => return 99,
+  }
+}

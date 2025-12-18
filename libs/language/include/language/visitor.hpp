@@ -23,6 +23,7 @@ class return_c;
 class break_c;
 class continue_c;
 class defer_c;
+class match_c;
 class binary_op_c;
 class unary_op_c;
 class cast_c;
@@ -66,6 +67,7 @@ public:
   virtual void visit(const break_c &node) = 0;
   virtual void visit(const continue_c &node) = 0;
   virtual void visit(const defer_c &node) = 0;
+  virtual void visit(const match_c &node) = 0;
   virtual void visit(const binary_op_c &node) = 0;
   virtual void visit(const unary_op_c &node) = 0;
   virtual void visit(const cast_c &node) = 0;

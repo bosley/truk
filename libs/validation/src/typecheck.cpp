@@ -424,6 +424,26 @@ bool type_checker_c::is_comparable_type(const type_entry_s *type) {
   return false;
 }
 
+bool type_checker_c::is_matchable_type(const type_entry_s *type) const {
+  if (!type) {
+    return false;
+  }
+
+  if (type->kind == type_kind_e::PRIMITIVE) {
+    return true;
+  }
+
+  if (type->kind == type_kind_e::ENUM) {
+    return true;
+  }
+
+  if (type->kind == type_kind_e::POINTER) {
+    return true;
+  }
+
+  return false;
+}
+
 bool type_checker_c::is_valid_map_key_type(const type_entry_s *type) {
   if (!type) {
     return false;
@@ -1591,6 +1611,79 @@ void type_checker_c::visit(const defer_c &node) {
   }
 }
 
+void type_checker_c::visit(const match_c &node) {
+  if (node.scrutinee()) {
+    node.scrutinee()->accept(*this);
+  }
+
+  auto scrutinee_type = std::move(_current_expression_type);
+  if (!scrutinee_type) {
+    report_error("Cannot determine type of match scrutinee expression",
+                 node.source_index());
+    return;
+  }
+
+  if (!is_matchable_type(scrutinee_type.get())) {
+    report_error(
+        "Match scrutinee must be a primitive type, enum, or pointer type",
+        node.source_index());
+  }
+
+  bool found_wildcard = false;
+  for (const auto &case_arm : node.cases()) {
+    if (case_arm.is_wildcard) {
+      found_wildcard = true;
+      if (case_arm.body) {
+        case_arm.body->accept(*this);
+      }
+    } else {
+      if (case_arm.pattern) {
+        case_arm.pattern->accept(*this);
+
+        auto pattern_type = std::move(_current_expression_type);
+        if (pattern_type && scrutinee_type) {
+          if (pattern_type->kind == type_kind_e::UNTYPED_INTEGER ||
+              pattern_type->kind == type_kind_e::UNTYPED_FLOAT) {
+            pattern_type = resolve_untyped_literal(pattern_type.get(),
+                                                   scrutinee_type.get());
+          }
+
+          bool types_match =
+              types_equal(scrutinee_type.get(), pattern_type.get());
+
+          if (!types_match && scrutinee_type->kind == type_kind_e::POINTER &&
+              pattern_type->kind == type_kind_e::POINTER &&
+              pattern_type->name == "void" &&
+              pattern_type->pointer_depth == 1) {
+            types_match = true;
+          }
+
+          if (!types_match && pattern_type->kind == type_kind_e::POINTER &&
+              scrutinee_type->kind == type_kind_e::POINTER &&
+              scrutinee_type->name == "void" &&
+              scrutinee_type->pointer_depth == 1) {
+            types_match = true;
+          }
+
+          if (!types_match) {
+            report_error("Case pattern type does not match scrutinee type",
+                         case_arm.pattern->source_index());
+          }
+        }
+      }
+
+      if (case_arm.body) {
+        case_arm.body->accept(*this);
+      }
+    }
+  }
+
+  if (!found_wildcard) {
+    report_error("Match statement must have a wildcard '_' case",
+                 node.source_index());
+  }
+}
+
 void type_checker_c::visit(const binary_op_c &node) {
   node.left()->accept(*this);
   auto left_type = std::move(_current_expression_type);
@@ -2705,6 +2798,21 @@ void symbol_collector_c::visit(const defer_c &node) {
   }
 }
 
+void symbol_collector_c::visit(const match_c &node) {
+  if (node.scrutinee()) {
+    node.scrutinee()->accept(*this);
+  }
+
+  for (const auto &case_arm : node.cases()) {
+    if (case_arm.pattern) {
+      case_arm.pattern->accept(*this);
+    }
+    if (case_arm.body) {
+      case_arm.body->accept(*this);
+    }
+  }
+}
+
 void symbol_collector_c::visit(const binary_op_c &node) {
   if (node.left()) {
     node.left()->accept(*this);
@@ -2948,6 +3056,21 @@ void lambda_capture_validator_c::visit(const continue_c &node) {}
 void lambda_capture_validator_c::visit(const defer_c &node) {
   if (node.deferred_code()) {
     node.deferred_code()->accept(*this);
+  }
+}
+
+void lambda_capture_validator_c::visit(const match_c &node) {
+  if (node.scrutinee()) {
+    node.scrutinee()->accept(*this);
+  }
+
+  for (const auto &case_arm : node.cases()) {
+    if (case_arm.pattern) {
+      case_arm.pattern->accept(*this);
+    }
+    if (case_arm.body) {
+      case_arm.body->accept(*this);
+    }
   }
 }
 
