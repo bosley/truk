@@ -251,22 +251,26 @@ void emitter_c::internal_finalize() {
 
   final_header << cdef::emit_runtime_implementation();
 
-  if (embedded::runtime_files.count("include/sxs/ds/map.h")) {
-    final_header << cdef::strip_pragma_and_includes(
-        embedded::runtime_files.at("include/sxs/ds/map.h").content);
-  }
-  if (embedded::runtime_files.count("src/ds/map.c")) {
-    final_header << cdef::strip_pragma_and_includes(
-        embedded::runtime_files.at("src/ds/map.c").content);
+  if (_type_registry.has_maps()) {
+    if (embedded::runtime_files.count("include/sxs/ds/map.h")) {
+      final_header << cdef::strip_pragma_and_includes(
+          embedded::runtime_files.at("include/sxs/ds/map.h").content);
+    }
+    if (embedded::runtime_files.count("src/ds/map.c")) {
+      final_header << cdef::strip_pragma_and_includes(
+          embedded::runtime_files.at("src/ds/map.c").content);
+    }
   }
 
-  if (embedded::runtime_files.count("include/sxs/test.h")) {
-    final_header << cdef::strip_pragma_and_includes(
-        embedded::runtime_files.at("include/sxs/test.h").content);
-  }
-  if (embedded::runtime_files.count("src/test.c")) {
-    final_header << cdef::strip_pragma_and_includes(
-        embedded::runtime_files.at("src/test.c").content);
+  if (_result.metadata.has_tests()) {
+    if (embedded::runtime_files.count("include/sxs/test.h")) {
+      final_header << cdef::strip_pragma_and_includes(
+          embedded::runtime_files.at("include/sxs/test.h").content);
+    }
+    if (embedded::runtime_files.count("src/test.c")) {
+      final_header << cdef::strip_pragma_and_includes(
+          embedded::runtime_files.at("src/test.c").content);
+    }
   }
 
   final_header << "typedef struct {\n  __truk_void* data;\n  __truk_u64 "

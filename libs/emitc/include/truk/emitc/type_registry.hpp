@@ -32,6 +32,7 @@ public:
                           const truk::language::nodes::type_c *value_type,
                           std::stringstream &structs_stream);
   bool is_map_type(const truk::language::nodes::type_c *type);
+  bool has_maps() const;
 
   bool is_string_ptr_type(const truk::language::nodes::type_c *type);
 

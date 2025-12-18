@@ -268,6 +268,8 @@ bool type_registry_c::is_map_type(const type_c *type) {
   return type->as_map_type() != nullptr;
 }
 
+bool type_registry_c::has_maps() const { return !_map_types_emitted.empty(); }
+
 bool type_registry_c::is_string_ptr_type(const type_c *type) {
   if (auto ptr = type->as_pointer_type()) {
     if (auto pointee = ptr->pointee_type()) {
