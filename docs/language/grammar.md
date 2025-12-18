@@ -164,6 +164,7 @@ member          ::= "." IDENTIFIER
 primary         ::= INTEGER
                   | FLOAT
                   | STRING
+                  | CHAR
                   | "true" | "false"
                   | "nil"
                   | IDENTIFIER
@@ -187,4 +188,12 @@ INTEGER         ::= [0-9]+ | "0x"[0-9a-fA-F]+ | "0b"[01]+ | "0o"[0-7]+
 FLOAT           ::= [0-9]+"."[0-9]+([eE][+-]?[0-9]+)?
 
 STRING          ::= '"' ([^"\\\n] | "\\" .)* '"'
+
+CHAR            ::= "'" (CHAR_CONTENT | ESCAPE_SEQUENCE) "'"
+
+CHAR_CONTENT    ::= [^'\\\n]
+
+ESCAPE_SEQUENCE ::= "\\" ("n" | "t" | "r" | "0" | "\\" | "'" | "\"" | "x" HEX HEX)
+
+HEX             ::= [0-9a-fA-F]
 ```

@@ -837,7 +837,7 @@ private:
   type_ptr _type;
 };
 
-enum class literal_type_e { INTEGER, FLOAT, STRING, BOOL, NIL };
+enum class literal_type_e { INTEGER, FLOAT, STRING, CHAR, BOOL, NIL };
 
 class literal_c : public base_c {
 public:

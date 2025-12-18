@@ -1,0 +1,9 @@
+fn main() : i32 {
+  var c: u8 = '(';
+  match c {
+    case '(' => return 5,
+    case ')' => return 6,
+    case '{' => return 7,
+    _ => return 0,
+  }
+}

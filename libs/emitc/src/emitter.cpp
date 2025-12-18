@@ -55,21 +55,27 @@ emitter_c &emitter_c::set_c_imports(
 }
 
 result_c emitter_c::finalize() {
-  _current_phase = emission_phase_e::COLLECTION;
-  for (const auto *decl : _declarations) {
-    collect_declarations(decl);
+  try {
+    _current_phase = emission_phase_e::COLLECTION;
+    for (const auto *decl : _declarations) {
+      collect_declarations(decl);
+    }
+
+    _current_phase = emission_phase_e::FORWARD_DECLARATION;
+    emit_forward_declarations();
+
+    _current_phase = emission_phase_e::FUNCTION_DEFINITION;
+    for (const auto *decl : _declarations) {
+      emit(decl);
+    }
+
+    _current_phase = emission_phase_e::FINALIZATION;
+    internal_finalize();
+  } catch (const emitter_exception_c &e) {
+    add_error(e.what(), nullptr);
+  } catch (const std::exception &e) {
+    add_error(std::string("Unexpected error: ") + e.what(), nullptr);
   }
-
-  _current_phase = emission_phase_e::FORWARD_DECLARATION;
-  emit_forward_declarations();
-
-  _current_phase = emission_phase_e::FUNCTION_DEFINITION;
-  for (const auto *decl : _declarations) {
-    emit(decl);
-  }
-
-  _current_phase = emission_phase_e::FINALIZATION;
-  internal_finalize();
 
   return _result;
 }
@@ -1684,12 +1690,43 @@ std::string emitter_c::emit_expr_literal(const literal_c &node) {
     return node.value();
   case literal_type_e::STRING:
     return node.value();
+  case literal_type_e::CHAR:
+    return process_char_literal(node.value(), &node);
   case literal_type_e::BOOL:
     return (node.value() == "true" ? "true" : "false");
   case literal_type_e::NIL:
     return "NULL";
   }
   return "";
+}
+
+std::string emitter_c::process_char_literal(const std::string &lexeme,
+                                            const base_c *node) {
+  std::string content = lexeme.substr(1, lexeme.length() - 2);
+
+  if (content[0] == '\\') {
+    char escape_char = content[1];
+    switch (escape_char) {
+    case 'n':
+      return "'\\n'";
+    case 't':
+      return "'\\t'";
+    case 'r':
+      return "'\\r'";
+    case '0':
+      return "'\\0'";
+    case '\\':
+      return "'\\\\'";
+    case '\'':
+      return "'\\''";
+    case '"':
+      return "'\\\"'";
+    case 'x':
+      return "'" + content + "'";
+    }
+  }
+
+  return "'" + content + "'";
 }
 
 std::string emitter_c::emit_expr_identifier(const identifier_c &node) {

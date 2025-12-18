@@ -1,0 +1,34 @@
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args) : i32;
+
+fn main() : i32 {
+  var letter: u8 = 'A';
+  var digit: u8 = '5';
+  var paren: u8 = '(';
+  var newline: u8 = '\n';
+  var tab: u8 = '\t';
+  var hex: u8 = '\x42';
+  
+  printf("Letter: %c (ASCII %d)\n", letter, letter);
+  printf("Digit: %c (ASCII %d)\n", digit, digit);
+  printf("Paren: %c (ASCII %d)\n", paren, paren);
+  printf("Newline ASCII: %d\n", newline);
+  printf("Tab ASCII: %d\n", tab);
+  printf("Hex escape \\x42: %c (ASCII %d)\n", hex, hex);
+  
+  if letter == 'A' {
+    printf("Character comparison works!\n");
+  }
+  
+  match paren {
+    case '(' => printf("Match statement works!\n"),
+    case ')' => printf("Wrong match\n"),
+    _ => printf("Default case\n"),
+  }
+  
+  var chars: [3]u8 = ['X', 'Y', 'Z'];
+  printf("Array of chars: %c %c %c\n", chars[0], chars[1], chars[2]);
+  
+  return 0;
+}

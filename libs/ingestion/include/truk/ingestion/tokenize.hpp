@@ -3,10 +3,25 @@
 #include <language/keywords.hpp>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace truk::ingestion {
+
+class tokenizer_exception_c : public std::runtime_error {
+public:
+  tokenizer_exception_c(const std::string &message, std::size_t line,
+                        std::size_t column)
+      : std::runtime_error(message), _line(line), _column(column) {}
+
+  std::size_t line() const { return _line; }
+  std::size_t column() const { return _column; }
+
+private:
+  std::size_t _line;
+  std::size_t _column;
+};
 
 enum class token_type_e {
   KEYWORD,
@@ -14,6 +29,7 @@ enum class token_type_e {
   INTEGER_LITERAL,
   FLOAT_LITERAL,
   STRING_LITERAL,
+  CHAR_LITERAL,
   PLUS,
   MINUS,
   STAR,
@@ -106,6 +122,7 @@ private:
                      std::size_t start_line, std::size_t start_column);
   token_s tokenize_number(std::size_t start_line, std::size_t start_column);
   token_s tokenize_string(std::size_t start_line, std::size_t start_column);
+  token_s tokenize_char(std::size_t start_line, std::size_t start_column);
   token_s tokenize_identifier(std::size_t start_line, std::size_t start_column);
 };
 

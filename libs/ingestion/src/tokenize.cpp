@@ -164,6 +164,83 @@ token_s tokenizer_c::tokenize_string(std::size_t start_line,
                     start_column);
 }
 
+token_s tokenizer_c::tokenize_char(std::size_t start_line,
+                                   std::size_t start_column) {
+  std::size_t start_pos = _pos;
+  advance();
+
+  if (is_at_end()) {
+    throw tokenizer_exception_c("Unterminated character literal", _line,
+                                _column);
+  }
+
+  if (current_char() == '\'') {
+    throw tokenizer_exception_c("Empty character literal", _line, _column);
+  }
+
+  if (current_char() == '\\') {
+    advance();
+    if (is_at_end()) {
+      throw tokenizer_exception_c("Unterminated character literal", _line,
+                                  _column);
+    }
+
+    char escape_char = current_char();
+    switch (escape_char) {
+    case 'n':
+    case 't':
+    case 'r':
+    case '0':
+    case '\\':
+    case '\'':
+    case '"':
+      advance();
+      break;
+    case 'x': {
+      advance();
+      if (is_at_end()) {
+        throw tokenizer_exception_c("Unterminated character literal", _line,
+                                    _column);
+      }
+      char h1 = current_char();
+      if (!((h1 >= '0' && h1 <= '9') || (h1 >= 'a' && h1 <= 'f') ||
+            (h1 >= 'A' && h1 <= 'F'))) {
+        throw tokenizer_exception_c(
+            "Invalid hex escape sequence in character literal", _line, _column);
+      }
+      advance();
+      if (is_at_end()) {
+        throw tokenizer_exception_c("Unterminated character literal", _line,
+                                    _column);
+      }
+      char h2 = current_char();
+      if (!((h2 >= '0' && h2 <= '9') || (h2 >= 'a' && h2 <= 'f') ||
+            (h2 >= 'A' && h2 <= 'F'))) {
+        throw tokenizer_exception_c(
+            "Invalid hex escape sequence in character literal", _line, _column);
+      }
+      advance();
+      break;
+    }
+    default:
+      throw tokenizer_exception_c("Unknown escape sequence: \\" +
+                                      std::string(1, escape_char),
+                                  _line, _column);
+    }
+  } else {
+    advance();
+  }
+
+  if (is_at_end() || current_char() != '\'') {
+    throw tokenizer_exception_c("Unterminated character literal", _line,
+                                _column);
+  }
+  advance();
+
+  return make_token(token_type_e::CHAR_LITERAL, start_pos, start_line,
+                    start_column);
+}
+
 token_s tokenizer_c::tokenize_identifier(std::size_t start_line,
                                          std::size_t start_column) {
   std::size_t start_pos = _pos;
@@ -230,6 +307,10 @@ std::optional<token_s> tokenizer_c::next_token() {
 
   if (c == '"') {
     return tokenize_string(start_line, start_column);
+  }
+
+  if (c == '\'') {
+    return tokenize_char(start_line, start_column);
   }
 
   switch (c) {

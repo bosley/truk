@@ -236,6 +236,8 @@ private:
   emit_expr_struct_literal(const truk::language::nodes::struct_literal_c &node);
   std::string get_binary_op_string(truk::language::nodes::binary_op_e op);
   std::string get_unary_op_string(truk::language::nodes::unary_op_e op);
+  std::string process_char_literal(const std::string &lexeme,
+                                   const truk::language::nodes::base_c *node);
 
   std::vector<const truk::language::nodes::base_c *> _declarations;
   std::unordered_map<const truk::language::nodes::base_c *, std::string>

@@ -2158,6 +2158,10 @@ void type_checker_c::visit(const literal_c &node) {
         std::make_unique<type_entry_s>(type_kind_e::POINTER, "u8");
     _current_expression_type->pointer_depth = 1;
     break;
+  case literal_type_e::CHAR:
+    _current_expression_type =
+        std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "u8");
+    break;
   case literal_type_e::BOOL:
     _current_expression_type =
         std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "bool");

@@ -3,9 +3,8 @@
 
 namespace truk::ingestion {
 
-parser_c::parser_c(const char *data, std::size_t len) : _data(data), _len(len) {
-  _tokens = tokenize();
-}
+parser_c::parser_c(const char *data, std::size_t len)
+    : _data(data), _len(len) {}
 
 parser_c::~parser_c() = default;
 
@@ -34,6 +33,15 @@ parse_result_s parser_c::parse() {
   parse_result_s result;
   result.source_data = _data;
   result.source_len = _len;
+  try {
+    _tokens = tokenize();
+  } catch (const tokenizer_exception_c &e) {
+    result.success = false;
+    result.error_message = e.what();
+    result.error_line = e.line();
+    result.error_column = e.column();
+    return result;
+  }
   try {
     auto all_decls = parse_program();
 
@@ -1379,6 +1387,13 @@ language::nodes::base_ptr parser_c::parse_primary() {
     const auto &token = previous();
     return std::make_unique<language::nodes::literal_c>(
         token.source_index, language::nodes::literal_type_e::STRING,
+        token.lexeme);
+  }
+
+  if (match(token_type_e::CHAR_LITERAL)) {
+    const auto &token = previous();
+    return std::make_unique<language::nodes::literal_c>(
+        token.source_index, language::nodes::literal_type_e::CHAR,
         token.lexeme);
   }
 

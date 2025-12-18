@@ -1,0 +1,4 @@
+fn main() : i32 {
+  var c: u8 = '\\';
+  return c as i32;
+}

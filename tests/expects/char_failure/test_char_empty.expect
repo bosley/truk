@@ -1,0 +1,10 @@
+error: Empty character literal
+  --> char_failure/test_char_empty.truk:2:16
+  |
+1 | fn main() : i32 {
+2 |   var c: u8 = '';
+  |                ^
+3 |   return 0;
+  |
+
+Compilation failed with 1 error(s)
