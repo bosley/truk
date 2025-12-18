@@ -10,6 +10,21 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+cleanup() {
+    if [ -n "${current_pid}" ]; then
+        pkill -TERM -P "${current_pid}" 2>/dev/null || true
+        kill -TERM "${current_pid}" 2>/dev/null || true
+        sleep 0.2
+        pkill -KILL -P "${current_pid}" 2>/dev/null || true
+        kill -KILL "${current_pid}" 2>/dev/null || true
+        wait "${current_pid}" 2>/dev/null || true
+    fi
+    echo -e "\n${RED}Tests interrupted${NC}"
+    exit 1
+}
+
+trap cleanup SIGINT SIGTERM
+
 TEST_CATEGORIES=(
     "return_code_assertions"
     "meta_test_testing_fw"
@@ -55,8 +70,11 @@ for category in "${CATEGORIES_TO_RUN[@]}"; do
     echo -e "${BLUE}========================================${NC}"
     
     set +e
-    (cd "${category_dir}" && ./run.sh)
+    (cd "${category_dir}" && exec ./run.sh) &
+    current_pid=$!
+    wait "${current_pid}"
     exit_code=$?
+    current_pid=""
     set -e
     
     echo ""
