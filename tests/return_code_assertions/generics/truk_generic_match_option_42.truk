@@ -1,0 +1,18 @@
+struct Option<T> {
+  has_value: bool,
+  value: T
+}
+
+fn get_value(opt: Option<i32>) : i32 {
+  if opt.has_value {
+    return opt.value;
+  }
+  return 0;
+}
+
+fn main() : i32 {
+  var some: Option<i32> = Option<i32>{has_value: true, value: 42};
+  var none: Option<i32> = Option<i32>{has_value: false, value: 0};
+  
+  return get_value(some) + get_value(none);
+}

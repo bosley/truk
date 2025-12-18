@@ -1,0 +1,16 @@
+struct Counter<T> {
+  value: T,
+  limit: T
+}
+
+fn main() : i32 {
+  var c: Counter<i32> = Counter<i32>{value: 0, limit: 5};
+  
+  var sum: i32 = 0;
+  while c.value < c.limit {
+    c.value = c.value + 1;
+    sum = sum + c.value;
+  }
+  
+  return sum;
+}

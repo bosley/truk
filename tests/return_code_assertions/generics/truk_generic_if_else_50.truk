@@ -1,0 +1,21 @@
+struct Result<T> {
+  is_ok: bool,
+  value: T
+}
+
+fn divide(a: i32, b: i32) : Result<i32> {
+  if b == 0 {
+    return Result<i32>{is_ok: false, value: 0};
+  }
+  return Result<i32>{is_ok: true, value: a / b};
+}
+
+fn main() : i32 {
+  var r: Result<i32> = divide(100, 2);
+  
+  if r.is_ok {
+    return r.value;
+  }
+  
+  return -1;
+}

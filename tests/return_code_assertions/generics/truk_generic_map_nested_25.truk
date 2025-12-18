@@ -1,0 +1,21 @@
+struct Pair<K, V> {
+  key: K,
+  val: V
+}
+
+fn main() : i32 {
+  var m: map[*u8, Pair<i32, i32>] = make(@map[*u8, Pair<i32, i32>]);
+  
+  m["first"] = Pair<i32, i32>{key: 10, val: 15};
+  m["second"] = Pair<i32, i32>{key: 20, val: 5};
+  
+  var ptr: *Pair<i32, i32> = m["first"];
+  if ptr != nil {
+    var sum: i32 = (*ptr).key + (*ptr).val;
+    delete(m);
+    return sum;
+  }
+  
+  delete(m);
+  return 0;
+}

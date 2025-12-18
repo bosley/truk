@@ -1,0 +1,20 @@
+struct Box<T> {
+  value: T
+}
+
+fn main() : i32 {
+  var boxes: [5]Box<i32> = [
+    Box<i32>{value: 10},
+    Box<i32>{value: 20},
+    Box<i32>{value: 5},
+    Box<i32>{value: 15},
+    Box<i32>{value: 5}
+  ];
+  
+  var sum: i32 = 0;
+  for var i: i32 = 0; i < 5; i = i + 1 {
+    sum = sum + boxes[i].value;
+  }
+  
+  return sum;
+}

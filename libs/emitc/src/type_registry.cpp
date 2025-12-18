@@ -136,6 +136,14 @@ std::string type_registry_c::get_c_type_for_sizeof(const type_c *type) {
     return named->name().name;
   }
 
+  if (auto gen = type->as_generic_type_instantiation()) {
+    std::vector<const type_c *> type_args;
+    for (const auto &arg : gen->type_arguments()) {
+      type_args.push_back(arg.get());
+    }
+    return get_instantiated_name(gen->base_name().name, type_args);
+  }
+
   if (auto ptr = type->as_pointer_type()) {
     if (auto arr = ptr->pointee_type()->as_array_type()) {
       if (arr->size().has_value()) {

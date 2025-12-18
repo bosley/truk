@@ -1,0 +1,20 @@
+struct Wrapper<T> {
+  item: T
+}
+
+fn main() : i32 {
+  var items: [5]Wrapper<i32> = [
+    Wrapper<i32>{item: 5},
+    Wrapper<i32>{item: 10},
+    Wrapper<i32>{item: 3},
+    Wrapper<i32>{item: 7},
+    Wrapper<i32>{item: 5}
+  ];
+  
+  var sum: i32 = 0;
+  for var i: i32 = 0; i < 5; i = i + 1 {
+    sum = sum + items[i].item;
+  }
+  
+  return sum;
+}

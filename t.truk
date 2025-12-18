@@ -1,0 +1,17 @@
+struct Pair<K, V> {
+  key: K,
+  val: V
+}
+
+
+cimport <stdio.h>;
+
+extern fn printf(fmt: *i8, ...args): i32;
+
+
+fn main() : i32 {
+  let p = Pair<i32, i32>{key: 3, val: 7};
+
+  printf("%d", p.key);
+  return 0;
+}

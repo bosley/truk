@@ -65,6 +65,9 @@ result_c emitter_c::finalize() {
     _current_phase = emission_phase_e::FORWARD_DECLARATION;
     emit_forward_declarations();
 
+    _current_phase = emission_phase_e::STRUCT_DEFINITION;
+    collect_and_emit_generic_instantiations();
+
     _current_phase = emission_phase_e::FUNCTION_DEFINITION;
     for (const auto *decl : _declarations) {
       emit(decl);
@@ -224,8 +227,6 @@ void emitter_c::emit(const base_c *root) {
 }
 
 void emitter_c::internal_finalize() {
-  collect_and_emit_generic_instantiations();
-
   std::stringstream final_header;
 
   final_header << cdef::emit_system_includes();
@@ -2346,8 +2347,47 @@ void emitter_c::collect_and_emit_generic_instantiations() {
     decl->accept(collector);
   }
 
-  for (const auto &[generic_def, type_args, mangled_name] :
-       collector.get_instantiations()) {
+  std::vector<
+      std::tuple<const struct_c *, std::vector<const type_c *>, std::string>>
+      pending = collector.get_instantiations();
+
+  std::unordered_set<std::string> emitted;
+  bool made_progress = true;
+
+  while (!pending.empty() && made_progress) {
+    made_progress = false;
+    auto it = pending.begin();
+    while (it != pending.end()) {
+      const auto &[generic_def, type_args, mangled_name] = *it;
+
+      bool can_emit = true;
+      for (const auto *arg : type_args) {
+        if (auto gen = arg->as_generic_type_instantiation()) {
+          std::vector<const type_c *> nested_args;
+          for (const auto &nested_arg : gen->type_arguments()) {
+            nested_args.push_back(nested_arg.get());
+          }
+          std::string nested_mangled = _type_registry.get_instantiated_name(
+              gen->base_name().name, nested_args);
+          if (emitted.find(nested_mangled) == emitted.end()) {
+            can_emit = false;
+            break;
+          }
+        }
+      }
+
+      if (can_emit) {
+        emit_generic_instantiation(generic_def, type_args, mangled_name);
+        emitted.insert(mangled_name);
+        it = pending.erase(it);
+        made_progress = true;
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  for (const auto &[generic_def, type_args, mangled_name] : pending) {
     emit_generic_instantiation(generic_def, type_args, mangled_name);
   }
 }

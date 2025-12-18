@@ -241,6 +241,23 @@ void instantiation_collector_c::visit(const array_literal_c &node) {
 }
 
 void instantiation_collector_c::visit(const struct_literal_c &node) {
+  if (node.is_generic()) {
+    auto it = _generic_defs.find(node.struct_name().name);
+    if (it != _generic_defs.end()) {
+      std::vector<const type_c *> type_args;
+      for (const auto &arg : node.type_arguments()) {
+        type_args.push_back(arg.get());
+      }
+
+      std::string mangled =
+          _registry.get_instantiated_name(node.struct_name().name, type_args);
+
+      if (!_registry.is_instantiation_emitted(mangled)) {
+        _instantiations.push_back({it->second, type_args, mangled});
+      }
+    }
+  }
+
   for (const auto &field : node.field_initializers()) {
     if (field.value)
       field.value->accept(*this);

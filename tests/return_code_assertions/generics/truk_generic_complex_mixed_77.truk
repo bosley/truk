@@ -1,0 +1,41 @@
+struct Box<T> {
+  value: T
+}
+
+struct Pair<A, B> {
+  first: A,
+  second: B
+}
+
+fn process(b: Box<i32>) : i32 {
+  return b.value * 2;
+}
+
+fn main() : i32 {
+  var m: map[i32, Box<Pair<i32, i32> > ] = make(@map[i32, Box<Pair<i32, i32> > ]);
+  
+  m[1] = Box<Pair<i32, i32> >{
+    value: Pair<i32, i32>{first: 10, second: 5}
+  };
+  m[2] = Box<Pair<i32, i32> >{
+    value: Pair<i32, i32>{first: 20, second: 6}
+  };
+  
+  var total: i32 = 0;
+  
+  var ptr1: *Box<Pair<i32, i32> > = m[1];
+  if ptr1 != nil {
+    total = total + (*ptr1).value.first + (*ptr1).value.second;
+  }
+  
+  var ptr2: *Box<Pair<i32, i32> > = m[2];
+  if ptr2 != nil {
+    total = total + (*ptr2).value.first + (*ptr2).value.second;
+  }
+  
+  var simple: Box<i32> = Box<i32>{value: 18};
+  total = total + process(simple);
+  
+  delete(m);
+  return total;
+}

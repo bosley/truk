@@ -1,0 +1,20 @@
+struct Box<T> {
+  value: T
+}
+
+fn main() : i32 {
+  var m: map[i32, Box<i32>] = make(@map[i32, Box<i32>]);
+  
+  m[1] = Box<i32>{value: 42};
+  m[2] = Box<i32>{value: 100};
+  
+  var ptr: *Box<i32> = m[1];
+  if ptr != nil {
+    var result: i32 = (*ptr).value;
+    delete(m);
+    return result;
+  }
+  
+  delete(m);
+  return 0;
+}

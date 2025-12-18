@@ -1,0 +1,17 @@
+struct Box<T> {
+  value: T
+}
+
+fn main() : i32 {
+  var b1: Box<i32> = Box<i32>{value: 33};
+  var b2: Box<i32> = Box<i32>{value: 33};
+  var b3: Box<i32> = Box<i32>{value: 33};
+  
+  var ptr1: *Box<i32> = &b1;
+  var ptr2: *Box<i32> = &b2;
+  var ptr3: *Box<i32> = &b3;
+  
+  var sum: i32 = (*ptr1).value + (*ptr2).value + (*ptr3).value;
+  
+  return sum;
+}

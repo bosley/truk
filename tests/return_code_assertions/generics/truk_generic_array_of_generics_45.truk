@@ -1,0 +1,19 @@
+struct Pair<A, B> {
+  first: A,
+  second: B
+}
+
+fn main() : i32 {
+  var pairs: [3]Pair<i32, i32> = [
+    Pair<i32, i32>{first: 10, second: 5},
+    Pair<i32, i32>{first: 20, second: 5},
+    Pair<i32, i32>{first: 5, second: 0}
+  ];
+  
+  var total: i32 = 0;
+  for var i: i32 = 0; i < 3; i = i + 1 {
+    total = total + pairs[i].first + pairs[i].second;
+  }
+  
+  return total;
+}

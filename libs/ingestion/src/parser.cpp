@@ -575,6 +575,16 @@ language::nodes::type_ptr parser_c::parse_type_internal() {
           throw parse_error("Expected value type in map", peek().line,
                             peek().column);
         }
+
+        if (check(token_type_e::GREATER_GREATER)) {
+          _tokens[_current].type = token_type_e::GREATER;
+          _tokens[_current].lexeme = ">";
+        }
+        if (check(token_type_e::GREATER)) {
+          throw parse_error("Expected ']' after value type, found '>'",
+                            peek().line, peek().column);
+        }
+
         consume(token_type_e::RIGHT_BRACKET, "Expected ']' after value type");
         return std::make_unique<language::nodes::map_type_c>(
             map_token.source_index, std::move(key_type), std::move(value_type));
