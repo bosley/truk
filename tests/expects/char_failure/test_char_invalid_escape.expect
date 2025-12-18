@@ -2,7 +2,7 @@ error: Unknown escape sequence: \q
   --> char_failure/test_char_invalid_escape.truk:2:17
   |
 1 | fn main() : i32 {
-2 |   var c: u8 = '\q';
+2 |   var c: i8 = '\q';
   |                 ^
 3 |   return 0;
   |

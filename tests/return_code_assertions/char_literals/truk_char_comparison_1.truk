@@ -1,5 +1,5 @@
 fn main() : i32 {
-  var c: u8 = 'a';
+  var c: i8 = 'a';
   if c == 'a' {
     return 1;
   }

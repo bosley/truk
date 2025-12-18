@@ -3,12 +3,12 @@ cimport <stdio.h>;
 extern fn printf(fmt: *i8, ...args) : i32;
 
 fn main() : i32 {
-  var letter: u8 = 'A';
-  var digit: u8 = '5';
-  var paren: u8 = '(';
-  var newline: u8 = '\n';
-  var tab: u8 = '\t';
-  var hex: u8 = '\x42';
+  var letter: i8 = 'A';
+  var digit: i8 = '5';
+  var paren: i8 = '(';
+  var newline: i8 = '\n';
+  var tab: i8 = '\t';
+  var hex: i8 = '\x42';
   
   printf("Letter: %c (ASCII %d)\n", letter, letter);
   printf("Digit: %c (ASCII %d)\n", digit, digit);
@@ -27,7 +27,7 @@ fn main() : i32 {
     _ => printf("Default case\n"),
   }
   
-  var chars: [3]u8 = ['X', 'Y', 'Z'];
+  var chars: [3]i8 = ['X', 'Y', 'Z'];
   printf("Array of chars: %c %c %c\n", chars[0], chars[1], chars[2]);
   
   return 0;

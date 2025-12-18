@@ -1,5 +1,5 @@
 fn main() : i32 {
-  var c: u8 = '(';
+  var c: i8 = '(';
   match c {
     case '(' => return 5,
     case ')' => return 6,

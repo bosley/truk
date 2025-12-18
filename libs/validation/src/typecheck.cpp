@@ -2160,7 +2160,7 @@ void type_checker_c::visit(const literal_c &node) {
     break;
   case literal_type_e::CHAR:
     _current_expression_type =
-        std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "u8");
+        std::make_unique<type_entry_s>(type_kind_e::PRIMITIVE, "i8");
     break;
   case literal_type_e::BOOL:
     _current_expression_type =

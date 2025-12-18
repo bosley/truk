@@ -1,4 +1,4 @@
 fn main() : i32 {
-  var c: u8 = '\q';
+  var c: i8 = '\q';
   return 0;
 }

@@ -14,6 +14,13 @@
   - `*ptr as i32` works as `(*ptr) as i32` ✓
   - `a * b as i32` requires `(a * b) as i32` for casting the result
   - `x as i32 + 5` works as `(x as i32) + 5` ✓
+- **Literal Types:**
+  - Integer literals have untyped integer type, default to `i32`
+  - Float literals have untyped float type, default to `f64`
+  - String literals are `*u8` (pointer to unsigned 8-bit)
+  - Char literals are `i8` (signed 8-bit, matching C's `char` type)
+  - Boolean literals are `bool`
+  - `nil` is a pointer to `void`
 
 ```
 program         ::= declaration*
