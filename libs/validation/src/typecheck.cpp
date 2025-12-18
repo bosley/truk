@@ -1234,6 +1234,11 @@ void type_checker_c::visit(const struct_c &node) {
 }
 
 void type_checker_c::visit(const enum_c &node) {
+  auto it = _decl_to_file.find(&node);
+  if (it != _decl_to_file.end()) {
+    _current_file = it->second;
+  }
+
   auto backing_type = resolve_type(node.backing_type());
   if (!backing_type) {
     report_error("Unknown enum backing type: " +

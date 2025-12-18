@@ -54,8 +54,20 @@ int toc(const toc_options_s &opts) {
 
   if (type_checker.has_errors()) {
     for (const auto &err : type_checker.errors()) {
-      reporter.report_generic_error(core::error_phase_e::TYPE_CHECKING,
-                                    err.message);
+      if (!err.file_path.empty()) {
+        try {
+          std::string source = ingestion::read_file(err.file_path);
+          reporter.report_typecheck_error(err.file_path, source,
+                                          err.source_index, err.message);
+        } catch (...) {
+          reporter.report_generic_error(core::error_phase_e::TYPE_CHECKING,
+                                        err.message + " (in " + err.file_path +
+                                            ")");
+        }
+      } else {
+        reporter.report_generic_error(core::error_phase_e::TYPE_CHECKING,
+                                      err.message);
+      }
     }
     reporter.print_summary();
     return 1;

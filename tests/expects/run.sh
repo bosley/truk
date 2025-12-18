@@ -83,17 +83,23 @@ for test_category_dir in "${TEST_DIRS[@]}" ; do
                 continue
             fi
             
-            if cmp -s "${expect_file}" "${actual_output}" ; then
+            normalized_actual="${TEMP_DIR}/${test_name}.normalized_actual"
+            normalized_expect="${TEMP_DIR}/${test_name}.normalized_expect"
+            
+            sed "s|${TEST_DIR}/||g" "${actual_output}" > "${normalized_actual}"
+            sed "s|${TEST_DIR}/||g" "${expect_file}" > "${normalized_expect}"
+            
+            if cmp -s "${normalized_expect}" "${normalized_actual}" ; then
                 echo -e "${GREEN}PASS${NC} ${category_name}/${test_name}"
                 passed_tests=$((passed_tests + 1))
             else
                 echo -e "${RED}FAIL${NC} ${category_name}/${test_name} (error output mismatch)"
                 echo "  Expected error output:"
-                cat "${expect_file}" | sed 's/^/    /'
+                cat "${normalized_expect}" | sed 's/^/    /'
                 echo "  Actual error output:"
-                cat "${actual_output}" | sed 's/^/    /'
+                cat "${normalized_actual}" | sed 's/^/    /'
                 echo "  Diff:"
-                diff -u "${expect_file}" "${actual_output}" | tail -n +3 | sed 's/^/    /' || true
+                diff -u "${normalized_expect}" "${normalized_actual}" | tail -n +3 | sed 's/^/    /' || true
                 failed_tests=$((failed_tests + 1))
             fi
         else

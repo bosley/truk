@@ -1,0 +1,7 @@
+enum VoidEnum : void {
+    A = 0
+}
+
+fn main() : i32 {
+    return 0;
+}

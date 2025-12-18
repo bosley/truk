@@ -1,3 +1,10 @@
-Type error: Dereference requires pointer type
+error: Dereference requires pointer type
+  --> deref_failure/test_deref_non_pointer.truk:3:12
+  |
+2 |     var x: i32 = 42;
+3 |     return *x;
+  |            ^
+4 | }
+  |
 
 Compilation failed with 1 error(s)

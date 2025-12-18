@@ -1,8 +1,50 @@
-Type error: Invalid map key type: map[i32, i32]. Keys must be primitives (integers, floats, bool) or string pointers (*u8, *i8)
-Type error: Unknown variable type: map[map[i32, i32], i32]
-Type error: Undefined identifier: m
-Type error: Map key type mismatch: expected i32 but got map[i32, i32]
-Type error: Undefined identifier: m
-Type error: Failed to resolve argument type for delete
+error: Invalid map key type: map[i32, i32]. Keys must be primitives (integers, floats, bool) or string pointers (*u8, *i8)
+  --> map_key_failure/test_map_key.truk:3:12
+  |
+2 |     var inner: map[i32, i32] = make(@map[i32, i32]);
+3 |     var m: map[map[i32, i32], i32] = make(@map[map[i32, i32], i32]);
+  |            ^
+4 |     m[inner] = 42;
+  |
+error: Unknown variable type: map[map[i32, i32], i32]
+  --> map_key_failure/test_map_key.truk:3:5
+  |
+2 |     var inner: map[i32, i32] = make(@map[i32, i32]);
+3 |     var m: map[map[i32, i32], i32] = make(@map[map[i32, i32], i32]);
+  |     ^
+4 |     m[inner] = 42;
+  |
+error: Undefined identifier: m
+  --> map_key_failure/test_map_key.truk:4:5
+  |
+3 |     var m: map[map[i32, i32], i32] = make(@map[map[i32, i32], i32]);
+4 |     m[inner] = 42;
+  |     ^
+5 |     delete(inner);
+  |
+error: Map key type mismatch: expected i32 but got map[i32, i32]
+  --> map_key_failure/test_map_key.truk:4:14
+  |
+3 |     var m: map[map[i32, i32], i32] = make(@map[map[i32, i32], i32]);
+4 |     m[inner] = 42;
+  |              ^
+5 |     delete(inner);
+  |
+error: Undefined identifier: m
+  --> map_key_failure/test_map_key.truk:6:12
+  |
+5 |     delete(inner);
+6 |     delete(m);
+  |            ^
+7 |     return 0;
+  |
+error: Failed to resolve argument type for delete
+  --> map_key_failure/test_map_key.truk:6:11
+  |
+5 |     delete(inner);
+6 |     delete(m);
+  |           ^
+7 |     return 0;
+  |
 
 Compilation failed with 6 error(s)

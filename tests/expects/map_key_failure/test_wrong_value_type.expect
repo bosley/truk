@@ -1,3 +1,10 @@
-Type error: Assignment type mismatch
+error: Assignment type mismatch
+  --> map_key_failure/test_wrong_value_type.truk:3:14
+  |
+2 |     var m: map[*u8, i32] = make(@map[*u8, i32]);
+3 |     m["key"] = "string_value";
+  |              ^
+4 |     delete(m);
+  |
 
 Compilation failed with 1 error(s)
