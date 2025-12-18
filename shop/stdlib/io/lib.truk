@@ -5,103 +5,103 @@ cimport <stdio.h>;
 import "types.truk";
 import "io.truk";
 
-fn io_ok(value: i32) : Result {
-  return Result{value: value, ok: true};
+fn io_ok(value: i32) : io_result_s {
+  return io_result_s{value: value, ok: true};
 }
 
-fn io_err(value: i32) : Result {
-  return Result{value: value, ok: false};
+fn io_err(value: i32) : io_result_s {
+  return io_result_s{value: value, ok: false};
 }
 
-fn io_is_ok(r: *Result) : bool {
+fn io_is_ok(r: *io_result_s) : bool {
   return (*r).ok;
 }
 
-fn io_is_err(r: *Result) : bool {
+fn io_is_err(r: *io_result_s) : bool {
   return !(*r).ok;
 }
 
-fn io_unwrap(r: *Result) : i32 {
+fn io_unwrap(r: *io_result_s) : i32 {
   return (*r).value;
 }
 
-fn io_unwrap_or(r: *Result, default_value: i32) : i32 {
+fn io_unwrap_or(r: *io_result_s, default_value: i32) : i32 {
   if (*r).ok {
     return (*r).value;
   }
   return default_value;
 }
 
-fn io_and_then(r: *Result, f: fn(i32) : Result) : Result {
+fn io_and_then(r: *io_result_s, f: fn(i32) : io_result_s) : io_result_s {
   if (*r).ok {
     return f((*r).value);
   }
   return *r;
 }
 
-fn io_or_else(r: *Result, f: fn(i32) : Result) : Result {
+fn io_or_else(r: *io_result_s, f: fn(i32) : io_result_s) : io_result_s {
   if !(*r).ok {
     return f((*r).value);
   }
   return *r;
 }
 
-fn io_map(r: *Result, f: fn(i32) : i32) : Result {
+fn io_map(r: *io_result_s, f: fn(i32) : i32) : io_result_s {
   if (*r).ok {
     return io_ok(f((*r).value));
   }
   return *r;
 }
 
-fn io_print(msg: *u8) : Result {
+fn io_print(msg: *u8) : io_result_s {
   return _io_print(msg);
 }
 
-fn io_println(msg: *u8) : Result {
+fn io_println(msg: *u8) : io_result_s {
   return _io_println(msg);
 }
 
-fn io_eprint(msg: *u8) : Result {
+fn io_eprint(msg: *u8) : io_result_s {
   return _io_eprint(msg);
 }
 
-fn io_eprintln(msg: *u8) : Result {
+fn io_eprintln(msg: *u8) : io_result_s {
   return _io_eprintln(msg);
 }
 
-fn io_write_stdout(buf: *u8, count: i32) : Result {
+fn io_write_stdout(buf: *u8, count: i32) : io_result_s {
   return _io_write_stdout(buf, count);
 }
 
-fn io_write_stderr(buf: *u8, count: i32) : Result {
+fn io_write_stderr(buf: *u8, count: i32) : io_result_s {
   return _io_write_stderr(buf, count);
 }
 
-fn io_read_stdin(buf: *u8, count: i32) : Result {
+fn io_read_stdin(buf: *u8, count: i32) : io_result_s {
   return _io_read_stdin(buf, count);
 }
 
-fn io_open(filename: *u8, mode: *u8) : (*u8, Result) {
+fn io_open(filename: *u8, mode: *u8) : (*u8, io_result_s) {
   return _io_open(filename, mode);
 }
 
-fn io_close(f: *u8) : Result {
+fn io_close(f: *u8) : io_result_s {
   return _io_close(f);
 }
 
-fn io_flush(f: *u8) : Result {
+fn io_flush(f: *u8) : io_result_s {
   return _io_flush(f);
 }
 
-fn io_write_file(f: *u8, buf: *u8, count: i32) : Result {
+fn io_write_file(f: *u8, buf: *u8, count: i32) : io_result_s {
   return _io_write_file(f, buf, count);
 }
 
-fn io_read_file(f: *u8, buf: *u8, count: i32) : Result {
+fn io_read_file(f: *u8, buf: *u8, count: i32) : io_result_s {
   return _io_read_file(f, buf, count);
 }
 
-fn io_with_file(filename: *u8, mode: *u8, handler: fn(*u8) : Result) : Result {
+fn io_with_file(filename: *u8, mode: *u8, handler: fn(*u8) : io_result_s) : io_result_s {
   let f, open_result = io_open(filename, mode);
   if io_is_err(&open_result) {
     return open_result;

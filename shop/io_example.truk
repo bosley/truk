@@ -1,7 +1,7 @@
 import "stdlib/io";
 
 fn demo_basic() : i32 {
-  var r: Result = io_println("Hello, world!");
+  var r: io_result_s = io_println("Hello, world!");
   if io_is_err(&r) {
     return -1;
   }
@@ -12,13 +12,13 @@ fn demo_basic() : i32 {
 }
 
 fn demo_chaining() : i32 {
-  var r: Result = io_println("First");
+  var r: io_result_s = io_println("First");
   
-  r = io_and_then(&r, fn(n: i32) : Result {
+  r = io_and_then(&r, fn(n: i32) : io_result_s {
     return io_println("Second (only if first succeeded)");
   });
   
-  r = io_and_then(&r, fn(n: i32) : Result {
+  r = io_and_then(&r, fn(n: i32) : io_result_s {
     return io_println("Third (only if second succeeded)");
   });
   
@@ -26,7 +26,7 @@ fn demo_chaining() : i32 {
 }
 
 fn demo_map() : i32 {
-  var r: Result = io_print("Bytes written: ");
+  var r: io_result_s = io_print("Bytes written: ");
   
   r = io_map(&r, fn(bytes: i32) : i32 {
     return bytes * 2;
@@ -36,14 +36,14 @@ fn demo_map() : i32 {
 }
 
 fn demo_with_file() : i32 {
-  var r: Result = io_with_file("test.txt", "w", fn(f: *u8) : Result {
+  var r: io_result_s = io_with_file("test.txt", "w", fn(f: *u8) : io_result_s {
     var data: *u8 = "Hello from lambda!\n";
-    var write_r: Result = io_write_file(f, data, 19);
+    var write_r: io_result_s = io_write_file(f, data, 19);
     if io_is_err(&write_r) {
       return write_r;
     }
     
-    var flush_r: Result = io_flush(f);
+    var flush_r: io_result_s = io_flush(f);
     return flush_r;
   });
   
@@ -62,22 +62,22 @@ fn demo_manual_file() : i32 {
   }
   
   defer {
-    var close_r: Result = io_close(f);
+    var close_r: io_result_s = io_close(f);
     if io_is_err(&close_r) {
       io_eprintln("Failed to close file");
     }
   }
   
   var data: *u8 = "Manual file handling\n";
-  var write_r: Result = io_write_file(f, data, 21);
+  var write_r: io_result_s = io_write_file(f, data, 21);
   
   return io_unwrap_or(&write_r, -1);
 }
 
 fn demo_or_else() : i32 {
-  var r: Result = io_print("This might fail");
+  var r: io_result_s = io_print("This might fail");
   
-  r = io_or_else(&r, fn(err: i32) : Result {
+  r = io_or_else(&r, fn(err: i32) : io_result_s {
     io_eprintln("Recovering from error!");
     return io_ok(0);
   });

@@ -1,6 +1,6 @@
 shard "stdio";
 
-struct Result {
+struct io_result_s {
   value: i32,
   ok: bool
 }
