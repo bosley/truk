@@ -11,7 +11,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-cleanup() {
+interrupted=0
+
+cleanup_on_signal() {
+    interrupted=1
     if [ -n "${pids[*]}" ]; then
         kill -TERM "${pids[@]}" 2>/dev/null || true
         sleep 0.1
@@ -22,7 +25,14 @@ cleanup() {
     exit 1
 }
 
-trap cleanup SIGINT SIGTERM EXIT
+cleanup_temp() {
+    if [ "${interrupted}" -eq 0 ]; then
+        rm -rf "${TEMP_DIR}"
+    fi
+}
+
+trap cleanup_on_signal SIGINT SIGTERM
+trap cleanup_temp EXIT
 
 mkdir -p "${TEMP_DIR}"
 
@@ -111,6 +121,7 @@ fi
 
 if [ "${PARALLEL}" = true ]; then
     pids=()
+    MAX_PARALLEL=${MAX_PARALLEL:-8}
     
     for test_category_dir in "${TEST_DIRS[@]}" ; do
         if [ ! -d "${test_category_dir}" ]; then
@@ -122,6 +133,18 @@ if [ "${PARALLEL}" = true ]; then
         if [ "${category_name}" = ".tmp" ]; then
             continue
         fi
+        
+        while [ ${#pids[@]} -ge ${MAX_PARALLEL} ]; do
+            for i in "${!pids[@]}"; do
+                if ! kill -0 "${pids[$i]}" 2>/dev/null; then
+                    unset 'pids[$i]'
+                fi
+            done
+            pids=("${pids[@]}")
+            if [ ${#pids[@]} -ge ${MAX_PARALLEL} ]; then
+                sleep 0.1
+            fi
+        done
         
         run_tests_in_category "${test_category_dir}" &
         pids+=($!)
