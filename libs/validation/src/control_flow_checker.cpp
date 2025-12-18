@@ -24,6 +24,8 @@ void control_flow_checker_c::visit(const map_type_c &) {}
 
 void control_flow_checker_c::visit(const tuple_type_c &) {}
 
+void control_flow_checker_c::visit(const generic_type_instantiation_c &) {}
+
 void control_flow_checker_c::visit(const fn_c &) {}
 
 void control_flow_checker_c::visit(const lambda_c &) {}

@@ -146,6 +146,8 @@ public:
   void visit(const truk::language::nodes::function_type_c &node) override;
   void visit(const truk::language::nodes::map_type_c &node) override;
   void visit(const truk::language::nodes::tuple_type_c &node) override;
+  void visit(
+      const truk::language::nodes::generic_type_instantiation_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
@@ -187,6 +189,20 @@ private:
 
   void add_error(const std::string &msg,
                  const truk::language::nodes::base_c *node);
+
+  void collect_and_emit_generic_instantiations();
+  void emit_generic_instantiation(
+      const truk::language::nodes::struct_c *generic_def,
+      const std::vector<const truk::language::nodes::type_c *> &type_args,
+      const std::string &mangled_name);
+  std::string emit_type_with_substitution(
+      const truk::language::nodes::type_c *type,
+      const std::unordered_map<
+          std::string, const truk::language::nodes::type_c *> &substitutions);
+  const truk::language::nodes::type_c *substitute_type(
+      const truk::language::nodes::type_c *type,
+      const std::unordered_map<
+          std::string, const truk::language::nodes::type_c *> &substitutions);
 
   std::string emit_type(const truk::language::nodes::type_c *type);
   std::string emit_type_for_sizeof(const truk::language::nodes::type_c *type);
@@ -273,6 +289,9 @@ private:
   emission_phase_e _current_phase{emission_phase_e::COLLECTION};
   std::string _current_node_context;
   std::vector<truk::language::nodes::c_import_s> _c_imports;
+
+  std::unordered_map<std::string, const truk::language::nodes::struct_c *>
+      _generic_definitions;
 
   void push_defer_scope(defer_scope_s::scope_type_e type,
                         const truk::language::nodes::base_c *owner);

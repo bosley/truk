@@ -4,6 +4,7 @@
 #include <truk/emitc/builtin_handler.hpp>
 #include <truk/emitc/cdef.hpp>
 #include <truk/emitc/emitter.hpp>
+#include <truk/emitc/instantiation_collector.hpp>
 
 namespace truk::emitc {
 
@@ -223,6 +224,8 @@ void emitter_c::emit(const base_c *root) {
 }
 
 void emitter_c::internal_finalize() {
+  collect_and_emit_generic_instantiations();
+
   std::stringstream final_header;
 
   final_header << cdef::emit_system_includes();
@@ -580,6 +583,8 @@ void emitter_c::visit(const tuple_type_c &node) {
   }
   _current_expr << get_tuple_type_name(element_types);
 }
+
+void emitter_c::visit(const generic_type_instantiation_c &node) {}
 
 void emitter_c::visit(const fn_c &node) {
   if (_collecting_declarations) {
@@ -954,10 +959,17 @@ void emitter_c::visit(const struct_c &node) {
     if (node.is_extern()) {
       _type_registry.register_extern_struct_name(node.name().name);
     }
+    if (node.is_generic()) {
+      _type_registry.register_generic_struct(node.name().name);
+    }
     return;
   }
 
   if (node.is_extern()) {
+    return;
+  }
+
+  if (node.is_generic()) {
     return;
   }
 
@@ -1904,7 +1916,16 @@ std::string emitter_c::emit_expr_array_literal(const array_literal_c &node) {
 }
 
 std::string emitter_c::emit_expr_struct_literal(const struct_literal_c &node) {
-  std::string result = "(" + node.struct_name().name + "){";
+  std::string struct_name = node.struct_name().name;
+
+  if (node.is_generic()) {
+    struct_name = node.struct_name().name;
+    for (const auto &arg : node.type_arguments()) {
+      struct_name += "_" + _type_registry.mangle_type_for_name(arg.get());
+    }
+  }
+
+  std::string result = "(" + struct_name + "){";
   for (size_t i = 0; i < node.field_initializers().size(); ++i) {
     if (i > 0)
       result += ", ";
@@ -2309,6 +2330,110 @@ std::string result_c::assemble_test_runner() const {
 
 bool emitter_c::is_private_identifier(const std::string &name) const {
   return !name.empty() && name[0] == '_';
+}
+
+void emitter_c::collect_and_emit_generic_instantiations() {
+  for (const auto *decl : _declarations) {
+    if (auto *struct_node = decl->as_struct()) {
+      if (struct_node->is_generic()) {
+        _generic_definitions[struct_node->name().name] = struct_node;
+      }
+    }
+  }
+
+  instantiation_collector_c collector(_generic_definitions, _type_registry);
+  for (const auto *decl : _declarations) {
+    decl->accept(collector);
+  }
+
+  for (const auto &[generic_def, type_args, mangled_name] :
+       collector.get_instantiations()) {
+    emit_generic_instantiation(generic_def, type_args, mangled_name);
+  }
+}
+
+void emitter_c::emit_generic_instantiation(
+    const struct_c *generic_def, const std::vector<const type_c *> &type_args,
+    const std::string &mangled_name) {
+
+  if (_type_registry.is_instantiation_emitted(mangled_name)) {
+    return;
+  }
+
+  _type_registry.register_instantiation(generic_def->name().name, type_args,
+                                        mangled_name);
+
+  std::unordered_map<std::string, const type_c *> substitutions;
+  for (size_t i = 0; i < generic_def->type_params().size(); ++i) {
+    substitutions[generic_def->type_params()[i].name] = type_args[i];
+  }
+
+  _structs << "typedef struct " << mangled_name << " " << mangled_name << ";\n";
+  _structs << "struct " << mangled_name << " {\n";
+
+  for (const auto &field : generic_def->fields()) {
+    std::string field_type =
+        emit_type_with_substitution(field.type.get(), substitutions);
+    _structs << "  " << field_type << " " << field.name.name;
+
+    const type_c *current_type = field.type.get();
+    while (auto arr = current_type->as_array_type()) {
+      if (arr->size().has_value()) {
+        _structs << "[" << arr->size().value() << "]";
+        current_type = arr->element_type();
+      } else {
+        auto substituted = substitute_type(arr->element_type(), substitutions);
+        ensure_slice_typedef(substituted);
+        break;
+      }
+    }
+
+    _structs << ";\n";
+  }
+
+  _structs << "};\n\n";
+}
+
+std::string emitter_c::emit_type_with_substitution(
+    const type_c *type,
+    const std::unordered_map<std::string, const type_c *> &substitutions) {
+
+  if (auto named = type->as_named_type()) {
+    auto it = substitutions.find(named->name().name);
+    if (it != substitutions.end()) {
+      return emit_type(it->second);
+    }
+  }
+
+  if (auto ptr = type->as_pointer_type()) {
+    return emit_type_with_substitution(ptr->pointee_type(), substitutions) +
+           "*";
+  }
+
+  if (auto arr = type->as_array_type()) {
+    if (arr->size().has_value()) {
+      return emit_type_with_substitution(arr->element_type(), substitutions);
+    } else {
+      auto substituted = substitute_type(arr->element_type(), substitutions);
+      return get_slice_type_name(substituted);
+    }
+  }
+
+  return emit_type(type);
+}
+
+const type_c *emitter_c::substitute_type(
+    const type_c *type,
+    const std::unordered_map<std::string, const type_c *> &substitutions) {
+
+  if (auto named = type->as_named_type()) {
+    auto it = substitutions.find(named->name().name);
+    if (it != substitutions.end()) {
+      return it->second;
+    }
+  }
+
+  return type;
 }
 
 } // namespace truk::emitc

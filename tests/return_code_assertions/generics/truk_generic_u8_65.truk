@@ -1,0 +1,8 @@
+struct Wrapper<T> {
+  item: T
+}
+
+fn main() : i32 {
+  var w: Wrapper<u8> = Wrapper<u8>{item: 65};
+  return w.item as i32;
+}

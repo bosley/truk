@@ -214,6 +214,15 @@ type_checker_c::resolve_type(const type_c *type_node) {
     return result;
   }
 
+  if (auto *gen = type_node->as_generic_type_instantiation()) {
+    _current_expression_type = nullptr;
+    gen->accept(*this);
+    if (_current_expression_type) {
+      return std::move(_current_expression_type);
+    }
+    return nullptr;
+  }
+
   return nullptr;
 }
 
@@ -307,6 +316,113 @@ std::string type_checker_c::get_type_name_from_entry(const type_entry_s *type) {
   }
 
   return base_name;
+}
+
+std::string type_checker_c::generate_mangled_name(
+    const generic_type_instantiation_c &node) {
+  std::string mangled = node.base_name().name;
+  for (const auto &arg : node.type_arguments()) {
+    mangled += "_";
+    mangled += mangle_type_name(arg.get());
+  }
+  return mangled;
+}
+
+std::string type_checker_c::mangle_type_name(const type_c *type) {
+  if (auto prim = type->as_primitive_type()) {
+    switch (prim->keyword()) {
+    case keywords_e::I8:
+      return "i8";
+    case keywords_e::I16:
+      return "i16";
+    case keywords_e::I32:
+      return "i32";
+    case keywords_e::I64:
+      return "i64";
+    case keywords_e::U8:
+      return "u8";
+    case keywords_e::U16:
+      return "u16";
+    case keywords_e::U32:
+      return "u32";
+    case keywords_e::U64:
+      return "u64";
+    case keywords_e::F32:
+      return "f32";
+    case keywords_e::F64:
+      return "f64";
+    case keywords_e::BOOL:
+      return "bool";
+    default:
+      return "void";
+    }
+  }
+  if (auto named = type->as_named_type()) {
+    return named->name().name;
+  }
+  if (auto ptr = type->as_pointer_type()) {
+    return "ptr_" + mangle_type_name(ptr->pointee_type());
+  }
+  if (auto arr = type->as_array_type()) {
+    if (arr->size().has_value()) {
+      return "arr" + std::to_string(arr->size().value()) + "_" +
+             mangle_type_name(arr->element_type());
+    }
+    return "slice_" + mangle_type_name(arr->element_type());
+  }
+  if (auto gen = type->as_generic_type_instantiation()) {
+    std::string result = gen->base_name().name;
+    for (const auto &arg : gen->type_arguments()) {
+      result += "_" + mangle_type_name(arg.get());
+    }
+    return result;
+  }
+  return "unknown";
+}
+
+std::unique_ptr<type_entry_s> type_checker_c::resolve_type_with_substitution(
+    const type_c *type,
+    const std::unordered_map<std::string, std::unique_ptr<type_entry_s>>
+        &substitutions) {
+
+  if (!type) {
+    return nullptr;
+  }
+
+  if (auto named = type->as_named_type()) {
+    auto it = substitutions.find(named->name().name);
+    if (it != substitutions.end()) {
+      return std::make_unique<type_entry_s>(*it->second);
+    }
+  }
+
+  if (auto ptr = type->as_pointer_type()) {
+    auto pointee =
+        resolve_type_with_substitution(ptr->pointee_type(), substitutions);
+    if (!pointee) {
+      return nullptr;
+    }
+    auto resolved =
+        std::make_unique<type_entry_s>(type_kind_e::POINTER, pointee->name);
+    resolved->pointer_depth = pointee->pointer_depth + 1;
+    resolved->pointee_type = std::move(pointee);
+    return resolved;
+  }
+
+  if (auto arr = type->as_array_type()) {
+    auto element =
+        resolve_type_with_substitution(arr->element_type(), substitutions);
+    if (!element) {
+      return nullptr;
+    }
+    auto resolved =
+        std::make_unique<type_entry_s>(type_kind_e::ARRAY, element->name);
+    resolved->element_type = std::move(element);
+    resolved->array_size = arr->size();
+    return resolved;
+  }
+
+  return resolve_type(type);
 }
 
 type_entry_s *type_checker_c::lookup_type(const std::string &name) {
@@ -1131,6 +1247,88 @@ void type_checker_c::visit(const tuple_type_c &node) {
   }
 }
 
+void type_checker_c::visit(const generic_type_instantiation_c &node) {
+  auto *base_type = lookup_type(node.base_name().name);
+  if (!base_type) {
+    report_error("Unknown generic type: " + node.base_name().name,
+                 node.source_index());
+    return;
+  }
+
+  if (!base_type->is_generic_definition) {
+    report_error("Type '" + node.base_name().name + "' is not generic",
+                 node.source_index());
+    return;
+  }
+
+  if (node.type_arguments().size() != base_type->type_parameters.size()) {
+    report_error("Generic type '" + node.base_name().name + "' expects " +
+                     std::to_string(base_type->type_parameters.size()) +
+                     " type arguments, got " +
+                     std::to_string(node.type_arguments().size()),
+                 node.source_index());
+    return;
+  }
+
+  std::vector<std::unique_ptr<type_entry_s>> resolved_args;
+  for (const auto &arg : node.type_arguments()) {
+    auto resolved = resolve_type(arg.get());
+    if (!resolved) {
+      report_error("Unknown type argument: " +
+                       get_type_name_for_error(arg.get()),
+                   node.source_index());
+      return;
+    }
+    resolved_args.push_back(std::move(resolved));
+  }
+
+  std::string mangled_name = generate_mangled_name(node);
+
+  auto *existing = lookup_type(mangled_name);
+  if (existing) {
+    _current_expression_type = std::make_unique<type_entry_s>(*existing);
+    return;
+  }
+
+  auto instantiation =
+      std::make_unique<type_entry_s>(type_kind_e::STRUCT, mangled_name);
+  instantiation->is_generic_instantiation = true;
+  instantiation->base_generic_name = node.base_name().name;
+
+  for (size_t i = 0; i < resolved_args.size(); ++i) {
+    instantiation->type_arguments.push_back(
+        std::make_unique<type_entry_s>(*resolved_args[i]));
+  }
+
+  {
+    auto generic_struct_it = _struct_to_file.find(node.base_name().name);
+    if (generic_struct_it != _struct_to_file.end()) {
+      _struct_to_file[mangled_name] = generic_struct_it->second;
+    }
+  }
+
+  if (base_type->generic_struct_node) {
+    std::unordered_map<std::string, std::unique_ptr<type_entry_s>>
+        substitutions;
+    for (size_t i = 0; i < base_type->type_parameters.size(); ++i) {
+      substitutions[base_type->type_parameters[i]] =
+          std::make_unique<type_entry_s>(*resolved_args[i]);
+    }
+
+    for (const auto &field : base_type->generic_struct_node->fields()) {
+      auto field_type =
+          resolve_type_with_substitution(field.type.get(), substitutions);
+      if (field_type) {
+        instantiation->struct_field_names.push_back(field.name.name);
+        instantiation->struct_fields[field.name.name] = std::move(field_type);
+      }
+    }
+  }
+
+  _current_expression_type = std::make_unique<type_entry_s>(*instantiation);
+  register_type(mangled_name, std::move(instantiation));
+}
+
 void type_checker_c::visit(const fn_c &node) {
   auto it = _decl_to_file.find(&node);
   if (it != _decl_to_file.end()) {
@@ -1257,10 +1455,23 @@ void type_checker_c::visit(const struct_c &node) {
 
   auto incomplete_type =
       std::make_unique<type_entry_s>(type_kind_e::STRUCT, node.name().name);
+
+  if (node.is_generic()) {
+    incomplete_type->is_generic_definition = true;
+    incomplete_type->generic_struct_node = &node;
+    for (const auto &param : node.type_params()) {
+      incomplete_type->type_parameters.push_back(param.name);
+    }
+  }
+
   register_type(node.name().name, std::move(incomplete_type));
 
   if (node.is_extern() && node.fields().empty()) {
     _memory.defer_hoist("__type__" + node.name().name);
+    return;
+  }
+
+  if (node.is_generic()) {
     return;
   }
 
@@ -1369,7 +1580,12 @@ void type_checker_c::visit(const var_c &node) {
   }
 
   if (node.initializer()) {
+    type_entry_s *saved_expected = _expected_type;
+    _expected_type = var_type.get();
+
     node.initializer()->accept(*this);
+
+    _expected_type = saved_expected;
 
     if (_current_expression_type) {
       _current_expression_type = resolve_untyped_literal(
@@ -2375,7 +2591,76 @@ void type_checker_c::visit(const array_literal_c &node) {
 }
 
 void type_checker_c::visit(const struct_literal_c &node) {
-  auto *struct_type = lookup_type(node.struct_name().name);
+  type_entry_s *struct_type = nullptr;
+  std::string lookup_name = node.struct_name().name;
+
+  if (node.is_generic()) {
+    std::string mangled = node.struct_name().name;
+    for (const auto &arg : node.type_arguments()) {
+      mangled += "_" + mangle_type_name(arg.get());
+    }
+    lookup_name = mangled;
+
+    auto *existing = lookup_type(mangled);
+    if (!existing) {
+      std::vector<std::unique_ptr<type_entry_s>> resolved_args;
+      for (const auto &arg : node.type_arguments()) {
+        auto resolved = resolve_type(arg.get());
+        if (!resolved) {
+          report_error("Unknown type argument in struct literal: " +
+                           get_type_name_for_error(arg.get()),
+                       node.source_index());
+          return;
+        }
+        resolved_args.push_back(std::move(resolved));
+      }
+
+      auto *base_type = lookup_type(node.struct_name().name);
+      if (!base_type || !base_type->is_generic_definition) {
+        report_error("Type '" + node.struct_name().name +
+                         "' is not a generic struct",
+                     node.source_index());
+        return;
+      }
+
+      auto instantiation =
+          std::make_unique<type_entry_s>(type_kind_e::STRUCT, mangled);
+      instantiation->is_generic_instantiation = true;
+      instantiation->base_generic_name = node.struct_name().name;
+
+      for (size_t i = 0; i < resolved_args.size(); ++i) {
+        instantiation->type_arguments.push_back(
+            std::make_unique<type_entry_s>(*resolved_args[i]));
+      }
+
+      if (base_type->generic_struct_node) {
+        std::unordered_map<std::string, std::unique_ptr<type_entry_s>>
+            substitutions;
+        for (size_t i = 0; i < base_type->type_parameters.size(); ++i) {
+          substitutions[base_type->type_parameters[i]] =
+              std::make_unique<type_entry_s>(*resolved_args[i]);
+        }
+
+        for (const auto &field : base_type->generic_struct_node->fields()) {
+          auto field_type =
+              resolve_type_with_substitution(field.type.get(), substitutions);
+          if (field_type) {
+            instantiation->struct_field_names.push_back(field.name.name);
+            instantiation->struct_fields[field.name.name] =
+                std::move(field_type);
+          }
+        }
+      }
+
+      register_type(mangled, std::make_unique<type_entry_s>(*instantiation));
+      struct_type = lookup_type(mangled);
+    } else {
+      struct_type = existing;
+    }
+  } else {
+    struct_type = lookup_type(lookup_name);
+  }
+
   if (!struct_type || struct_type->kind != type_kind_e::STRUCT) {
     report_error("Unknown struct type: " + node.struct_name().name,
                  node.source_index());
@@ -2587,6 +2872,8 @@ void symbol_collector_c::visit(const function_type_c &node) {}
 void symbol_collector_c::visit(const map_type_c &node) {}
 
 void symbol_collector_c::visit(const tuple_type_c &node) {}
+
+void symbol_collector_c::visit(const generic_type_instantiation_c &node) {}
 
 void symbol_collector_c::visit(const fn_c &node) {
   auto it = _decl_to_file.find(&node);
@@ -2977,6 +3264,9 @@ void lambda_capture_validator_c::visit(const function_type_c &node) {}
 void lambda_capture_validator_c::visit(const map_type_c &node) {}
 
 void lambda_capture_validator_c::visit(const tuple_type_c &node) {}
+
+void lambda_capture_validator_c::visit(
+    const generic_type_instantiation_c &node) {}
 
 void lambda_capture_validator_c::visit(const fn_c &node) {
   auto it = _symbols.scope_map.find(&node);

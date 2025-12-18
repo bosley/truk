@@ -1,0 +1,9 @@
+struct Pair<K, V> {
+  key: K,
+  val: V
+}
+
+fn main() : i32 {
+  var p: Pair<i32, i32> = Pair<i32, i32>{key: 3, val: 7};
+  return p.key + p.val;
+}

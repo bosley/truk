@@ -3,7 +3,9 @@
 #include <language/node.hpp>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 namespace truk::emitc {
 
@@ -43,11 +45,30 @@ public:
   const std::unordered_set<std::string> &get_struct_names() const;
   const std::unordered_set<std::string> &get_extern_struct_names() const;
 
+  void register_generic_struct(const std::string &name);
+  bool is_generic_struct(const std::string &name) const;
+
+  std::string get_instantiated_name(
+      const std::string &base_name,
+      const std::vector<const truk::language::nodes::type_c *> &type_args);
+
+  void register_instantiation(
+      const std::string &base_name,
+      const std::vector<const truk::language::nodes::type_c *> &type_args,
+      const std::string &mangled_name);
+
+  bool is_instantiation_emitted(const std::string &mangled_name) const;
+  std::string mangle_type_for_name(const truk::language::nodes::type_c *type);
+
 private:
   std::unordered_set<std::string> _slice_types_emitted;
   std::unordered_set<std::string> _map_types_emitted;
   std::unordered_set<std::string> _struct_names;
   std::unordered_set<std::string> _extern_struct_names;
+
+  std::unordered_set<std::string> _generic_struct_names;
+  std::unordered_set<std::string> _emitted_instantiations;
+  std::unordered_map<std::string, std::string> _instantiation_to_mangled;
 };
 
 } // namespace truk::emitc

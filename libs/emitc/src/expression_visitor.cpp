@@ -77,6 +77,8 @@ void expression_visitor_c::visit(const map_type_c &node) {}
 
 void expression_visitor_c::visit(const tuple_type_c &node) {}
 
+void expression_visitor_c::visit(const generic_type_instantiation_c &node) {}
+
 void expression_visitor_c::visit(const fn_c &node) {}
 
 void expression_visitor_c::visit(const struct_c &node) {}

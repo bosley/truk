@@ -18,6 +18,7 @@ enum class node_kind_e {
   FUNCTION_TYPE,
   MAP_TYPE,
   TUPLE_TYPE,
+  GENERIC_TYPE_INSTANTIATION,
   FN,
   LAMBDA,
   STRUCT,
@@ -69,6 +70,7 @@ class array_type_c;
 class function_type_c;
 class map_type_c;
 class tuple_type_c;
+class generic_type_instantiation_c;
 class fn_c;
 class lambda_c;
 class struct_c;
@@ -125,6 +127,10 @@ public:
   virtual const function_type_c *as_function_type() const { return nullptr; }
   virtual const map_type_c *as_map_type() const { return nullptr; }
   virtual const tuple_type_c *as_tuple_type() const { return nullptr; }
+  virtual const generic_type_instantiation_c *
+  as_generic_type_instantiation() const {
+    return nullptr;
+  }
   virtual const fn_c *as_fn() const { return nullptr; }
   virtual const lambda_c *as_lambda() const { return nullptr; }
   virtual const struct_c *as_struct() const { return nullptr; }
@@ -254,6 +260,35 @@ public:
 
 private:
   identifier_s _name;
+};
+
+class generic_type_instantiation_c : public type_c {
+public:
+  generic_type_instantiation_c() = delete;
+  generic_type_instantiation_c(std::size_t source_index, identifier_s base_name,
+                               std::vector<type_ptr> type_arguments)
+      : type_c(keywords_e::UNKNOWN_KEYWORD, source_index),
+        _base_name(std::move(base_name)),
+        _type_arguments(std::move(type_arguments)) {}
+
+  const identifier_s &base_name() const { return _base_name; }
+  const std::vector<type_ptr> &type_arguments() const {
+    return _type_arguments;
+  }
+
+  void accept(visitor_if &visitor) const override;
+  node_kind_e kind() const override {
+    return node_kind_e::GENERIC_TYPE_INSTANTIATION;
+  }
+  type_kind_e type_kind() const override { return type_kind_e::NAMED; }
+  const generic_type_instantiation_c *
+  as_generic_type_instantiation() const override {
+    return this;
+  }
+
+private:
+  identifier_s _base_name;
+  std::vector<type_ptr> _type_arguments;
 };
 
 class pointer_type_c : public type_c {
@@ -416,13 +451,17 @@ class struct_c : public base_c {
 public:
   struct_c() = delete;
   struct_c(std::size_t source_index, identifier_s name,
+           std::vector<identifier_s> type_params,
            std::vector<struct_field_s> fields, bool is_extern = false)
       : base_c(keywords_e::STRUCT, source_index), _name(std::move(name)),
-        _fields(std::move(fields)), _is_extern(is_extern) {}
+        _type_params(std::move(type_params)), _fields(std::move(fields)),
+        _is_extern(is_extern) {}
 
   const identifier_s &name() const { return _name; }
+  const std::vector<identifier_s> &type_params() const { return _type_params; }
   const std::vector<struct_field_s> &fields() const { return _fields; }
   bool is_extern() const { return _is_extern; }
+  bool is_generic() const { return !_type_params.empty(); }
 
   void accept(visitor_if &visitor) const override;
   std::optional<std::string> symbol_name() const override { return _name.name; }
@@ -431,6 +470,7 @@ public:
 
 private:
   identifier_s _name;
+  std::vector<identifier_s> _type_params;
   std::vector<struct_field_s> _fields;
   bool _is_extern{false};
 };
@@ -940,15 +980,21 @@ class struct_literal_c : public base_c {
 public:
   struct_literal_c() = delete;
   struct_literal_c(std::size_t source_index, identifier_s struct_name,
+                   std::vector<type_ptr> type_arguments,
                    std::vector<field_initializer_s> field_initializers)
       : base_c(keywords_e::UNKNOWN_KEYWORD, source_index),
         _struct_name(std::move(struct_name)),
+        _type_arguments(std::move(type_arguments)),
         _field_initializers(std::move(field_initializers)) {}
 
   const identifier_s &struct_name() const { return _struct_name; }
+  const std::vector<type_ptr> &type_arguments() const {
+    return _type_arguments;
+  }
   const std::vector<field_initializer_s> &field_initializers() const {
     return _field_initializers;
   }
+  bool is_generic() const { return !_type_arguments.empty(); }
 
   void accept(visitor_if &visitor) const override;
   node_kind_e kind() const override { return node_kind_e::STRUCT_LITERAL; }
@@ -956,6 +1002,7 @@ public:
 
 private:
   identifier_s _struct_name;
+  std::vector<type_ptr> _type_arguments;
   std::vector<field_initializer_s> _field_initializers;
 };
 

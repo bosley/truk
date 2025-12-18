@@ -1,0 +1,10 @@
+struct Triple<A, B, C> {
+  first: A,
+  second: B,
+  third: C
+}
+
+fn main() : i32 {
+  var t: Triple<i32, i32, i32> = Triple<i32, i32, i32>{first: 1, second: 2, third: 3};
+  return t.first + t.second + t.third;
+}

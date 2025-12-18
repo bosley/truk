@@ -1,31 +1,27 @@
 #pragma once
 
+#include <language/node.hpp>
 #include <language/visitor.hpp>
+#include <truk/emitc/type_registry.hpp>
+
 #include <string>
+#include <tuple>
+#include <unordered_map>
+#include <vector>
 
 namespace truk::emitc {
 
-class emitter_c;
-
-class expression_visitor_c : public truk::language::nodes::visitor_if {
+class instantiation_collector_c : public truk::language::nodes::visitor_if {
 public:
-  explicit expression_visitor_c(emitter_c &emitter);
-  ~expression_visitor_c() override = default;
+  instantiation_collector_c(
+      const std::unordered_map<
+          std::string, const truk::language::nodes::struct_c *> &generic_defs,
+      type_registry_c &registry);
 
-  std::string get_result() const { return _result; }
-
-  void visit(const truk::language::nodes::binary_op_c &node) override;
-  void visit(const truk::language::nodes::unary_op_c &node) override;
-  void visit(const truk::language::nodes::cast_c &node) override;
-  void visit(const truk::language::nodes::call_c &node) override;
-  void visit(const truk::language::nodes::index_c &node) override;
-  void visit(const truk::language::nodes::member_access_c &node) override;
-  void visit(const truk::language::nodes::literal_c &node) override;
-  void visit(const truk::language::nodes::identifier_c &node) override;
-  void visit(const truk::language::nodes::array_literal_c &node) override;
-  void visit(const truk::language::nodes::struct_literal_c &node) override;
-  void visit(const truk::language::nodes::assignment_c &node) override;
-  void visit(const truk::language::nodes::lambda_c &node) override;
+  const std::vector<std::tuple<
+      const truk::language::nodes::struct_c *,
+      std::vector<const truk::language::nodes::type_c *>, std::string>> &
+  get_instantiations() const;
 
   void visit(const truk::language::nodes::primitive_type_c &node) override;
   void visit(const truk::language::nodes::named_type_c &node) override;
@@ -37,6 +33,7 @@ public:
   void visit(
       const truk::language::nodes::generic_type_instantiation_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
+  void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
   void visit(const truk::language::nodes::enum_c &node) override;
   void visit(const truk::language::nodes::var_c &node) override;
@@ -50,7 +47,18 @@ public:
   void visit(const truk::language::nodes::continue_c &node) override;
   void visit(const truk::language::nodes::defer_c &node) override;
   void visit(const truk::language::nodes::match_c &node) override;
+  void visit(const truk::language::nodes::binary_op_c &node) override;
+  void visit(const truk::language::nodes::unary_op_c &node) override;
+  void visit(const truk::language::nodes::cast_c &node) override;
+  void visit(const truk::language::nodes::call_c &node) override;
+  void visit(const truk::language::nodes::index_c &node) override;
+  void visit(const truk::language::nodes::member_access_c &node) override;
+  void visit(const truk::language::nodes::literal_c &node) override;
+  void visit(const truk::language::nodes::identifier_c &node) override;
+  void visit(const truk::language::nodes::assignment_c &node) override;
   void visit(const truk::language::nodes::block_c &node) override;
+  void visit(const truk::language::nodes::array_literal_c &node) override;
+  void visit(const truk::language::nodes::struct_literal_c &node) override;
   void visit(const truk::language::nodes::type_param_c &node) override;
   void visit(const truk::language::nodes::import_c &node) override;
   void visit(const truk::language::nodes::cimport_c &node) override;
@@ -58,8 +66,13 @@ public:
   void visit(const truk::language::nodes::enum_value_access_c &node) override;
 
 private:
-  emitter_c &_emitter;
-  std::string _result;
+  const std::unordered_map<std::string, const truk::language::nodes::struct_c *>
+      &_generic_defs;
+  type_registry_c &_registry;
+  std::vector<std::tuple<const truk::language::nodes::struct_c *,
+                         std::vector<const truk::language::nodes::type_c *>,
+                         std::string>>
+      _instantiations;
 };
 
 } // namespace truk::emitc

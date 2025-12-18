@@ -48,6 +48,13 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
   std::size_t pointer_depth{0};
   std::optional<std::size_t> array_size;
 
+  std::vector<std::string> type_parameters;
+  std::vector<std::unique_ptr<type_entry_s>> type_arguments;
+  bool is_generic_definition{false};
+  bool is_generic_instantiation{false};
+  std::string base_generic_name;
+  const truk::language::nodes::struct_c *generic_struct_node{nullptr};
+
   std::vector<std::string> struct_field_names;
   std::unordered_map<std::string, std::unique_ptr<type_entry_s>> struct_fields;
 
@@ -72,10 +79,18 @@ struct type_entry_s : public truk::core::memory_c<2048>::storeable_if {
 
   type_entry_s(const type_entry_s &other)
       : kind(other.kind), name(other.name), pointer_depth(other.pointer_depth),
-        array_size(other.array_size),
+        array_size(other.array_size), type_parameters(other.type_parameters),
+        is_generic_definition(other.is_generic_definition),
+        is_generic_instantiation(other.is_generic_instantiation),
+        base_generic_name(other.base_generic_name),
+        generic_struct_node(other.generic_struct_node),
         struct_field_names(other.struct_field_names),
         enum_values(other.enum_values), is_variadic(other.is_variadic),
         is_builtin(other.is_builtin), builtin_kind(other.builtin_kind) {
+
+    for (const auto &type_arg : other.type_arguments) {
+      type_arguments.push_back(std::make_unique<type_entry_s>(*type_arg));
+    }
 
     for (const auto &[field_name, field_type] : other.struct_fields) {
       struct_fields[field_name] = std::make_unique<type_entry_s>(*field_type);
@@ -231,6 +246,8 @@ public:
   void visit(const truk::language::nodes::function_type_c &node) override;
   void visit(const truk::language::nodes::map_type_c &node) override;
   void visit(const truk::language::nodes::tuple_type_c &node) override;
+  void visit(
+      const truk::language::nodes::generic_type_instantiation_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
@@ -269,6 +286,7 @@ private:
   std::vector<type_error_s> _detailed_errors;
   std::unique_ptr<type_entry_s> _current_expression_type;
   std::unique_ptr<type_entry_s> _current_function_return_type;
+  type_entry_s *_expected_type{nullptr};
   bool _in_loop{false};
 
   std::unordered_map<const truk::language::nodes::base_c *, std::string>
@@ -315,6 +333,15 @@ private:
   std::string get_type_name_from_entry(const type_entry_s *type);
   type_entry_s *lookup_type(const std::string &name);
   symbol_entry_s *lookup_symbol(const std::string &name);
+
+  std::string generate_mangled_name(
+      const truk::language::nodes::generic_type_instantiation_c &node);
+  std::string mangle_type_name(const truk::language::nodes::type_c *type);
+
+  std::unique_ptr<type_entry_s> resolve_type_with_substitution(
+      const truk::language::nodes::type_c *type,
+      const std::unordered_map<std::string, std::unique_ptr<type_entry_s>>
+          &substitutions);
 
   bool types_equal(const type_entry_s *a, const type_entry_s *b);
   bool is_numeric_type(const type_entry_s *type);
@@ -369,6 +396,8 @@ public:
   void visit(const truk::language::nodes::function_type_c &node) override;
   void visit(const truk::language::nodes::map_type_c &node) override;
   void visit(const truk::language::nodes::tuple_type_c &node) override;
+  void visit(
+      const truk::language::nodes::generic_type_instantiation_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;
@@ -427,6 +456,8 @@ public:
   void visit(const truk::language::nodes::function_type_c &node) override;
   void visit(const truk::language::nodes::map_type_c &node) override;
   void visit(const truk::language::nodes::tuple_type_c &node) override;
+  void visit(
+      const truk::language::nodes::generic_type_instantiation_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;

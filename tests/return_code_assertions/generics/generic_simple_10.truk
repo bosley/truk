@@ -1,0 +1,8 @@
+struct Container<T> {
+  item: T
+}
+
+fn main() : i32 {
+  var c: Container<i32> = Container<i32>{item: 10};
+  return c.item;
+}

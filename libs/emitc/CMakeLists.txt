@@ -29,6 +29,7 @@ add_library(truk_emitc STATIC
     src/builtin_registry.cpp
     src/builtin_handlers.cpp
     src/expression_visitor.cpp
+    src/instantiation_collector.cpp
 )
 
 set_source_files_properties(src/emitter.cpp PROPERTIES 

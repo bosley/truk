@@ -51,6 +51,14 @@ std::string type_registry_c::get_c_type(const type_c *type) {
     return name;
   }
 
+  if (auto gen = type->as_generic_type_instantiation()) {
+    std::vector<const type_c *> type_args;
+    for (const auto &arg : gen->type_arguments()) {
+      type_args.push_back(arg.get());
+    }
+    return get_instantiated_name(gen->base_name().name, type_args);
+  }
+
   if (auto ptr = type->as_pointer_type()) {
     return get_c_type(ptr->pointee_type()) + "*";
   }
@@ -303,6 +311,93 @@ type_registry_c::get_struct_names() const {
 const std::unordered_set<std::string> &
 type_registry_c::get_extern_struct_names() const {
   return _extern_struct_names;
+}
+
+void type_registry_c::register_generic_struct(const std::string &name) {
+  _generic_struct_names.insert(name);
+}
+
+bool type_registry_c::is_generic_struct(const std::string &name) const {
+  return _generic_struct_names.count(name) > 0;
+}
+
+std::string type_registry_c::get_instantiated_name(
+    const std::string &base_name,
+    const std::vector<const type_c *> &type_args) {
+  std::string mangled = base_name;
+  for (const auto *arg : type_args) {
+    mangled += "_";
+    mangled += mangle_type_for_name(arg);
+  }
+  return mangled;
+}
+
+void type_registry_c::register_instantiation(
+    const std::string &base_name, const std::vector<const type_c *> &type_args,
+    const std::string &mangled_name) {
+  _emitted_instantiations.insert(mangled_name);
+  std::string key = base_name;
+  for (const auto *arg : type_args) {
+    key += "_" + mangle_type_for_name(arg);
+  }
+  _instantiation_to_mangled[key] = mangled_name;
+}
+
+bool type_registry_c::is_instantiation_emitted(
+    const std::string &mangled_name) const {
+  return _emitted_instantiations.count(mangled_name) > 0;
+}
+
+std::string type_registry_c::mangle_type_for_name(const type_c *type) {
+  if (auto prim = type->as_primitive_type()) {
+    switch (prim->keyword()) {
+    case keywords_e::I8:
+      return "i8";
+    case keywords_e::I16:
+      return "i16";
+    case keywords_e::I32:
+      return "i32";
+    case keywords_e::I64:
+      return "i64";
+    case keywords_e::U8:
+      return "u8";
+    case keywords_e::U16:
+      return "u16";
+    case keywords_e::U32:
+      return "u32";
+    case keywords_e::U64:
+      return "u64";
+    case keywords_e::F32:
+      return "f32";
+    case keywords_e::F64:
+      return "f64";
+    case keywords_e::BOOL:
+      return "bool";
+    default:
+      return "void";
+    }
+  }
+  if (auto named = type->as_named_type()) {
+    return named->name().name;
+  }
+  if (auto ptr = type->as_pointer_type()) {
+    return "ptr_" + mangle_type_for_name(ptr->pointee_type());
+  }
+  if (auto arr = type->as_array_type()) {
+    if (arr->size().has_value()) {
+      return "arr" + std::to_string(arr->size().value()) + "_" +
+             mangle_type_for_name(arr->element_type());
+    }
+    return "slice_" + mangle_type_for_name(arr->element_type());
+  }
+  if (auto gen = type->as_generic_type_instantiation()) {
+    std::string result = gen->base_name().name;
+    for (const auto &arg : gen->type_arguments()) {
+      result += "_" + mangle_type_for_name(arg.get());
+    }
+    return result;
+  }
+  return "unknown";
 }
 
 } // namespace truk::emitc

@@ -51,6 +51,15 @@ void dependency_visitor_c::visit(const tuple_type_c &node) {
   }
 }
 
+void dependency_visitor_c::visit(const generic_type_instantiation_c &node) {
+  _deps.insert(node.base_name().name);
+  for (const auto &type_arg : node.type_arguments()) {
+    if (type_arg) {
+      type_arg->accept(*this);
+    }
+  }
+}
+
 void dependency_visitor_c::visit(const fn_c &node) {
   if (node.return_type()) {
     node.return_type()->accept(*this);

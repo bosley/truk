@@ -1,0 +1,9 @@
+struct Container<T> {
+  data: T
+}
+
+fn main() : i32 {
+  var x: i32 = 100;
+  var c: Container<*i32> = Container<*i32>{data: &x};
+  return *c.data;
+}

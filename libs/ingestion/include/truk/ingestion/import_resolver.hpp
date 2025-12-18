@@ -52,6 +52,8 @@ public:
   void visit(const truk::language::nodes::function_type_c &node) override;
   void visit(const truk::language::nodes::map_type_c &node) override;
   void visit(const truk::language::nodes::tuple_type_c &node) override;
+  void visit(
+      const truk::language::nodes::generic_type_instantiation_c &node) override;
   void visit(const truk::language::nodes::fn_c &node) override;
   void visit(const truk::language::nodes::lambda_c &node) override;
   void visit(const truk::language::nodes::struct_c &node) override;

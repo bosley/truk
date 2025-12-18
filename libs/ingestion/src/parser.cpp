@@ -387,6 +387,25 @@ language::nodes::base_ptr parser_c::parse_struct_decl(bool is_extern) {
   language::nodes::identifier_s name(name_token.lexeme,
                                      name_token.source_index);
 
+  std::vector<language::nodes::identifier_s> type_params;
+  if (check(token_type_e::LESS)) {
+    advance();
+
+    do {
+      const auto &param_token =
+          consume_identifier("Expected type parameter name");
+      type_params.push_back(language::nodes::identifier_s(
+          param_token.lexeme, param_token.source_index));
+    } while (match(token_type_e::COMMA));
+
+    if (check(token_type_e::GREATER_GREATER)) {
+      _tokens[_current].type = token_type_e::GREATER;
+      _tokens[_current].lexeme = ">";
+    } else {
+      consume(token_type_e::GREATER, "Expected '>' after type parameters");
+    }
+  }
+
   std::vector<language::nodes::struct_field_s> fields;
 
   if (check(token_type_e::SEMICOLON)) {
@@ -402,7 +421,8 @@ language::nodes::base_ptr parser_c::parse_struct_decl(bool is_extern) {
   }
 
   return std::make_unique<language::nodes::struct_c>(
-      struct_token.source_index, std::move(name), std::move(fields), is_extern);
+      struct_token.source_index, std::move(name), std::move(type_params),
+      std::move(fields), is_extern);
 }
 
 language::nodes::base_ptr parser_c::parse_enum_decl(bool is_extern) {
@@ -567,6 +587,31 @@ language::nodes::type_ptr parser_c::parse_type_internal() {
   if (check(token_type_e::IDENTIFIER)) {
     const auto &token = advance();
     language::nodes::identifier_s name(token.lexeme, token.source_index);
+
+    if (check(token_type_e::LESS)) {
+      advance();
+
+      std::vector<language::nodes::type_ptr> type_args;
+      do {
+        auto type_arg = parse_type_internal();
+        if (!type_arg) {
+          throw parse_error("Expected type argument", peek().line,
+                            peek().column);
+        }
+        type_args.push_back(std::move(type_arg));
+      } while (match(token_type_e::COMMA));
+
+      if (check(token_type_e::GREATER_GREATER)) {
+        _tokens[_current].type = token_type_e::GREATER;
+        _tokens[_current].lexeme = ">";
+      } else {
+        consume(token_type_e::GREATER, "Expected '>' after type arguments");
+      }
+
+      return std::make_unique<language::nodes::generic_type_instantiation_c>(
+          token.source_index, std::move(name), std::move(type_args));
+    }
+
     return std::make_unique<language::nodes::named_type_c>(token.source_index,
                                                            std::move(name));
   }
@@ -1420,6 +1465,27 @@ language::nodes::base_ptr parser_c::parse_primary() {
     std::size_t saved_pos = _current;
     advance();
 
+    if (check(token_type_e::LESS)) {
+      int depth = 1;
+      advance();
+      while (depth > 0 && !is_at_end()) {
+        if (check(token_type_e::LESS)) {
+          depth++;
+          advance();
+        } else if (check(token_type_e::GREATER)) {
+          depth--;
+          advance();
+        } else if (check(token_type_e::GREATER_GREATER)) {
+          depth -= 2;
+          if (depth < 0)
+            depth = 0;
+          advance();
+        } else {
+          advance();
+        }
+      }
+    }
+
     if (check(token_type_e::LEFT_BRACE)) {
       advance();
       bool is_struct_literal = false;
@@ -1652,6 +1718,26 @@ language::nodes::base_ptr parser_c::parse_struct_literal() {
   language::nodes::identifier_s struct_name(name_token.lexeme,
                                             name_token.source_index);
 
+  std::vector<language::nodes::type_ptr> type_args;
+  if (check(token_type_e::LESS)) {
+    advance();
+
+    do {
+      auto type_arg = parse_type_internal();
+      if (!type_arg) {
+        throw parse_error("Expected type argument", peek().line, peek().column);
+      }
+      type_args.push_back(std::move(type_arg));
+    } while (match(token_type_e::COMMA));
+
+    if (check(token_type_e::GREATER_GREATER)) {
+      _tokens[_current].type = token_type_e::GREATER;
+      _tokens[_current].lexeme = ">";
+    } else {
+      consume(token_type_e::GREATER, "Expected '>' after type arguments");
+    }
+  }
+
   consume(token_type_e::LEFT_BRACE,
           "Expected '{' after struct name in literal");
 
@@ -1684,7 +1770,8 @@ language::nodes::base_ptr parser_c::parse_struct_literal() {
           "Expected '}' after struct literal fields");
 
   return std::make_unique<language::nodes::struct_literal_c>(
-      name_token.source_index, std::move(struct_name), std::move(field_inits));
+      name_token.source_index, std::move(struct_name), std::move(type_args),
+      std::move(field_inits));
 }
 
 } // namespace truk::ingestion
